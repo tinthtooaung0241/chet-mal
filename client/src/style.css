@@ -889,9 +889,9 @@ select:focus-visible {
 
 #hand-bar {
   position: absolute;
-  left: 50%;
+  left: var(--edge);
+  right: var(--edge);
   bottom: 16px;
-  transform: translateX(-50%);
   display: flex;
   flex-direction: column-reverse; /* prompts sit above the hand */
   align-items: center;
@@ -1981,4 +1981,149 @@ i[data-img] {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* ====================================================================== seasoning + cold food */
+
+.order .ing.spice {
+  padding: 2px 4px;
+  background: #fdf1d4;
+}
+
+.order .ing.spice .icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
+.book-steps li.book-season {
+  background: #fdf1d4;
+}
+
+/* fridge food in hand: a cool tint, turning peach as it warms up */
+#hand-slot.cold #held-icon {
+  background: var(--sky-soft);
+  box-shadow: inset 0 0 0 2px #bcd3ea;
+}
+
+#hand-slot.warm #held-icon {
+  background: var(--peach-soft);
+  box-shadow: inset 0 0 0 2px var(--peach);
+}
+
+#hand-slot.warm #held {
+  color: var(--peach-ink);
+}
+
+/* ====================================================================== fridge / spice rack picker */
+
+#picker {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  max-width: min(900px, calc(100vw - 24px));
+  padding: 8px 12px;
+  border-radius: var(--r-lg);
+  background: rgba(255, 250, 240, 0.9);
+  box-shadow: var(--lift);
+  animation: toast-in 0.2s ease-out both;
+}
+
+#picker[hidden] {
+  display: none;
+}
+
+#picker.fridge {
+  background: rgba(228, 240, 251, 0.94);
+  box-shadow: 0 3px 0 #bcd3ea, 0 6px 14px rgba(45, 28, 12, 0.28);
+}
+
+#picker .pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 11px 4px 5px;
+  border-radius: var(--pill);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  background: var(--paper);
+  box-shadow: 0 0 0 2px var(--oat);
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+
+#picker .pick kbd {
+  font-size: 0.72rem;
+  margin: 0;
+}
+
+#picker .pick .icon-img,
+#picker .pick .icon-svg {
+  width: 26px;
+  height: 26px;
+}
+
+#picker .pick.on {
+  color: var(--ink);
+  background: #fde7b4;
+  box-shadow:
+    0 0 0 2px var(--honey-strong),
+    0 3px 0 2px var(--honey-edge);
+  transform: translateY(-2px);
+}
+
+#picker .pick.done {
+  background: var(--mint-soft);
+  box-shadow: 0 0 0 2px var(--mint);
+}
+
+#picker .pick.done::after {
+  content: "✓";
+  margin-left: 2px;
+  color: var(--mint-ink);
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  #picker .pick span:last-child {
+    display: none; /* icons and numbers only on phones */
+  }
+}
+
+/* eight seasonings: a compact hotbar, the chosen one spelled out */
+#picker.spice .pick:not(.on) span:last-child {
+  display: none;
+}
+
+#picker.spice .pick:not(.on) {
+  padding-right: 8px;
+}
+
+/* seasoning on a ticket ingredient: tiny icons around the cook icon, in the order they go on */
+.order .ing .icon-svg.ing-spice {
+  width: 11px;
+  height: 11px;
+}
+
+.order .ing.seasoned {
+  background: #fdf1d4;
+}
+
+/* the recipe book's seasoning steps */
+.spice-icons {
+  display: inline-flex;
+  gap: 1px;
+}
+
+.book-steps .spice-icons .icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
+#picker.pantry {
+  background: rgba(253, 241, 212, 0.95);
+  box-shadow: 0 3px 0 #e2c477, 0 6px 14px rgba(45, 28, 12, 0.28);
 }

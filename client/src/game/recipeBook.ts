@@ -1,9 +1,9 @@
 // The recipe book (R): every dish on today's menu and how to make it. Each chef reads it their
 // own way — sighted chefs see illustrated pages, the blind chef has it read aloud page by page
 // (←/→ to turn, Enter to hear it again), and it's also real text for screen readers.
-import { FOOD_RULES, ROLES, SOUP_SIZE, levelByNumber, recipeById, type Game, type Recipe, type RecipeItem, type Role } from "@kitchen/shared";
+import { FOOD_RULES, ROLES, SOUP_SIZE, SPICE_NAMES, spiceList, levelByNumber, recipeById, type Game, type Recipe, type RecipeItem, type Role, type Spice } from "@kitchen/shared";
 import { glyph, img } from "../ui/icons";
-import { foodIcon, soupIcon } from "./hints";
+import { SPICE_GLYPHS, foodIcon, soupIcon } from "./hints";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -16,32 +16,47 @@ const lower = (kind: string) => kind.toLowerCase();
 const cookVerb = (kind: string) => (kind === "Bread" ? "toast" : "fry");
 const article =(s: string) => (/^[aeiou]/i.test(s) ? `an ${s}` : `a ${s}`);
 
-/** What to do to one ingredient, in kitchen order. */
+/** What to do to one ingredient, in kitchen order, seasoning included at its proper step. */
 function itemSteps(item: RecipeItem): Step[] {
   const rule = FOOD_RULES[item.kind] ?? {};
   const steps: Step[] = [{ icon: img(foodIcon(item.kind, "raw")), text: lower(item.kind) }];
   const chop = item.state === "chopped" || (item.state === "cooked" && rule.cookFrom === "chopped");
-  if (chop) steps.push({ icon: img("CuttingBoard"), text: "chop it" });
-  if (item.state === "cooked") steps.push({ icon: img("FryingPan"), text: cookVerb(item.kind) + " it" });
+  const season = (): Step => ({ icon: spiceIcons(item.season!), text: (item.season ?? []).map((sp) => SPICE_NAMES[sp]).join(" + ") });
+  if (chop) steps.push({ icon: img("CuttingBoard"), text: "chop" });
+  if (item.season?.length && item.seasonAt === "before") steps.push(season());
+  if (item.state === "cooked") steps.push({ icon: img("FryingPan"), text: cookVerb(item.kind) });
+  if (item.season?.length && item.seasonAt === "after") steps.push(season());
   return steps;
+}
+
+function spiceIcons(spices: readonly Spice[]): HTMLElement {
+  const box = document.createElement("span");
+  box.className = "spice-icons";
+  for (const sp of spices) box.append(glyph(SPICE_GLYPHS[sp]));
+  return box;
 }
 
 /** One sentence per recipe, for speech and screen readers. */
 export function recipeSentence(recipe: Recipe): string {
   if (recipe.vessel === "bowl") {
     const veg = recipe.items.map((i) => lower(i.kind));
-    return `${recipe.name}: chop ${veg.join(", ")}, put all ${SOUP_SIZE} in the soup pot, let it boil, then ladle it into a bowl and serve.`;
+    const spice = recipe.finish?.length ? ` Finish it with ${spiceList(recipe.finish)}.` : "";
+    return `${recipe.name}: chop ${veg.join(", ")}, put all ${SOUP_SIZE} in the soup pot, let it boil, then ladle it into a bowl.${spice}`;
   }
   const parts = recipe.items.map((item) => {
     const rule = FOOD_RULES[item.kind] ?? {};
-    const how =
-      item.state === "chopped" ? "chopped" : item.state === "cooked"
-          ? `${rule.cookFrom === "chopped" ? "chopped then " : ""}${cookVerb(item.kind) === "toast" ? "toasted" : "fried"}`
-          : "fresh";
-    return `${how} ${lower(item.kind)}`;
+    const cooked = cookVerb(item.kind) === "toast" ? "toasted" : "fried";
+    const steps: string[] = [];
+    if (item.state === "chopped" || (item.state === "cooked" && rule.cookFrom === "chopped")) steps.push("chopped");
+    if (item.season?.length && item.seasonAt === "before") steps.push(`seasoned with ${spiceList(item.season)}`);
+    if (item.state === "cooked") steps.push(cooked);
+    if (item.season?.length && item.seasonAt === "after") steps.push(`seasoned with ${spiceList(item.season)}`);
+    const flow = steps.length > 1 ? `${steps.slice(0, -1).join(", ")}, then ${steps.at(-1)}` : (steps[0] ?? "");
+    return `${lower(item.kind)}${flow ? ` ${flow}` : ""}`;
   });
-  const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
-  return `${recipe.name}: ${list}, on one plate.`;
+  const list = parts.join("; ");
+  const spice = recipe.finish?.length ? ` Finish the plate with ${spiceList(recipe.finish)}.` : "";
+  return `${recipe.name}: ${list}, on one plate.${spice}`;
 }
 
 function dishImage(recipe: Recipe): HTMLElement {
@@ -111,6 +126,12 @@ function page(recipe: Recipe, ordered: boolean): HTMLElement {
       steps.append(row);
     }
     steps.append(stepChip({ icon: img("Plate"), text: "All on one plate" }));
+  }
+  if (recipe.finish?.length) {
+    const li = document.createElement("li");
+    li.className = "book-season";
+    li.append(spiceIcons(recipe.finish), `Finish: ${recipe.finish.map((sp) => SPICE_NAMES[sp]).join(" + ")}`);
+    steps.append(li);
   }
   steps.append(stepChip({ icon: glyph("bell"), text: "Serve at the pass" }));
 

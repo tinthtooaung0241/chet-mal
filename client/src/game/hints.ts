@@ -3,6 +3,9 @@
 import {
   FOOD_RULES,
   MAX_PLATE_ITEMS,
+  SPICE_NAMES,
+  pickedItem,
+  type Spice,
   SOUP_INGREDIENTS,
   SOUP_SIZE,
   SOUP_TIME,
@@ -66,9 +69,34 @@ const STATION_IMG: Partial<Record<Station["kind"], string>> = {
   trash: "TrashBin",
 };
 const STATION_GLYPH: Partial<Record<Station["kind"], string>> = { serve: "bell", sink: "sink", counter: "counter" };
+export const SPICE_GLYPHS: Record<string, string> = {
+  Salt: "salt",
+  Pepper: "pepper",
+  OliveOil: "oil",
+  Butter: "butter",
+  Lemon: "lemon",
+  Herbs: "herbs",
+  Soy: "soy",
+  Vinegar: "vinegar",
+};
+
+/** Icon for one thing in a fridge or spice rack. */
+export function stockIconNode(st: Station, item: string): Element {
+  return st.kind === "spice" ? glyph(SPICE_GLYPHS[item] ?? "salt") : img(foodIcon(item, "raw"));
+}
+
+/** Its display name: "Steak", "Olive oil". */
+export function stockName(st: Station, item: string): string {
+  if (st.kind !== "spice") return item;
+  const name = SPICE_NAMES[item as Spice] ?? item;
+  return name[0].toUpperCase() + name.slice(1);
+}
 
 export function stationIconNode(s: Station): Element {
   if (s.kind === "crate") return img(s.crate!);
+  if (s.kind === "spice") return glyph("salt");
+  if (s.kind === "fridge") return glyph("fridge");
+  if (s.kind === "pantry") return glyph("crate");
   const name = STATION_IMG[s.kind];
   return name ? img(name) : glyph(STATION_GLYPH[s.kind] ?? "counter");
 }
@@ -96,7 +124,7 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
   switch (st.kind) {
     case "crate":
       if (!held) return [use(`Take ${article(st.crate!.toLowerCase())}`)];
-      if (held.type === "food" && held.state === "raw" && held.kind === st.crate) return [use("Put it back")];
+      if (held.type === "food" && held.state === "raw" && held.kind === st.crate) return [use(FOOD_RULES[st.crate!]?.cold ? "Back in the fridge" : "Put it back")];
       if (held.type === "plate") return [held.contents.length < MAX_PLATE_ITEMS ? use(`Add ${article(st.crate!.toLowerCase())} to the plate`) : { text: "Plate is full" }];
       return [{ text: "Hands full" }];
     case "plates":
@@ -118,6 +146,28 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
       return [{ text: held?.type === "food" ? "Plate it first" : "Bring a finished dish" }];
     case "sink":
       return [];
+    case "spice": {
+      const spice = pickedItem(st, me) as Spice;
+      const name = SPICE_NAMES[spice];
+      const choose = { key: `1–${st.stock!.length}`, text: "choose" };
+      if (!held) return [{ text: "Bring food or a dish to season" }, choose];
+      if (held.type === "food") {
+        const kind = held.kind.toLowerCase();
+        if (held.state === "burnt") return [{ text: "Too late, it's burnt" }];
+        if ((held.season ?? []).some((x) => x.spice === spice)) return [{ text: `The ${kind} already has ${name}` }, choose];
+        return [use(`${held.state === "cooked" ? "Season" : "Season the raw"} ${kind}: ${name}`), choose];
+      }
+      if (held.type === "plate" ? !held.contents.length : !held.soup) return [{ text: "Put the food in first" }];
+      if (held.season.includes(spice)) return [{ text: `Already has ${name}` }, choose];
+      return [use(`Add ${name}`), choose];
+    }
+    case "fridge":
+    case "pantry": {
+      const choose = { key: `1–${st.stock!.length}`, text: "choose" };
+      if (!held) return [use(`Take ${article(pickedItem(st, me)!.toLowerCase())}`), choose];
+      if (held.type === "food" && st.stock!.includes(held.kind) && (held.state === "raw" || held.state === "chopped")) return [use(st.kind === "fridge" ? "Back in the fridge" : "Back on the shelf")];
+      return [{ text: "Hands full" }];
+    }
     case "pot": {
       const pot = st.pot!;
       if (pot.state === "burnt") return held ? [{ text: "Burnt! Empty hands to scrape" }] : [use("Scrape out the burnt soup")];

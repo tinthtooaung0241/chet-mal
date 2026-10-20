@@ -5,7 +5,18 @@
 // `actors`, so each client can present just what its own chef could perceive.
 import { KITCHEN, legend, type StationKind } from "./layout";
 import { ROLES, type Emote, type Role, type Sense } from "./roles";
+import { addDiner, dinerGivesUp, dinerServed, stepDiners, type Diner } from "./diners";
 import {
+  COLD_LIMIT,
+  COLD_WARN,
+  SEASON_BONUS,
+  SEASON_PENALTY,
+  SPICE_NAMES,
+  seasonedWith,
+  spiceList,
+  type Spice,
+  type SeasonTime,
+  seasonTimeOf,
   BUMP_COOLDOWN,
   CHEF_RADIUS,
   CHEF_SPEED,
@@ -53,12 +64,19 @@ export interface Food {
   perfect: boolean;
   /** gone off: mouldy to look at, bad to smell */
   spoiled: boolean;
+  /** seconds a fridge ingredient has spent out of the fridge (raw or chopped) */
+  out: number;
+  /** "it's been out a while" warning already given */
+  warm: boolean;
+  /** seasoning on this ingredient, and whether it went on before or after cooking */
+  season: { spice: Spice; at: SeasonTime }[];
 }
 
 export interface Plate {
   type: "plate";
   id: number;
   contents: Food[];
+  season: Spice[];
 }
 
 /** A soup bowl: empty, or holding the kinds of vegetables that went into the soup. */
@@ -68,6 +86,7 @@ export interface Bowl {
   soup: string[] | null;
   spoiled: boolean;
   perfect: boolean;
+  season: Spice[];
 }
 
 export type Item = Food | Plate | Bowl;
@@ -86,6 +105,10 @@ export interface Station {
   id: number;
   kind: StationKind;
   crate?: string;
+  /** fridges and spice racks: what's inside, in picking order */
+  stock?: string[];
+  /** a fuller name ("meat and fish fridge") */
+  label?: string;
   col: number;
   row: number;
   x: number;
@@ -118,6 +141,8 @@ export interface Chef {
   pitch: number;
   /** a short animation others should see: what this chef just did */
   gesture: { kind: Gesture; ttl: number; total: number } | null;
+  /** which item this chef has chosen at a fridge or spice rack (index into its stock) */
+  pick: number;
 }
 
 /** Body language: actions and emotes as animations everyone can watch. */
@@ -132,6 +157,7 @@ export type Gesture =
   | "ping"
   | "bell"
   | "hand"
+  | "season"
   | "yes"
   | "no"
   | "here"
@@ -150,6 +176,7 @@ const GESTURE_TIME: Record<Gesture, number> = {
   ping: 1.0,
   bell: 0.7,
   hand: 0.6,
+  season: 0.8,
   yes: 1.2,
   no: 1.2,
   here: 1.4,
@@ -175,6 +202,7 @@ const EVENT_GESTURES: Partial<Record<EventKind, Gesture>> = {
   ping: "ping",
   bell: "bell",
   hand: "hand",
+  season: "season",
 };
 
 export interface Order {
@@ -222,6 +250,9 @@ export type EventKind =
   | "emote"
   | "bell"
   | "over"
+  | "season"
+  | "warm"
+  | "arrive"
   | "info";
 
 export interface GameEvent {
@@ -257,6 +288,8 @@ export interface Game {
   grid: (Station | null)[][];
   chefs: Chef[];
   orders: Order[];
+  /** customers on the terrace, one per order */
+  diners: Diner[];
   pings: Ping[];
   score: number;
   served: number;
@@ -330,6 +363,7 @@ export function createGame(levelNumber = 1): Game {
     grid: [],
     chefs: [],
     orders: [],
+    diners: [],
     pings: [],
     score: 0,
     served: 0,
@@ -354,6 +388,8 @@ export function createGame(levelNumber = 1): Game {
         id: g.nextId++,
         kind: entry.kind,
         crate: entry.crate,
+        stock: entry.stock,
+        label: entry.label,
         col,
         row,
         x: colToX(g, col),
@@ -398,6 +434,7 @@ export function addChef(g: Game, id: string, role: Role, name = ROLES[role].name
     bumpCooldown: 0,
     pitch: 0,
     gesture: null,
+    pick: 0,
   };
   g.chefs.push(chef);
   return chef;
@@ -411,16 +448,20 @@ export function removeChef(g: Game, id: string) {
 // --- descriptions (shared by announcements and the HUD) ---------------------------
 
 export function describeItem(item: Item): string {
-  if (item.type === "bowl") return item.soup ? `bowl of ${soupName(item.soup)}` : "empty bowl";
-  if (item.type === "food") return describeFood(item.kind, item.state);
+  if (item.type === "bowl") return item.soup ? `bowl of ${soupName(item.soup)}${seasonedWith(item.season)}` : "empty bowl";
+  if (item.type === "food") return describeFood(item.kind, item.state) + seasonedWith((item.season ?? []).map((x) => x.spice));
   if (item.contents.length === 0) return "empty plate";
-  return `plate of ${item.contents.map((f) => describeFood(f.kind, f.state)).join(" and ")}`;
+  return `plate of ${item.contents.map((f) => describeFood(f.kind, f.state)).join(" and ")}${seasonedWith(item.season)}`;
 }
 
 export function stationName(s: Station): string {
   switch (s.kind) {
     case "crate":
-      return `${s.crate!.toLowerCase()} crate`;
+      return `${s.crate!.toLowerCase()} ${FOOD_RULES[s.crate!]?.cold ? "fridge" : "crate"}`;
+    case "fridge":
+    case "pantry":
+    case "spice":
+      return s.label ?? s.kind;
     case "board":
       return "cutting board";
     case "plates":
@@ -444,7 +485,10 @@ export function describeSurroundings(g: Game, chef: Chef): string {
   const held = chef.held ? `You are holding ${describeItem(chef.held)}.` : "Your hands are empty.";
   const target = targetStation(g, chef);
   const mate = target ? undefined : chefInFront(g, chef);
-  const contents = target?.pot ? ` with ${describePot(target.pot)}` : target?.item ? ` with ${describeItem(target.item)}` : "";
+  const stock = target?.stock
+    ? `, holding ${target.stock.map((k, i) => `${i + 1} ${target.kind === "spice" ? SPICE_NAMES[k as Spice] : k.toLowerCase()}`).join(", ")}. You have ${(target.kind === "spice" ? SPICE_NAMES[pickedItem(target, chef) as Spice] : pickedItem(target, chef)?.toLowerCase()) ?? "nothing"} chosen`
+    : "";
+  const contents = target?.pot ? ` with ${describePot(target.pot)}` : target?.item ? ` with ${describeItem(target.item)}` : stock;
   const facing = target
     ? `In front of you: ${stationName(target)}${contents}.`
     : mate
@@ -483,7 +527,8 @@ function emit(
 
 export function targetStation(g: Game, chef: Chef): Station | null {
   const { x, z, facing } = chef;
-  return stationAt(g, xToCol(g, x + Math.sin(facing) * REACH), zToRow(g, z + Math.cos(facing) * REACH));
+  const st = stationAt(g, xToCol(g, x + Math.sin(facing) * REACH), zToRow(g, z + Math.cos(facing) * REACH));
+  return st?.kind === "decor" ? null : st; // scenery is never something you use
 }
 
 /** Another chef close by and roughly in front of this one. */
@@ -688,6 +733,7 @@ export function stepWorld(g: Game, dt: number) {
     }
     if (order.timeLeft <= 0) {
       g.orders.splice(g.orders.indexOf(order), 1);
+      dinerGivesUp(g, order.id);
       g.score = Math.max(0, g.score - EXPIRED_PENALTY);
       emit(g, "expired", `A customer gave up on their ${order.recipe.name}. Minus ${EXPIRED_PENALTY} points.`, pass, SEEN_HEARD, undefined, true);
     }
@@ -723,6 +769,9 @@ export function stepWorld(g: Game, dt: number) {
     emit(g, "storm", "The storm passes. You can hear again.", pass, EVERYONE, everyone);
   }
 
+  warmUp(g, dt);
+  stepDiners(g, dt);
+
   // pings fade
   for (const p of g.pings) p.ttl -= dt;
   g.pings = g.pings.filter((p) => p.ttl > 0);
@@ -747,7 +796,9 @@ function addOrder(g: Game, recipe?: Recipe, channel?: OrderChannel) {
   const level = levelByNumber(g.level);
   recipe ??= recipeById(level.recipes[Math.floor(Math.random() * level.recipes.length)]);
   channel ??= level.channels[Math.floor(Math.random() * level.channels.length)];
-  g.orders.push({ id: g.nextId++, recipe, timeLeft: recipe.time, channel, warned: false });
+  const id = g.nextId++;
+  g.orders.push({ id, recipe, timeLeft: recipe.time, channel, warned: false });
+  addDiner(g, id);
   const pass = g.stations.find((s) => s.kind === "serve") ?? { x: 0, z: 0 };
   const items = describeRecipe(recipe);
   if (channel === "ticket") {
@@ -756,13 +807,15 @@ function addOrder(g: Game, recipe?: Recipe, channel?: OrderChannel) {
     // spoken once by the caller: only chefs who can hear ever learn about it
     emit(g, "phone", `Phone order: "Hi! One ${recipe.name} please. That's ${items}."`, pass, HEARD);
   }
+  // the terrace door chimes as they come in (a cue, no words)
+  emit(g, "arrive", undefined, { x: 0, z: -6.2 }, SEEN_HEARD);
 }
 
 // --- actions ------------------------------------------------------------------
 
 function newFood(g: Game, kind: string): Food {
   const spoiled = Math.random() < levelByNumber(g.level).spoilChance;
-  return { type: "food", id: g.nextId++, kind, state: "raw", chop: 0, cook: 0, warned: false, perfectCued: false, perfect: false, spoiled };
+  return { type: "food", id: g.nextId++, kind, state: "raw", chop: 0, cook: 0, warned: false, perfectCued: false, perfect: false, spoiled, out: 0, warm: false, season: [] };
 }
 
 /** Taking food off a stove locks in whether it was perfect. */
@@ -805,6 +858,7 @@ function serve(g: Game, chef: Chef, dish: Plate | Bowl, at: Station) {
   if (bad.length) {
     // the customer eats it and gets sick: no points, a penalty, and they leave
     g.orders.splice(g.orders.indexOf(order), 1);
+    dinerServed(g, order.id, dish, true);
     g.score = Math.max(0, g.score - SICK_PENALTY);
     const what = [...new Set(bad)].map((k) => k.toLowerCase()).join(" and ");
     emit(g, "sick", `A customer got sick from spoiled ${what}! Minus ${SICK_PENALTY} points.`, at, EVERYONE, [chef.id], true);
@@ -812,14 +866,159 @@ function serve(g: Game, chef: Chef, dish: Plate | Bowl, at: Station) {
   }
   const perfect = dish.type === "bowl" ? (dish.perfect ? ["soup"] : []) : dish.contents.filter((f) => f.perfect).map((f) => f.kind.toLowerCase());
   const bonus = perfect.length * PERFECT_BONUS;
-  const points = order.recipe.reward + Math.ceil((order.timeLeft / order.recipe.time) * 10) + bonus;
+  const taste = tasteDish(order.recipe, dish);
+  const points = Math.max(5, order.recipe.reward + Math.ceil((order.timeLeft / order.recipe.time) * 10) + bonus + taste.points);
   g.score += points;
   g.served += 1;
   g.perfects += perfect.length;
   g.orders.splice(g.orders.indexOf(order), 1);
+  dinerServed(g, order.id, dish, false);
   const praise = perfect.length ? ` Perfect ${perfect.join(" and ")}!` : "";
-  emit(g, "served", `Served ${order.recipe.name}!${praise} Plus ${points} points.`, at, EVERYONE, [chef.id]);
+  emit(g, "served", `Served ${order.recipe.name}!${praise}${taste.note} Plus ${points} points.`, at, EVERYONE, [chef.id]);
   if (g.orders.length === 0) g.nextOrderIn = Math.min(g.nextOrderIn, 2);
+}
+
+/** The item a chef has chosen at a fridge or spice rack. */
+export function pickedItem(st: Station, chef: Chef): string | null {
+  const stock = st.stock;
+  if (!stock?.length) return null;
+  return stock[Math.min(Math.max(0, Math.floor(chef.pick || 0)), stock.length - 1)];
+}
+
+/** Taking from, or putting back into, a fridge or the pantry shelf. */
+function useStore(g: Game, chef: Chef, st: Station) {
+  const where = st.kind === "fridge" ? "the fridge" : "the pantry";
+  const me = [chef.id];
+  const held = chef.held;
+  if (!held) {
+    const kind = pickedItem(st, chef)!;
+    chef.held = newFood(g, kind);
+    emit(g, "pickup", `Took ${describeFood(kind, "raw").replace(/^raw /, "a raw ")} from ${where}.`, st, EVERYONE, me);
+    return;
+  }
+  if (held.type === "food" && st.stock?.includes(held.kind) && (held.state === "raw" || held.state === "chopped")) {
+    chef.held = null;
+    emit(g, "place", `Put the ${describeItem(held)} back in ${where}.`, st, EVERYONE, me);
+    return;
+  }
+  emit(g, "invalid", held.type === "food" ? `The ${held.kind.toLowerCase()} doesn't go in ${where}.` : "Your hands are full.", st, FELT, me);
+}
+
+/**
+ * Seasoning at a spice rack, the way a cook really does it: on an ingredient (salt the raw steak,
+ * salt the fries as they come out of the pan) or as a finishing touch on the plated dish.
+ */
+function season(g: Game, chef: Chef, st: Station) {
+  const me = [chef.id];
+  const spice = pickedItem(st, chef) as Spice;
+  const name = SPICE_NAMES[spice];
+  const held = chef.held;
+  if (!held) {
+    emit(g, "invalid", `The ${stationName(st)}. Bring an ingredient or a plated dish to season it.`, st, FELT, me);
+    return;
+  }
+  if (held.type === "food") {
+    if (held.state === "burnt") {
+      emit(g, "invalid", `No amount of ${name} will save a burnt ${held.kind.toLowerCase()}.`, st, FELT, me);
+      return;
+    }
+    held.season ??= [];
+    if (held.season.some((x) => x.spice === spice)) {
+      emit(g, "invalid", `The ${held.kind.toLowerCase()} already has ${name}.`, st, FELT, me);
+      return;
+    }
+    const what = describeItem(held);
+    held.season.push({ spice, at: seasonTimeOf(held.state) });
+    emit(g, "season", `Seasoned the ${what} with ${name}.`, st, EVERYONE, me);
+    return;
+  }
+  if (held.type === "plate" ? held.contents.length === 0 : !held.soup) {
+    emit(g, "invalid", `Put the food in first, then add ${name}.`, st, FELT, me);
+    return;
+  }
+  if (held.season.includes(spice)) {
+    emit(g, "invalid", `It already has ${name}.`, st, FELT, me);
+    return;
+  }
+  const what = describeItem(held);
+  held.season.push(spice);
+  emit(g, "season", `Finished the ${what} with ${name}.`, st, EVERYONE, me);
+}
+
+const TIMING_PENALTY = 3;
+
+/**
+ * Customers taste the seasoning: each ingredient seasoned with the right things at the right step
+ * (before or after cooking), and the dish finished right. All correct earns a bonus; each mistake
+ * costs a little and the customer says what was off.
+ */
+export function tasteDish(recipe: Recipe, dish: Plate | Bowl): { points: number; note: string } {
+  const notes: string[] = [];
+  let points = 0;
+  const lower = (k: string) => k.toLowerCase();
+  if (dish.type === "plate") {
+    const unused = [...dish.contents];
+    for (const want of recipe.items) {
+      const i = unused.findIndex((f) => f.kind === want.kind && f.state === want.state);
+      if (i < 0) continue;
+      const food = unused.splice(i, 1)[0];
+      const got = food.season ?? [];
+      const wanted = want.season ?? [];
+      const missing = wanted.filter((sp) => !got.some((x) => x.spice === sp));
+      const extra = got.filter((x) => !wanted.includes(x.spice)).map((x) => x.spice);
+      const late = got.filter((x) => wanted.includes(x.spice) && want.seasonAt && x.at !== want.seasonAt).map((x) => x.spice);
+      points -= (missing.length + extra.length) * SEASON_PENALTY + late.length * TIMING_PENALTY;
+      if (missing.length) notes.push(`the ${lower(food.kind)} needed ${spiceList(missing)}`);
+      if (extra.length) notes.push(`no ${spiceList(extra)} on the ${lower(food.kind)}`);
+      if (late.length) notes.push(`${spiceList(late)} ${late.length > 1 ? "go" : "goes"} on the ${lower(food.kind)} ${want.seasonAt === "before" ? "before cooking" : "after cooking"}`);
+    }
+  }
+  const finish = recipe.finish ?? [];
+  const missing = finish.filter((sp) => !dish.season.includes(sp));
+  const extra = dish.season.filter((sp) => !finish.includes(sp));
+  points -= (missing.length + extra.length) * SEASON_PENALTY;
+  if (missing.length) notes.push(`it needed ${spiceList(missing)} to finish`);
+  if (extra.length) notes.push(`they didn't want ${spiceList(extra)} on top`);
+  if (!notes.length) {
+    const seasoned = finish.length || recipe.items.some((i) => i.season?.length);
+    return seasoned ? { points: SEASON_BONUS, note: " Seasoned just right!" } : { points: 0, note: "" };
+  }
+  const shown = notes.slice(0, 2).join("; ");
+  return { points, note: ` ${shown[0].toUpperCase()}${shown.slice(1)}${notes.length > 2 ? "…" : "."}` };
+}
+
+/** Every food in play, with whoever is holding it (for cold-food timers). */
+function* allFood(g: Game): Generator<{ food: Food; at: { x: number; z: number }; holder: Chef | null; cooking: boolean }> {
+  for (const s of g.stations) {
+    const item = s.item;
+    if (item?.type === "food") yield { food: item, at: s, holder: null, cooking: s.kind === "stove" };
+    else if (item?.type === "plate") for (const f of item.contents) yield { food: f, at: s, holder: null, cooking: false };
+  }
+  for (const c of g.chefs) {
+    const item = c.held;
+    if (item?.type === "food") yield { food: item, at: c, holder: c, cooking: false };
+    else if (item?.type === "plate") for (const f of item.contents) yield { food: f, at: c, holder: c, cooking: false };
+  }
+}
+
+/** Fridge ingredients left out raw (or chopped) warm up and, eventually, go off. */
+function warmUp(g: Game, dt: number) {
+  for (const { food, at, holder, cooking } of allFood(g)) {
+    if (!FOOD_RULES[food.kind]?.cold || food.spoiled || cooking) continue;
+    if (food.state !== "raw" && food.state !== "chopped") continue;
+    food.out = (food.out ?? 0) + dt;
+    const kind = food.kind.toLowerCase();
+    // you can see it sweating, and whoever holds it can feel it's no longer cold
+    const senses: Sense[] = holder ? ["sight", "touch"] : ["sight"];
+    const actors = holder ? [holder.id] : undefined;
+    if (food.out >= COLD_LIMIT) {
+      food.spoiled = true;
+      emit(g, "warm", `The ${kind} sat out of the fridge too long and has gone off. Bin it!`, at, senses, actors, true);
+    } else if (!food.warm && food.out >= COLD_WARN) {
+      food.warm = true;
+      emit(g, "warm", `The ${kind} has been out of the fridge a while. Use it soon or it'll go off.`, at, senses, actors);
+    }
+  }
 }
 
 // --- the soup pot ---------------------------------------------------------------------
@@ -955,7 +1154,7 @@ export function interact(g: Game, chef: Chef) {
         emit(g, "pickup", `Took a raw ${st.crate!.toLowerCase()}.`, st, EVERYONE, me);
       } else if (held.type === "food" && held.state === "raw" && held.kind === st.crate) {
         chef.held = null;
-        emit(g, "place", `Put the ${held.kind.toLowerCase()} back.`, st, EVERYONE, me);
+        emit(g, "place", `Put the ${held.kind.toLowerCase()} back in the ${stationName(st).split(" ").at(-1)}.`, st, EVERYONE, me);
       } else if (held.type === "plate") {
         // a fresh one straight onto the plate (salad leaves, bread…)
         addToPlate(g, chef, held, newFood(g, st.crate!), st);
@@ -965,14 +1164,14 @@ export function interact(g: Game, chef: Chef) {
       return;
     case "plates":
       if (!held) {
-        chef.held = { type: "plate", id: g.nextId++, contents: [] };
+        chef.held = { type: "plate", id: g.nextId++, contents: [], season: [] };
         emit(g, "pickup", "Took a clean plate.", st, EVERYONE, me);
       } else if (held.type === "plate" && held.contents.length === 0) {
         chef.held = null;
         emit(g, "place", "Put the plate back.", st, EVERYONE, me);
       } else if (held.type === "food") {
         // food in hand at the rack: take a plate with it already on
-        chef.held = { type: "plate", id: g.nextId++, contents: [held] };
+        chef.held = { type: "plate", id: g.nextId++, contents: [held], season: [] };
         emit(g, "place", `Plated ${describeItem(held)}.`, st, EVERYONE, me);
       } else {
         emit(g, "invalid", "Your hands are full.", st, FELT, me);
@@ -980,7 +1179,7 @@ export function interact(g: Game, chef: Chef) {
       return;
     case "bowls":
       if (!held) {
-        chef.held = { type: "bowl", id: g.nextId++, soup: null, spoiled: false, perfect: false };
+        chef.held = { type: "bowl", id: g.nextId++, soup: null, spoiled: false, perfect: false, season: [] };
         emit(g, "pickup", "Took a clean bowl.", st, EVERYONE, me);
       } else if (held.type === "bowl" && !held.soup) {
         chef.held = null;
@@ -998,6 +1197,7 @@ export function interact(g: Game, chef: Chef) {
         if (held.contents.length === 0) emit(g, "invalid", "The plate is already empty.", st, FELT, me);
         else {
           held.contents = [];
+          held.season = [];
           emit(g, "trash", "Emptied the plate into the bin.", st, EVERYONE, me);
         }
       } else if (held.type === "bowl") {
@@ -1005,6 +1205,7 @@ export function interact(g: Game, chef: Chef) {
         else {
           held.soup = null;
           held.spoiled = held.perfect = false;
+          held.season = [];
           emit(g, "trash", "Poured the soup away.", st, EVERYONE, me);
         }
       } else {
@@ -1021,6 +1222,13 @@ export function interact(g: Game, chef: Chef) {
       return;
     case "sink":
       emit(g, "invalid", "The sink isn't used yet.", st, FELT, me);
+      return;
+    case "spice":
+      season(g, chef, st);
+      return;
+    case "fridge":
+    case "pantry":
+      useStore(g, chef, st);
       return;
   }
 

@@ -34,6 +34,8 @@ export interface Session {
   readonly me: Chef | null;
   step(dt: number, input: Input): void;
   act(action: Action): void;
+  /** choose an item at a fridge or spice rack (index into its stock) */
+  setPick(index: number): void;
   emote(word: Emote): void;
   drainEvents(): GameEvent[];
   /** play again, optionally on another level */
@@ -62,6 +64,10 @@ export class LocalSession implements Session {
 
   act(action: Action) {
     ({ interact, chopHint, ping, bell: ringBell, hand: toggleHand, sniff } as const)[action](this.game, this.me);
+  }
+
+  setPick(index: number) {
+    this.me.pick = index;
   }
 
   emote(word: Emote) {
@@ -102,6 +108,8 @@ export class NetSession implements Session {
   private events: GameEvent[] = [];
   /** our chef as we last moved it, re-applied over each server snapshot */
   private local: { x: number; z: number; facing: number; pitch: number; guidedBy: string | null } | null = null;
+  /** what we've chosen at a fridge or spice rack (ours, like our position) */
+  private pick = 0;
   private sinceMove = 0;
   private lastSnapshotAt = 0;
   onLobby: (lobby: LobbyState) => void = () => {};
@@ -167,6 +175,7 @@ export class NetSession implements Session {
           me.z = this.local.z;
           me.facing = this.local.facing;
           me.pitch = this.local.pitch;
+          me.pick = this.pick;
           this.local.guidedBy = me.guidedBy;
         }
         if (first || restarted) this.onStart();
@@ -212,7 +221,12 @@ export class NetSession implements Session {
   }
 
   act(action: Action) {
-    this.send({ t: "act", action });
+    this.send({ t: "act", action, pick: this.pick });
+  }
+
+  setPick(index: number) {
+    this.pick = index;
+    if (this.me) this.me.pick = index;
   }
 
   emote(word: Emote) {

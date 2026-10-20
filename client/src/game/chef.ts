@@ -63,7 +63,13 @@ export interface ChefState {
   guiding: boolean;
   /** the station this chef is facing, to glance at */
   look: { x: number; z: number } | null;
+  /** customers: seated at a table, and eating */
+  sitting?: boolean;
+  eating?: boolean;
 }
+
+/** Lowers the body onto a chair seat (hips at ~0.48 m) with the legs out under the table. */
+const SIT_DROP = 0.38;
 
 export class ChefModel {
   readonly root: TransformNode;
@@ -75,15 +81,17 @@ export class ChefModel {
   private turnRate = 0;
   private lastStep = 0;
   private nextBlink = 2 + Math.random() * 3;
+  private sit = 0;
   private blink = 0;
   /** called on each footfall with the foot's world position */
   onStep: ((x: number, z: number) => void) | null = null;
 
-  constructor(scene: Scene, shadows: ShadowGenerator, lib: AssetLibrary, role: Role, apronColor: Color3) {
+  /** @param modelName another character to animate the same way (the customers) */
+  constructor(scene: Scene, shadows: ShadowGenerator, lib: AssetLibrary, role: Role, apronColor: Color3, modelName?: string) {
     this.root = new TransformNode("chef", scene);
     this.bob = new TransformNode("chefBob", scene);
     this.bob.parent = this.root;
-    const model = CHEF_MODELS[role];
+    const model = modelName ?? CHEF_MODELS[role];
     if (!lib.has(model)) {
       this.placeholder(scene, shadows, apronColor);
       return;
@@ -205,6 +213,22 @@ export class ChefModel {
     const breathe = Math.sin(time * 2.1) * (1 - walk);
     torso.x += TILT * breathe * 0.012;
     this.bob.position.y = Math.abs(Math.cos(this.phase)) * 0.035 * walk;
+    this.sit = Scalar.Lerp(this.sit, s.sitting ? 1 : 0, Math.min(1, dt * 6));
+    if (this.sit > 0.01) {
+      this.bob.position.y -= SIT_DROP * this.sit;
+      legL.x = legR.x = FWD * 1.45 * this.sit;
+      torso.x -= TILT * 0.05 * this.sit;
+      // hands rest on the table edge
+      armL.x = armR.x = FWD * 0.35 * this.sit;
+      foreL.x = foreR.x = FWD * 0.9 * this.sit;
+    }
+    if (s.eating) {
+      // fork up to the mouth, chew, back down to the plate
+      const bite = Math.max(0, Math.sin(time * 2.4));
+      armR.x = FWD * (0.45 + 0.55 * bite);
+      foreR.x = FWD * (1.0 + 1.1 * bite);
+      head.x += TILT * (0.2 - 0.15 * bite);
+    }
     // the head follows where the player is looking (others can see what you look at)
     head.x = TILT * Scalar.Clamp(s.pitch * 0.75, -0.45, 0.6);
     // ...and glances at the station in front when standing at it
@@ -307,6 +331,15 @@ export class ChefModel {
         case "hand":
           armR.x = FWD * 0.9 * env;
           foreR.x = FWD * 0.3 * env;
+          break;
+        case "season":
+          // hold the dish in the left hand and shake the right over it
+          armL.x = FWD * 0.6;
+          foreL.x = FWD * 1.1;
+          armR.x = FWD * (0.95 + wave(4) * 0.12) * env;
+          foreR.x = FWD * (1.25 + wave(8) * 0.25) * env;
+          armR.z = -0.1;
+          head.x += TILT * 0.3 * env;
           break;
         case "yes":
           head.x += TILT * wave(3) * 0.32 * env;

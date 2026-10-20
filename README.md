@@ -2,6 +2,8 @@
 
 A web co-op cooking game for three friends: one chef is blind, one is deaf, and one can't speak. Nobody has all the information, so the team has to pass it around. See [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md).
 
+Cooking works like a real kitchen, sped up: one storage corner holds two reach-in fridges (meat and fish; dairy and greens, which go off if left out too long) and two pantry shelves (root vegetables; bread and tomatoes). Every dish is seasoned the way it really is (grilled fish with salt, lemon and herbs; fish & chips with salt and malt vinegar...) from two spice racks holding salt, pepper, olive oil, butter, lemon, fresh herbs, soy sauce and malt vinegar. Customers walk in, sit at a table on the terrace, come to the pass for their dish, eat, and leave (happy, or storming off if their order runs out).
+
 ## Run it
 
 ```bash
@@ -32,5 +34,5 @@ npm start            # http://localhost:8787
 
 ## Controls
 
-W/S walk · A/D step sideways · mouse or ←/→ look · Space/E use · hold F chop · H take a teammate's hand · Q describe surroundings · R recipe book (read aloud for the blind chef) · V first-person/overhead · P pause (solo) · 0–3 switch chef (solo).
+W/S walk · A/D step sideways · mouse or ←/→ look · Space/E use · 1–8 at a fridge or spice rack (or scroll / [ ] then Space) · hold F chop · H take a teammate's hand · Q describe surroundings · R recipe book (read aloud for the blind chef) · V first-person/overhead · P pause (solo) · 0–3 switch chef (solo).
 Mute chef: G ping · B bell · hold T + 1–6 emotes.

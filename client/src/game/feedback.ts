@@ -64,7 +64,15 @@ const SOUNDS: Partial<Record<EventKind, Note[]>> = {
   ping: [n(1760, 0, 0.18, "sine", 0.22), n(2637, 0.08, 0.3, "sine", 0.14)],
   bell: [n(2093, 0, 0.9, "sine", 0.25), n(4186, 0, 0.5, "sine", 0.08)],
   over: [n(784, 0, 0.15), n(659, 0.16, 0.15), n(523, 0.32, 0.4)],
+  // a quick shake-shake over the plate
+  season: [n(3200, 0, 0.03, "square", 0.05), n(2800, 0.07, 0.03, "square", 0.05), n(3400, 0.14, 0.03, "square", 0.05)],
+  // a soft, falling "uh-oh" as cold food warms up
+  warm: [n(660, 0, 0.12, "triangle", 0.12), n(494, 0.13, 0.22, "triangle", 0.12)],
+  // the terrace door chime: a customer walks in
+  arrive: [n(1319, 0, 0.35, "sine", 0.1), n(1047, 0.22, 0.5, "sine", 0.1)],
 };
+
+
 
 // Each emote has its own short melody so a blind teammate can tell them apart.
 const EMOTE_SOUNDS: Record<string, Note[]> = {
@@ -89,6 +97,12 @@ const STATION_SIGNATURES: Record<StationKind, Note[]> = {
   serve: [n(1568, 0, 0.25, "sine", 0.15)],
   trash: [n(100, 0, 0.12, "square", 0.12)],
   sink: [n(900, 0, 0.12, "sine", 0.12, 500)],
+  // a rattle of jars, and the low hum of a fridge
+  spice: [n(3000, 0, 0.03, "square", 0.06), n(3300, 0.06, 0.03, "square", 0.06), n(2700, 0.12, 0.03, "square", 0.06)],
+  fridge: [n(118, 0, 0.35, "sine", 0.16), n(236, 0, 0.35, "sine", 0.05)],
+  decor: [],
+  // a hollow wooden knock-knock on the pantry shelf
+  pantry: [n(260, 0, 0.06, "triangle", 0.2), n(220, 0.1, 0.06, "triangle", 0.2)],
 };
 
 const ROUTINE = new Set<EventKind>(["pickup", "place", "trash"]);
@@ -124,9 +138,11 @@ const TOAST_ICONS: Partial<Record<EventKind | "info", string>> = {
   blackout: "moon",
   storm: "storm",
   over: "flag",
+  season: "salt",
+  warm: "snow",
   info: "chef",
 };
-const GOOD = new Set<EventKind | "info">(["served", "cooked", "chopped", "perfect", "order", "phone"]);
+const GOOD = new Set<EventKind | "info">(["served", "cooked", "chopped", "perfect", "order", "phone", "season"]);
 const SMOKE_BEEP_INTERVAL = 0.6;
 
 interface Sizzle {
@@ -198,6 +214,16 @@ export class Feedback {
     // the caller's voice: phone orders are spoken aloud to anyone who can hear
     if (event.kind === "phone" && hearsNow) this.speakAloud(event.text.replace(/^Phone order: /, ""), true);
     this.say(event.text, event.urgent ?? false, event.kind !== "phone", event.kind);
+  }
+
+  /**
+   * A new item chosen at a fridge or spice rack: a click that rises with its number (so you can
+   * count by ear) and its name for screen readers and speech. Not a toast: it's just a choice.
+   */
+  pickCue(index: number, name: string, me: Chef) {
+    this.play([n(520 + index * 90, 0, 0.05, "triangle", 0.15)], me.x, me.z, me);
+    this.announce(`${index + 1}: ${name}`, false);
+    if (this.speak) this.speakAloud(name, true);
   }
 
   /** Text message: toast + screen reader (+ speech if enabled). */

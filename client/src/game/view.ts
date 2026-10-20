@@ -15,6 +15,9 @@ import type { AssetLibrary } from "../assets";
 import { ChefModel } from "./chef";
 import {
   FOOD_RULES,
+  dinerDishSpot,
+  pickedItem,
+  dinerTable,
   SOUP_BURN,
   SOUP_SIZE,
   SOUP_TIME,
@@ -48,6 +51,21 @@ function soupColor(kinds: string[]): Color3 {
   return kinds.length ? c.scale(1 / kinds.length).toLinearSpace() : new Color3(0.6, 0.7, 0.8);
 }
 const COUNTER_TOP = 0.9;
+
+// a little heap of an ingredient in a pantry basket (x, z, yaw)
+const BASKET_SPOTS: [number, number, number][] = [
+  [-0.07, -0.04, 0.4],
+  [0.07, 0.0, 2.2],
+  [0, -0.1, 4.0],
+];
+
+// where the copies of an ingredient sit on a fridge shelf (x, z towards the glass, yaw)
+const FRIDGE_SPOTS: [number, number, number][] = [
+  [-0.07, -0.04, 0.3],
+  [0.08, 0.05, 1.7],
+];
+const DINER_MODELS = ["Diner_A", "Diner_B", "Diner_C", "Diner_D"];
+const TABLE_TOP = 0.78;
 
 const MODEL_SUFFIXES: Record<FoodState, string[]> = {
   raw: [""],
@@ -190,6 +208,8 @@ export class GameView {
   private readonly bars = new Map<number, ProgressBar>();
   private readonly items = new Map<number, { node: TransformNode; key: string }>();
   private readonly chefs = new Map<string, ChefEntry>();
+  private readonly racks = new Map<number, { parts: Map<string, { node: TransformNode; restY: number }>; lit: string | null }>();
+  private readonly diners = new Map<number, { model: ChefModel; bubble: { text: string; mesh: Mesh } | null; fade: number }>();
   private readonly potSoup = new Map<number, { mesh: Mesh; mat: StandardMaterial }>();
   /** a chef put a foot down (for positional footstep sounds) */
   onFootstep: ((chefId: string, x: number, z: number) => void) | null = null;
@@ -338,6 +358,15 @@ export class GameView {
         this.bars.set(s.id, new ProgressBar(this.scene, s.x, s.z));
         break;
       }
+      case "fridge":
+        this.buildFridge(root, s);
+        break;
+      case "pantry":
+        this.buildPantry(root, s);
+        break;
+      case "decor":
+        if (this.lib.has("CornerDecor")) this.spawnInto(root, "CornerDecor");
+        break;
       case "crate": {
         // wire rack with an open crate on top, filled with a few of its ingredient
         this.spawnInto(root, "ProduceRack");
@@ -371,8 +400,90 @@ export class GameView {
       case "sink":
         this.spawnInto(root, "Sink");
         break;
+      case "spice": {
+        // a counter with the spice rack pushed to the back, leaving room to put a dish down
+        this.spawnInto(root, "Counter");
+        if (this.lib.has("SpiceRack")) {
+          // big enough to fill the whole counter, so every bottle reads from across the kitchen
+          const rack = this.spawnInto(root, "SpiceRack", COUNTER_TOP, 2.4);
+          rack.position.z = 0.02;
+          // each seasoning is its own part, so the chosen one can light up
+          const parts = new Map<string, { node: TransformNode; restY: number }>();
+          for (const spice of s.stock ?? []) {
+            const node = rack.getDescendants(false).find((n) => n.name.endsWith(`SpiceRack_${spice}`)) as TransformNode | undefined;
+            if (node) parts.set(spice, { node, restY: node.position.y });
+          }
+          this.racks.set(s.id, { parts, lit: null });
+        }
+        this.label(s, "Spices", 1.4);
+        break;
+      }
     }
     this.surfaceY.set(s.id, surface);
+  }
+
+  /** The pantry shelf: a woven basket of each room-temperature ingredient, in picking order. */
+  private buildPantry(root: TransformNode, s: Station) {
+    if (!this.lib.has("PantryShelf")) {
+      this.spawnInto(root, "ProduceRack");
+      return;
+    }
+    this.spawnInto(root, "PantryShelf");
+    // baskets: left/right on three shelves, top to bottom (matches keys 1-5)
+    const baskets: [number, number][] = [
+      [-0.19, 1.12],
+      [0.19, 1.12],
+      [-0.19, 0.7],
+      [0.19, 0.7],
+      [-0.19, 0.28],
+      [0.19, 0.28],
+    ];
+    // up to three ingredients fill a whole shelf each (both baskets), top down
+    const stock = s.stock ?? [];
+    const wide = stock.length <= 3;
+    stock.forEach((kind, i) => {
+      const spots = wide ? [baskets[i * 2], baskets[i * 2 + 1]] : [baskets[i] ?? baskets.at(-1)!];
+      for (const [bx, by] of spots) for (const [ox, oz, yaw] of BASKET_SPOTS) {
+        const sample = this.spawnInto(root, kind, by + 0.03, ITEM_SCALE * 0.75);
+        // local +x is the chef's right-hand side looking at the shelf, so mirror to read left to right
+        sample.position.x = -(bx + ox);
+        sample.position.z = oz;
+        sample.rotation.set(-0.25, yaw + i, 0);
+      }
+    });
+    this.label(s, s.label === "root vegetable shelf" ? "Roots" : s.label === "bread and tomato shelf" ? "Bread & tomatoes" : "Pantry", 1.75);
+  }
+
+  /** A door of the reach-in fridge: each shelf is stocked with one of its ingredients. */
+  private buildFridge(root: TransformNode, s: Station) {
+    if (!this.lib.has("ReachInFridge")) {
+      this.spawnInto(root, "ProduceRack");
+      return;
+    }
+    const fridge = this.spawnInto(root, "ReachInFridge");
+    // clear glass: keep the sky's reflection faint so the food inside reads from across the room
+    for (const mesh of meshesOf(fridge)) {
+      const mat = mesh.material as { name?: string; alpha?: number; environmentIntensity?: number } | null;
+      if (mat?.name === "LP_FridgeGlass") {
+        mat.alpha = 0.1;
+        mat.environmentIntensity = 0.15;
+      }
+    }
+    // up to three ingredients: one per shelf, top down; more: two per shelf, left to right
+    const shelves = [1.17, 0.82, 0.44];
+    const stock = s.stock ?? [];
+    const wide = stock.length <= shelves.length;
+    stock.forEach((kind, i) => {
+      const y = shelves[wide ? i : Math.floor(i / 2)] ?? shelves.at(-1)!;
+      const sides = wide ? [-0.19, 0.19] : [i % 2 === 0 ? -0.19 : 0.19];
+      for (const side of sides) for (const [ox, oz, yaw] of FRIDGE_SPOTS) {
+        const sample = this.spawnInto(root, kind, y, ITEM_SCALE * 0.8);
+        sample.position.x = -(side + ox); // mirrored: local +x is the chef's right
+        sample.position.z = oz;
+        sample.rotation.y = yaw + i;
+      }
+    });
+    this.label(s, s.label === "meat and fish fridge" ? "Meat & fish" : s.label === "dairy and greens fridge" ? "Dairy & greens" : "Fridge", 1.75);
   }
 
   private label(s: Station, text: string, y = 1.4) {
@@ -504,6 +615,12 @@ export class GameView {
   clearItems() {
     for (const { node } of this.items.values()) node.dispose();
     this.items.clear();
+    // a new round starts its ids again, so forget the old customers too
+    for (const entry of this.diners.values()) {
+      entry.model.root.dispose(false, false);
+      entry.bubble?.mesh.dispose(false, true);
+    }
+    this.diners.clear();
   }
 
   // --- per frame ----------------------------------------------------------------
@@ -545,6 +662,7 @@ export class GameView {
         this.placeItem(chef.held, x + Math.sin(yaw) * 0.48, 0.98, z + Math.cos(yaw) * 0.48, yaw, ITEM_SCALE, seen);
       }
     }
+    this.syncDiners(game, dt, seen);
     for (const [id, entry] of this.items) {
       if (!seen.has(id)) {
         entry.node.dispose();
@@ -553,9 +671,123 @@ export class GameView {
     }
 
     this.syncHighlight(game.phase === "playing" ? targetStation(game, me) : null);
+    this.syncRacks(game, me);
     this.syncBars(game);
     this.syncPots(game);
     this.syncSignals(game);
+  }
+
+  // --- customers --------------------------------------------------------------------
+
+  private syncDiners(game: Game, dt: number, seen: Set<number>) {
+    const live = new Set<number>();
+    const orders = new Map(game.orders.map((o) => [o.id, o]));
+    for (const d of game.diners) {
+      live.add(d.id);
+      let entry = this.diners.get(d.id);
+      if (!entry) {
+        const model = new ChefModel(this.scene, this.shadows, this.lib, "full", APRON.full, DINER_MODELS[d.look % DINER_MODELS.length]);
+        model.root.position.set(d.x, 0, d.z);
+        model.root.rotation.y = d.facing;
+        entry = { model, bubble: null, fade: 0 };
+        this.diners.set(d.id, entry);
+      }
+      const sitting = d.state === "waiting" || d.state === "eating";
+      const spot = dinerDishSpot(d);
+      entry.model.update(
+        {
+          x: d.x,
+          z: d.z,
+          facing: d.facing,
+          pitch: sitting ? 0.25 : 0,
+          chopping: false,
+          holding: spot === "hands",
+          stirring: false,
+          gesture: null,
+          guided: false,
+          guiding: false,
+          look: null,
+          sitting,
+          eating: d.state === "eating" && d.mood !== "sick",
+        },
+        dt,
+        this.time,
+        true,
+      );
+      // fade in at the terrace steps, fade out as they leave
+      entry.fade = Math.min(1, entry.fade + dt * 2);
+      entry.model.root.scaling.setAll(0.75 + 0.25 * entry.fade);
+
+      // their dish: on the pass, in their hands, then on the table
+      if (d.dish && spot) {
+        const at = entry.model.root.position;
+        if (spot === "pass") {
+          this.placeItem(d.dish, d.pickup[0], COUNTER_TOP + 0.12, -2.62, Math.PI, ITEM_SCALE, seen);
+        } else if (spot === "hands") {
+          const palms = entry.model.carryPoint();
+          if (palms) this.placeItem(d.dish, palms.x, palms.y - 0.03, palms.z, d.facing, ITEM_SCALE, seen);
+        } else {
+          const [tx, tz] = dinerTable(d);
+          const k = 0.55; // most of the way from the chair to the table centre
+          this.placeItem(d.dish, at.x + (tx - at.x) * k, TABLE_TOP, at.z + (tz - at.z) * k, d.facing, ITEM_SCALE, seen);
+        }
+      }
+
+      // a little speech bubble for how they feel
+      const order = orders.get(d.orderId);
+      const text =
+        d.mood === "angry"
+          ? "Hmph!"
+          : d.mood === "sick" && d.state === "leaving"
+            ? "Ugh…"
+            : d.state === "eating" && d.mood === "happy"
+              ? "Yum!"
+              : d.state === "leaving"
+                ? "Thanks!"
+                : order?.warned
+                  ? "Hungry!"
+                  : null;
+      if (text !== (entry.bubble?.text ?? null)) {
+        entry.bubble?.mesh.dispose(false, true);
+        const color = d.mood === "angry" || text === "Hungry!" ? "#f6a491" : "#fffaf0";
+        entry.bubble = text ? { text, mesh: makeTag(this.scene, `diner-${d.id}`, text, color, "#3b2f27") } : null;
+      }
+      const at = entry.model.root.position;
+      entry.bubble?.mesh.position.set(at.x, sitting ? 1.75 : 2.1, at.z);
+    }
+    for (const [id, entry] of this.diners) {
+      if (live.has(id)) continue;
+      entry.model.root.dispose(false, false);
+      entry.bubble?.mesh.dispose(false, true);
+      this.diners.delete(id);
+    }
+  }
+
+  /** The seasoning you've chosen glows and lifts out of its slot, so the number bar matches the rack. */
+  private syncRacks(game: Game, me: Chef) {
+    const target = game.phase === "playing" ? targetStation(game, me) : null;
+    for (const [id, rack] of this.racks) {
+      const st = target?.id === id ? target : null;
+      const want = st ? pickedItem(st, me) : null;
+      if (want !== rack.lit) {
+        const glow = (spice: string | null, on: boolean) => {
+          const part = spice ? rack.parts.get(spice) : undefined;
+          if (!part) return;
+          for (const mesh of meshesOf(part.node).concat(part.node instanceof Mesh ? [part.node] : [])) {
+            mesh.renderOverlay = on;
+            mesh.overlayColor = Color3.FromHexString("#f6c35b");
+            mesh.overlayAlpha = 0.45;
+          }
+        };
+        glow(rack.lit, false);
+        glow(want, true);
+        rack.lit = want;
+      }
+      for (const [spice, part] of rack.parts) {
+        const lift = spice === rack.lit ? 0.025 + Math.sin(this.time * 5) * 0.004 : 0;
+        part.node.position.y += (part.restY + lift - part.node.position.y) * 0.3;
+      }
+    }
   }
 
   private syncHighlight(target: Station | null) {

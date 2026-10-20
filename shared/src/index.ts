@@ -3,3 +3,4 @@ export * from "./protocol";
 export * from "./roles";
 export * from "./rules";
 export * from "./state";
+export * from "./diners";

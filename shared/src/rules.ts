@@ -35,26 +35,66 @@ export interface FoodRule {
   cookTime?: number;
   /** Extra seconds on the stove after "cooked" before it burns. */
   burnTime?: number;
+  /** Kept in the fridge: goes off if left out raw for too long (see COLD_LIMIT). */
+  cold?: boolean;
 }
 
 export const FOOD_RULES: Record<string, FoodRule> = {
+  // pantry (room temperature)
   Tomato: { chop: true },
-  Lettuce: { chop: true },
   Carrot: { chop: true },
-  Cheese: { chop: true },
   Onion: { chop: true, cookFrom: "chopped", cookTime: 5, burnTime: 6 },
-  Mushroom: { chop: true, cookFrom: "chopped", cookTime: 5, burnTime: 6 },
   Potato: { chop: true, cookFrom: "chopped", cookTime: 7, burnTime: 7 },
   Bread: { chop: true, cookFrom: "chopped", cookTime: 4, burnTime: 5 },
-  Steak: { cookFrom: "raw", cookTime: 8, burnTime: 7 },
-  Fish: { cookFrom: "raw", cookTime: 7, burnTime: 6 },
-  Egg: { cookFrom: "raw", cookTime: 4, burnTime: 5 },
+  // fridge
+  Lettuce: { chop: true, cold: true },
+  Cheese: { chop: true, cold: true },
+  Mushroom: { chop: true, cookFrom: "chopped", cookTime: 5, burnTime: 6, cold: true },
+  Steak: { cookFrom: "raw", cookTime: 8, burnTime: 7, cold: true },
+  Fish: { cookFrom: "raw", cookTime: 7, burnTime: 6, cold: true },
+  Egg: { cookFrom: "raw", cookTime: 4, burnTime: 5, cold: true },
+};
+
+// Cold food out of the fridge: a warning, then it goes off (like real food safety, sped up).
+export const COLD_WARN = 35;
+export const COLD_LIMIT = 50;
+
+// Seasoning from the spice racks (keys 1-8 at a rack): the short things on the front row (1-4),
+// the tall bottles on the raised back step (5-8), each row left to right.
+export const SPICES = ["Salt", "Butter", "Lemon", "Herbs", "Pepper", "OliveOil", "Soy", "Vinegar"] as const;
+export type Spice = (typeof SPICES)[number];
+export const SPICE_NAMES: Record<Spice, string> = {
+  Salt: "salt",
+  Pepper: "black pepper",
+  OliveOil: "olive oil",
+  Butter: "butter",
+  Lemon: "lemon",
+  Herbs: "fresh herbs",
+  Soy: "soy sauce",
+  Vinegar: "malt vinegar",
+};
+export const SEASON_BONUS = 5;
+export const SEASON_PENALTY = 5;
+
+export const spiceList = (spices: readonly string[]) => {
+  const names = spices.map((s) => SPICE_NAMES[s as Spice] ?? s.toLowerCase());
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : (names[0] ?? "");
 };
 
 export interface RecipeItem {
   kind: string;
   state: FoodState;
+  /** seasoning that goes on this ingredient itself... */
+  season?: Spice[];
+  /** ...before it's cooked (salt the steak, butter the bread) or straight after (salt the fries) */
+  seasonAt?: SeasonTime;
 }
+
+/** When an ingredient was seasoned: before it hit the pan, or once it was cooked. */
+export type SeasonTime = "before" | "after";
+
+/** Seasoning applied now counts as "before" until the food is cooked. */
+export const seasonTimeOf = (state: FoodState): SeasonTime => (state === "cooked" || state === "burnt" ? "after" : "before");
 
 export interface Recipe {
   id: string;
@@ -65,30 +105,39 @@ export interface Recipe {
   reward: number;
   /** Seconds the customer will wait. */
   time: number;
+  /** finishing touches on the plate or bowl, added last (lemon, herbs, a drizzle of oil) */
+  finish?: Spice[];
 }
 
-const item = (kind: string, state: FoodState): RecipeItem => ({ kind, state });
+const item = (kind: string, state: FoodState, season?: Spice[], seasonAt?: SeasonTime): RecipeItem => ({ kind, state, season, seasonAt });
+/** seasoned before cooking: salt the steak, butter the bread */
+const pre = (kind: string, ...season: Spice[]) => item(kind, "cooked", season, "before");
+/** seasoned straight out of the pan: salt the fries */
+const post = (kind: string, ...season: Spice[]) => item(kind, "cooked", season, "after");
 const soup = (...kinds: string[]): RecipeItem[] => kinds.map((k) => item(k, "chopped"));
 
+// Seasoned the way each dish really is, at the step it really happens.
 export const RECIPES: Recipe[] = [
-  { id: "salad", name: "Salad", vessel: "plate", items: [item("Tomato", "chopped"), item("Lettuce", "chopped")], reward: 20, time: 60 },
-  { id: "grilled-fish", name: "Grilled fish", vessel: "plate", items: [item("Fish", "cooked")], reward: 20, time: 60 },
-  { id: "cheese-toastie", name: "Cheese toastie", vessel: "plate", items: [item("Bread", "cooked"), item("Cheese", "chopped")], reward: 25, time: 70 },
-  { id: "steak-fries", name: "Steak & fries", vessel: "plate", items: [item("Steak", "cooked"), item("Potato", "cooked")], reward: 35, time: 85 },
-  { id: "steak-onions", name: "Steak & onions", vessel: "plate", items: [item("Steak", "cooked"), item("Onion", "cooked")], reward: 35, time: 85 },
-  { id: "steak-salad", name: "Steak salad", vessel: "plate", items: [item("Steak", "cooked"), item("Lettuce", "chopped")], reward: 30, time: 80 },
-  { id: "fish-chips", name: "Fish & chips", vessel: "plate", items: [item("Fish", "cooked"), item("Potato", "cooked")], reward: 35, time: 85 },
+  { id: "salad", name: "Salad", vessel: "plate", items: [item("Tomato", "chopped"), item("Lettuce", "chopped")], reward: 20, time: 60, finish: ["OliveOil", "Lemon", "Salt"] },
+  { id: "grilled-fish", name: "Grilled fish", vessel: "plate", items: [pre("Fish", "Salt")], reward: 20, time: 60, finish: ["Lemon", "Herbs"] },
+  { id: "cheese-toastie", name: "Cheese toastie", vessel: "plate", items: [pre("Bread", "Butter"), item("Cheese", "chopped")], reward: 25, time: 70 },
+  { id: "steak-fries", name: "Steak & fries", vessel: "plate", items: [pre("Steak", "Salt", "Pepper"), post("Potato", "Salt")], reward: 35, time: 85 },
+  { id: "steak-onions", name: "Steak & onions", vessel: "plate", items: [pre("Steak", "Salt", "Pepper"), item("Onion", "cooked")], reward: 35, time: 85, finish: ["Butter"] },
+  { id: "steak-salad", name: "Steak salad", vessel: "plate", items: [pre("Steak", "Salt", "Pepper"), item("Lettuce", "chopped")], reward: 30, time: 80, finish: ["OliveOil"] },
+  { id: "fish-chips", name: "Fish & chips", vessel: "plate", items: [pre("Fish", "Salt"), post("Potato", "Salt")], reward: 35, time: 85, finish: ["Vinegar"] },
   {
     id: "breakfast",
     name: "Full breakfast",
     vessel: "plate",
-    items: [item("Egg", "cooked"), item("Bread", "cooked"), item("Mushroom", "cooked")],
+    items: [post("Egg", "Salt", "Pepper"), pre("Bread", "Butter"), pre("Mushroom", "Butter")],
     reward: 45,
     time: 100,
   },
-  { id: "tomato-soup", name: "Tomato soup", vessel: "bowl", items: soup("Tomato", "Tomato", "Tomato"), reward: 35, time: 90 },
-  { id: "veg-soup", name: "Vegetable soup", vessel: "bowl", items: soup("Carrot", "Onion", "Potato"), reward: 40, time: 95 },
-  { id: "mushroom-soup", name: "Mushroom soup", vessel: "bowl", items: soup("Mushroom", "Mushroom", "Onion"), reward: 40, time: 95 },
+  { id: "soy-fish", name: "Soy-glazed fish", vessel: "plate", items: [pre("Fish", "Soy")], reward: 25, time: 65, finish: ["Lemon"] },
+  { id: "stir-fry", name: "Mushroom stir-fry", vessel: "plate", items: [item("Mushroom", "cooked"), item("Onion", "cooked")], reward: 35, time: 85, finish: ["Soy", "Pepper"] },
+  { id: "tomato-soup", name: "Tomato soup", vessel: "bowl", items: soup("Tomato", "Tomato", "Tomato"), reward: 35, time: 90, finish: ["Salt", "Pepper", "Herbs"] },
+  { id: "veg-soup", name: "Vegetable soup", vessel: "bowl", items: soup("Carrot", "Onion", "Potato"), reward: 40, time: 95, finish: ["Salt", "Pepper", "Herbs"] },
+  { id: "mushroom-soup", name: "Mushroom soup", vessel: "bowl", items: soup("Mushroom", "Mushroom", "Onion"), reward: 40, time: 95, finish: ["Salt", "Butter", "Herbs"] },
 ];
 
 export const recipeById = (id: string): Recipe => {
@@ -125,7 +174,7 @@ export const LEVELS: Level[] = [
   {
     n: 1,
     name: "Opening day",
-    blurb: "Printed tickets only. Learn the kitchen and hand food to each other.",
+    blurb: "Printed tickets only. Take cold food from the fridges and season each dish the way the ticket asks.",
     recipes: ["salad", "grilled-fish", "cheese-toastie"],
     channels: ["ticket"],
     time: 150,
@@ -136,8 +185,8 @@ export const LEVELS: Level[] = [
   {
     n: 2,
     name: "The grill",
-    blurb: "Steak and fish all night. Listen for the sizzle to whistle: that's a perfect cook.",
-    recipes: ["grilled-fish", "steak-fries", "steak-onions", "steak-salad"],
+    blurb: "Steak and fish all night. Season at the spice racks, and listen for the sizzle to whistle: that's a perfect cook.",
+    recipes: ["grilled-fish", "steak-fries", "steak-onions", "steak-salad", "soy-fish"],
     channels: ["ticket"],
     time: 180,
     spoilChance: 0,
@@ -159,7 +208,7 @@ export const LEVELS: Level[] = [
     n: 4,
     name: "Breakfast rush",
     blurb: "Eggs, toast and mushrooms on one plate, soups and fish on the side. Keep the pans moving!",
-    recipes: ["breakfast", "mushroom-soup", "fish-chips", "cheese-toastie", "steak-onions"],
+    recipes: ["breakfast", "mushroom-soup", "fish-chips", "stir-fry", "steak-onions"],
     channels: ["ticket", "phone"],
     time: 190,
     spoilChance: 0,
@@ -228,7 +277,26 @@ export function describeRecipe(recipe: Recipe): string {
     const counts = new Map<string, number>();
     for (const i of recipe.items) counts.set(i.kind, (counts.get(i.kind) ?? 0) + 1);
     const parts = [...counts].map(([k, n]) => `${n > 1 ? `${n} ` : ""}chopped ${k.toLowerCase()}`);
-    return `soup of ${parts.join(" + ")}`;
+    return `soup of ${parts.join(" + ")}${finishedWith(recipe.finish)}`;
   }
-  return recipe.items.map((i) => describeFood(i.kind, i.state)).join(" + ");
+  const parts = recipe.items.map((i) => {
+    const how = i.season?.length ? ` (${spiceList(i.season)} ${i.seasonAt === "after" ? "after cooking" : "before cooking"})` : "";
+    return describeFood(i.kind, i.state) + how;
+  });
+  return parts.join(" + ") + finishedWith(recipe.finish);
+}
+
+/** ", finished with lemon and fresh herbs" (or nothing) */
+export function finishedWith(finish: readonly string[] | undefined): string {
+  return finish?.length ? `, finished with ${spiceList(finish)}` : "";
+}
+
+/** Every seasoning a recipe uses, in order. */
+export function recipeSpices(recipe: Recipe): Spice[] {
+  return [...new Set([...recipe.items.flatMap((i) => i.season ?? []), ...(recipe.finish ?? [])])];
+}
+
+/** ", with salt and black pepper" (or nothing) */
+export function seasonedWith(season: readonly string[] | undefined): string {
+  return season?.length ? `, with ${spiceList(season)}` : "";
 }

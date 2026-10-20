@@ -201,6 +201,7 @@ function handle(ws: WebSocket) {
       case "act":
         if (!g || !chef) return;
         if ((msg.action === "ping" || msg.action === "bell") && !ROLES[chef.role].signals) return;
+        if (typeof msg.pick === "number" && Number.isFinite(msg.pick)) chef.pick = Math.max(0, Math.min(15, Math.floor(msg.pick)));
         ({ interact, chopHint, ping, bell: ringBell, hand: toggleHand, sniff } as const)[msg.action](g, chef);
         return;
       case "emote":

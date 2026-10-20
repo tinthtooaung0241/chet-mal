@@ -5,12 +5,14 @@ import {
   ROLES,
   createGame,
   describeSurroundings,
+  targetStation,
   type Action,
   type Chef,
   type Emote,
   type Game,
   type Input,
   type Role,
+  type Station,
 } from "@kitchen/shared";
 import { AssetLibrary } from "./assets";
 import { Feedback } from "./game/feedback";
@@ -20,6 +22,7 @@ import { PovController } from "./game/pov";
 import { Effects } from "./game/effects";
 import { GameView } from "./game/view";
 import { RecipeBook } from "./game/recipeBook";
+import { stockName } from "./game/hints";
 import { Lobby } from "./lobby";
 import { recordStars } from "./progress";
 import { LocalSession, NetSession, type Session } from "./session";
@@ -297,6 +300,7 @@ const GAME_KEYS = new Set([
   "KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
   "Space", "KeyE", "KeyF", "KeyQ", "KeyP", "Escape", "KeyR", "KeyV", "KeyH",
   "KeyG", "KeyB", "KeyT", "KeyZ", "KeyN", "Slash", "F1", "Digit0", "Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6",
+  "Digit7", "Digit8", "BracketLeft", "BracketRight",
 ]);
 
 const held = (...codes: string[]) => codes.some((c) => keys.has(c));
@@ -388,6 +392,12 @@ window.addEventListener("keydown", (e) => {
       else if (book.open) book.close();
       else if (!target?.closest("dialog")) openBook();
       break;
+    case "BracketLeft":
+    case "BracketRight": {
+      const stock = stockStation();
+      if (stock && me) choosePick(me.pick + (e.code === "BracketRight" ? 1 : -1), stock);
+      break;
+    }
     case "KeyV":
       setFirstPerson(!pov.active);
       feedback.say(pov.active ? "First-person view." : "Overhead view.");
@@ -396,9 +406,14 @@ window.addEventListener("keydown", (e) => {
       if (e.code.startsWith("Digit")) {
         const digit = Number(e.code.slice(5));
         // hold T and press 1-6 to emote; otherwise 0-3 picks the chef (solo practice)
+        const stock = stockStation();
         if (keys.has("KeyT")) {
           const word = EMOTES[digit - 1];
           if (word) sendEmote(word);
+        } else if (stock && digit >= 1 && digit <= stock.stock!.length) {
+          // at a fridge or spice rack a number takes (or adds) that item straight away
+          choosePick(digit - 1, stock);
+          act("interact");
         } else if (ROLE_KEYS[e.code]) {
           setSoloRole(ROLE_KEYS[e.code]);
         }
@@ -406,6 +421,53 @@ window.addEventListener("keydown", (e) => {
       break;
   }
 });
+// --- fridges and spice racks: choosing what to take or add ----------------------------
+
+/** The fridge or spice rack this chef is facing, if any. */
+function stockStation(): Station | null {
+  const game = session?.game;
+  const me = meNow();
+  if (!game || !me || game.phase !== "playing") return null;
+  const st = targetStation(game, me);
+  return st?.stock?.length ? st : null;
+}
+
+function choosePick(index: number, st: Station) {
+  const me = meNow();
+  if (!session || !me) return;
+  const n = st.stock!.length;
+  const i = ((index % n) + n) % n;
+  if (i === me.pick && st.id === lastStock) return;
+  session.setPick(i);
+  feedback.pickCue(i, stockName(st, st.stock![i]), me);
+}
+
+let lastStock: number | null = null;
+/** Walking up to a different fridge or rack starts again at its first item. */
+function resetPickOnNewStation() {
+  const st = stockStation();
+  const id = st?.id ?? null;
+  if (id === lastStock) return;
+  lastStock = id;
+  if (st) {
+    session?.setPick(0);
+    const me = meNow();
+    if (me) feedback.pickCue(0, stockName(st, st.stock![0]), me);
+  }
+}
+
+canvas.addEventListener(
+  "wheel",
+  (e) => {
+    const st = stockStation();
+    const me = meNow();
+    if (!st || !me || !pov.active) return;
+    e.preventDefault();
+    choosePick(me.pick + (e.deltaY > 0 ? 1 : -1), st);
+  },
+  { passive: false },
+);
+
 window.addEventListener("keyup", (e) => {
   keys.delete(e.code);
   if (e.code === "KeyT") showWheel(false);
@@ -451,6 +513,7 @@ scene.onBeforeRenderObservable.add(() => {
   if (!paused) {
     if (pov.active) pov.turn(axis(["ArrowRight"], ["ArrowLeft"]), dt);
     session.step(dt, readInput());
+    resetPickOnNewStation();
   }
   for (const event of session.drainEvents()) {
     feedback.handle(event, me, game);

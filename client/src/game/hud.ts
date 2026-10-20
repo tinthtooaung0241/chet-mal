@@ -2,7 +2,11 @@
 // star meter, a round clock, the hand slot with contextual key prompts, what you're looking at,
 // and a role badge listing your senses. Text stays real DOM so screen readers can use it.
 import {
+  FOOD_RULES,
   LEVELS,
+  SEATS,
+  SPICE_NAMES,
+  spiceList,
   ROLES,
   chefInFront,
   currentSenses,
@@ -15,9 +19,15 @@ import {
   type Chef,
   type Game,
   type Role,
+  type Spice,
+  type Station,
 } from "@kitchen/shared";
 import { glyph, img } from "../ui/icons";
-import { actionHints, foodIcon, itemIconNode, soupIcon, stationIconNode } from "./hints";
+import { SPICE_GLYPHS, actionHints, foodIcon, itemIconNode, soupIcon, stationIconNode, stockIconNode, stockName } from "./hints";
+
+/** Tables on the terrace, numbered left to right. */
+const TABLES = [...new Set(SEATS.map((s) => s.table.join()))].sort((a, b) => Number(a.split(",")[0]) - Number(b.split(",")[0]));
+const tableNumber = (seat: number) => TABLES.indexOf(SEATS[seat].table.join()) + 1;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -58,6 +68,8 @@ export class Hud {
   private readonly nextLevel = $<HTMLButtonElement>("next-level");
   private readonly blindfold = $("blindfold");
   private readonly signals = $("signals");
+  private readonly picker = $("picker");
+  private lastPicker = "";
   private orderKey = "";
   private bars = new Map<number, HTMLElement>();
   private lastScore: number | null = null;
@@ -113,11 +125,16 @@ export class Hud {
     const held = me.held;
     const mouldy =
       sees && !!held && (held.type === "food" ? held.spoiled : held.type === "bowl" ? held.spoiled : held.contents.some((f) => f.spoiled));
-    const heldText = held ? `${describeItem(held)}${mouldy ? " (mouldy!)" : ""}` : "nothing";
+    // fridge food you're holding: still cold, or warming up (you can feel it, whatever your senses)
+    const coldFood = held?.type === "food" && FOOD_RULES[held.kind]?.cold && !held.spoiled && (held.state === "raw" || held.state === "chopped") ? held : null;
+    const temp = coldFood ? (coldFood.warm ? " (getting warm!)" : " (cold)") : "";
+    const heldText = held ? `${describeItem(held)}${mouldy ? " (mouldy!)" : temp}` : "nothing";
     if (heldText !== this.lastHeld) {
       this.lastHeld = heldText;
       this.held.textContent = heldText;
       this.held.classList.toggle("mouldy", mouldy);
+      this.handSlot.classList.toggle("cold", !!coldFood && !coldFood.warm);
+      this.handSlot.classList.toggle("warm", !!coldFood?.warm);
       this.heldIcon.replaceChildren(itemIconNode(held));
       this.handSlot.classList.toggle("empty", !held);
       this.handSlot.classList.remove("changed");
@@ -158,8 +175,35 @@ export class Hud {
       );
     }
     this.crosshair.classList.toggle("active", hints.some((h) => h.key));
+    this.syncPicker(target?.stock?.length && game.phase === "playing" ? target : null, me);
 
     this.syncOrders(game, me.role, sees);
+  }
+
+  /** Facing a fridge or spice rack: what's in it, with number keys, and what you've chosen. */
+  private syncPicker(st: Station | null, me: Chef) {
+    const dish = me.held && me.held.type !== "food" ? me.held : null;
+    const pick = st ? Math.min(Math.max(0, me.pick || 0), st.stock!.length - 1) : -1;
+    const key = st ? `${st.id}|${pick}|${dish?.season.join() ?? ""}` : "";
+    if (key === this.lastPicker) return;
+    this.lastPicker = key;
+    this.picker.hidden = !st;
+    if (!st) return;
+    this.picker.className = st.kind;
+    this.picker.replaceChildren(
+      ...st.stock!.map((item, i) => {
+        const chip = document.createElement("span");
+        chip.className = "pick";
+        if (i === pick) chip.classList.add("on");
+        if (st.kind === "spice" && dish?.season.includes(item as Spice)) chip.classList.add("done");
+        const k = document.createElement("kbd");
+        k.textContent = String(i + 1);
+        const label = document.createElement("span");
+        label.textContent = stockName(st, item);
+        chip.append(k, stockIconNode(st, item), label);
+        return chip;
+      }),
+    );
   }
 
   private syncScore(score: number, stars: [number, number, number]) {
@@ -227,7 +271,8 @@ export class Hud {
   private syncOrders(game: Game, role: Role, sees: boolean) {
     const { hears } = ROLES[role];
     const known = game.orders.filter((o) => (o.channel === "ticket" ? sees : hears));
-    const key = `${role}|${sees}|${known.map((o) => o.id).join(",")}`;
+    const seated = new Map(game.diners.map((d) => [d.orderId, d.seat]));
+    const key = `${role}|${sees}|${known.map((o) => `${o.id}:${seated.get(o.id) ?? ""}`).join(",")}`;
     if (key !== this.orderKey) {
       this.orderKey = key;
       this.bars.clear();
@@ -238,7 +283,9 @@ export class Hud {
           li.style.setProperty("--tilt", `${((order.id * 37) % 5) - 2}deg`);
           const tag = document.createElement("span");
           tag.className = "tag";
-          tag.textContent = order.channel === "ticket" ? `Ticket #${order.id}` : "Phone order (heard)";
+          const seat = seated.get(order.id);
+          const table = seat === undefined ? "" : ` · Table ${tableNumber(seat)}`;
+          tag.textContent = order.channel === "ticket" ? `#${order.id}${table}` : `Phone${table}`;
           const name = document.createElement("strong");
           name.textContent = order.recipe.name;
           if (order.channel === "phone") {
@@ -265,11 +312,34 @@ export class Hud {
           for (const item of order.recipe.items) {
             const chip = document.createElement("span");
             chip.className = "ing";
-            chip.append(img(foodIcon(item.kind, item.state)), glyph(item.state === "cooked" ? "flame" : item.state === "chopped" ? "knife" : "check"));
-            chip.title = `${item.state} ${item.kind.toLowerCase()}`;
+            // read left to right like the procedure: food, seasoning that goes on first, how it's
+            // cooked, then seasoning that goes on straight after
+            const spices = (item.season ?? []).map((sp) => {
+              const g = glyph(SPICE_GLYPHS[sp]);
+              g.classList.add("ing-spice");
+              return g;
+            });
+            const before = item.seasonAt === "before" ? spices : [];
+            const after = item.seasonAt === "after" ? spices : [];
+            chip.append(img(foodIcon(item.kind, item.state)), ...before, glyph(item.state === "cooked" ? "flame" : item.state === "chopped" ? "knife" : "check"), ...after);
+            const seasoned = item.season?.length ? `, ${spiceList(item.season)} ${item.seasonAt === "after" ? "after cooking" : "before cooking"}` : "";
+            chip.title = `${item.state} ${item.kind.toLowerCase()}${seasoned}`;
+            if (spices.length) chip.classList.add("seasoned");
             const label = document.createElement("span");
             label.className = "visually-hidden";
-            label.textContent = `${item.state} ${item.kind.toLowerCase()}`;
+            label.textContent = chip.title;
+            chip.append(label);
+            icons.append(chip);
+          }
+          // finishing touches on the plate, last
+          for (const spice of order.recipe.finish ?? []) {
+            const chip = document.createElement("span");
+            chip.className = "ing spice";
+            chip.title = `finish with ${SPICE_NAMES[spice]}`;
+            chip.append(glyph(SPICE_GLYPHS[spice]));
+            const label = document.createElement("span");
+            label.className = "visually-hidden";
+            label.textContent = chip.title;
             chip.append(label);
             icons.append(chip);
           }
