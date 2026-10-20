@@ -18,10 +18,14 @@
 
       <!-- HUD: everything drawn over the kitchen -->
       <div id="hud" hidden>
-        <section id="orders-box" aria-labelledby="orders-heading">
-          <h2 id="orders-heading" class="visually-hidden">Orders</h2>
-          <ol id="orders"></ol>
-        </section>
+        <!-- left column: tickets, with the kitchen feed tucked underneath -->
+        <div id="left-stack">
+          <section id="orders-box" aria-labelledby="orders-heading">
+            <h2 id="orders-heading" class="visually-hidden">Orders</h2>
+            <ol id="orders"></ol>
+          </section>
+          <div id="toasts" aria-hidden="true"></div>
+        </div>
 
         <div id="scoreboard">
           <div id="level-chip" class="chip">
@@ -45,8 +49,6 @@
           </div>
           <button id="menu-button" class="round-btn" type="button" aria-label="Menu (P)"><i data-icon="menu"></i></button>
         </div>
-
-        <div id="toasts" aria-hidden="true"></div>
 
         <div id="target-tag" aria-hidden="true" hidden></div>
 
