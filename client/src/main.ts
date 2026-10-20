@@ -214,7 +214,7 @@ function readInput(): Input {
   const strafe = axis(["KeyD"], ["KeyA"]);
   const sin = Math.sin(pov.yaw);
   const cos = Math.cos(pov.yaw);
-  return { moveX: sin * forward + cos * strafe, moveZ: cos * forward - sin * strafe, chop, facing: pov.yaw };
+  return { moveX: sin * forward + cos * strafe, moveZ: cos * forward - sin * strafe, chop, facing: pov.yaw, pitch: pov.pitch };
 }
 
 function setFirstPerson(on: boolean) {
@@ -407,6 +407,10 @@ AssetLibrary.load(scene)
     }
     // stations never move, so any game's layout builds the kitchen
     view = new GameView(scene, lib, shadows, createGame());
+    view.onFootstep = (chefId, x, z) => {
+      const me = meNow();
+      if (me && session?.game) feedback.footstep(x, z, me, session.game, chefId === me.id);
+    };
     $("loading").hidden = true;
     presentRole(soloRole);
     lobby.show();

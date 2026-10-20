@@ -326,6 +326,25 @@ export class Feedback {
     for (const [id, s] of this.sizzles) this.stopSizzle(id, s);
   }
 
+  /**
+   * A soft footfall where a chef stepped. Teammates' steps are louder than your own, so a blind
+   * chef can follow everyone around the kitchen by ear.
+   */
+  footstep(x: number, z: number, me: Chef, game: Game, own: boolean) {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== "running" || !currentSenses(game, me).hears) return;
+    const source = new AudioBufferSourceNode(ctx, { buffer: this.noiseBuffer(), playbackRate: 0.8 + Math.random() * 0.4 });
+    const filter = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 300 + Math.random() * 250, Q: 1.2 });
+    const gain = new GainNode(ctx, { gain: 0 });
+    const panner = this.panner(x, z, me);
+    const t = ctx.currentTime;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(own ? 0.05 : 0.22, t + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    source.connect(filter).connect(gain).connect(panner).connect(ctx.destination);
+    source.start(t, Math.random() * 0.5, 0.12);
+  }
+
   /** Rain and wind: loud low-passed noise that fades in and out with the storm. */
   private updateStorm(on: boolean) {
     const ctx = this.ctx;

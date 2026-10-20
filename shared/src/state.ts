@@ -88,7 +88,68 @@ export interface Chef {
   /** last emote, shown above the chef for a moment */
   bubble: { text: string; ttl: number } | null;
   bumpCooldown: number;
+  /** where the chef is looking up/down (radians, + is down); others see the head follow it */
+  pitch: number;
+  /** a short animation others should see: what this chef just did */
+  gesture: { kind: Gesture; ttl: number; total: number } | null;
 }
+
+/** Body language: actions and emotes as animations everyone can watch. */
+export type Gesture =
+  | "pickup"
+  | "place"
+  | "trash"
+  | "serve"
+  | "give"
+  | "receive"
+  | "sniff"
+  | "ping"
+  | "bell"
+  | "hand"
+  | "yes"
+  | "no"
+  | "here"
+  | "hurry"
+  | "stop"
+  | "done";
+
+const GESTURE_TIME: Record<Gesture, number> = {
+  pickup: 0.4,
+  place: 0.4,
+  trash: 0.5,
+  serve: 0.7,
+  give: 0.6,
+  receive: 0.6,
+  sniff: 1.1,
+  ping: 1.0,
+  bell: 0.7,
+  hand: 0.6,
+  yes: 1.2,
+  no: 1.2,
+  here: 1.4,
+  hurry: 1.4,
+  stop: 1.4,
+  done: 1.6,
+};
+
+export function setGesture(chef: Chef, kind: Gesture) {
+  chef.gesture = { kind, ttl: GESTURE_TIME[kind], total: GESTURE_TIME[kind] };
+}
+
+// Which gesture each kind of event plays on the chef who caused it.
+const EVENT_GESTURES: Partial<Record<EventKind, Gesture>> = {
+  pickup: "pickup",
+  place: "place",
+  trash: "trash",
+  served: "serve",
+  wrong: "serve",
+  sick: "serve",
+  handoff: "give",
+  sniff: "sniff",
+  ping: "ping",
+  bell: "bell",
+  hand: "hand",
+};
 
 export interface Order {
   id: number;
@@ -158,6 +219,8 @@ export interface Input {
   chop: boolean;
   /** first-person: the chef faces where the camera looks; otherwise it faces where it walks */
   facing?: number;
+  /** first-person look up/down */
+  pitch?: number;
 }
 
 export interface Game {
@@ -306,6 +369,8 @@ export function addChef(g: Game, id: string, role: Role, name = ROLES[role].name
     guidedBy: null,
     bubble: null,
     bumpCooldown: 0,
+    pitch: 0,
+    gesture: null,
   };
   g.chefs.push(chef);
   return chef;
@@ -372,6 +437,12 @@ function emit(
   urgent = false,
 ) {
   if (text) text = text[0].toUpperCase() + text.slice(1);
+  // the chef who did it shows it: a dip to pick up, an arm out to point, a sniff…
+  const gesture = EVENT_GESTURES[kind];
+  const doer = findChef(g, actors?.[0]);
+  if (gesture && doer && !(kind === "hand" && doer.guidedBy)) setGesture(doer, gesture);
+  const receiver = kind === "handoff" ? findChef(g, actors?.[1]) : undefined;
+  if (receiver) setGesture(receiver, "receive");
   g.events.push({ kind, text, senses, actors, x: at.x, z: at.z, urgent });
 }
 
@@ -453,6 +524,7 @@ export function moveChef(g: Game, chef: Chef, dt: number, input: Input) {
   chef.chopInput = input.chop;
   if (g.phase !== "playing") return;
   if (input.facing !== undefined) chef.facing = input.facing;
+  chef.pitch = input.pitch ?? 0;
   chef.bumpCooldown = Math.max(0, chef.bumpCooldown - dt);
 
   let mx = input.moveX;
@@ -503,6 +575,7 @@ export function stepWorld(g: Game, dt: number) {
   for (const chef of g.chefs) {
     chef.chopping = false;
     if (chef.bubble && (chef.bubble.ttl -= dt) <= 0) chef.bubble = null;
+    if (chef.gesture && (chef.gesture.ttl -= dt) <= 0) chef.gesture = null;
     const target = targetStation(g, chef);
     if (!chef.chopInput || chef.held || target?.kind !== "board" || target.item?.type !== "food") continue;
     const food = target.item;
@@ -901,6 +974,7 @@ export function ping(g: Game, chef: Chef) {
 export function emote(g: Game, chef: Chef, word: Emote) {
   if (g.phase !== "playing") return;
   chef.bubble = { text: word, ttl: 2.5 };
+  setGesture(chef, word.toLowerCase() as Gesture);
   emit(g, "emote", `${chef.name} signals: ${word}!`, chef, SEEN_HEARD, [chef.id]);
 }
 

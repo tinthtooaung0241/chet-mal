@@ -101,7 +101,7 @@ export class NetSession implements Session {
   private ws: WebSocket;
   private events: GameEvent[] = [];
   /** our chef as we last moved it, re-applied over each server snapshot */
-  private local: { x: number; z: number; facing: number; guidedBy: string | null } | null = null;
+  private local: { x: number; z: number; facing: number; pitch: number; guidedBy: string | null } | null = null;
   private sinceMove = 0;
   private lastSnapshotAt = 0;
   onLobby: (lobby: LobbyState) => void = () => {};
@@ -161,11 +161,12 @@ export class NetSession implements Session {
         this.lastSnapshotAt = performance.now();
         const me = this.me;
         if (me) {
-          if (!this.local || first || restarted) this.local = { x: me.x, z: me.z, facing: me.facing, guidedBy: me.guidedBy };
+          if (!this.local || first || restarted) this.local = { x: me.x, z: me.z, facing: me.facing, pitch: me.pitch, guidedBy: me.guidedBy };
           // our own position is ours; hand-holding links are the server's
           me.x = this.local.x;
           me.z = this.local.z;
           me.facing = this.local.facing;
+          me.pitch = this.local.pitch;
           this.local.guidedBy = me.guidedBy;
         }
         if (first || restarted) this.onStart();
@@ -200,13 +201,13 @@ export class NetSession implements Session {
     const me = this.me;
     if (!g || !me || !this.local) return;
     moveChef(g, me, dt, input);
-    this.local = { x: me.x, z: me.z, facing: me.facing, guidedBy: me.guidedBy };
+    this.local = { x: me.x, z: me.z, facing: me.facing, pitch: me.pitch, guidedBy: me.guidedBy };
     // events from our own movement (bumps, letting go of a hand) stay local
     this.events.push(...g.events.splice(0));
     this.sinceMove += dt;
     if (this.sinceMove >= 1 / MOVE_HZ) {
       this.sinceMove = 0;
-      this.send({ t: "move", x: me.x, z: me.z, facing: me.facing, chop: input.chop, guidedBy: me.guidedBy });
+      this.send({ t: "move", x: me.x, z: me.z, facing: me.facing, pitch: me.pitch, chop: input.chop, guidedBy: me.guidedBy });
     }
   }
 

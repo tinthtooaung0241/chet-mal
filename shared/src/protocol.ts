@@ -24,7 +24,7 @@ export type ClientMessage =
   /** play again, optionally on another level */
   | { t: "restart"; level?: number }
   /** own chef's movement: clients move their chef locally and report where it is */
-  | { t: "move"; x: number; z: number; facing: number; chop: boolean; guidedBy: string | null }
+  | { t: "move"; x: number; z: number; facing: number; pitch: number; chop: boolean; guidedBy: string | null }
   | { t: "act"; action: Action }
   | { t: "emote"; word: Emote }
   /** WebRTC signalling relayed to one other player */

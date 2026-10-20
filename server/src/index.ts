@@ -194,6 +194,7 @@ function handle(ws: WebSocket) {
         chef.x = msg.x;
         chef.z = msg.z;
         chef.facing = msg.facing;
+        chef.pitch = Math.max(-1.2, Math.min(1.2, msg.pitch ?? 0));
         chef.chopInput = msg.chop;
         if (msg.guidedBy === null) chef.guidedBy = null; // clients may let go, but only the server links hands
         return;

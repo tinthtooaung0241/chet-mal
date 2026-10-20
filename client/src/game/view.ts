@@ -1,10 +1,8 @@
 import {
-  Axis,
   Color3,
   DynamicTexture,
   Mesh,
   MeshBuilder,
-  Quaternion,
   Scalar,
   StandardMaterial,
   TransformNode,
@@ -14,6 +12,7 @@ import {
   type ShadowGenerator,
 } from "@babylonjs/core";
 import type { AssetLibrary } from "../assets";
+import { ChefModel } from "./chef";
 import {
   FOOD_RULES,
   targetStation,
@@ -52,13 +51,6 @@ const PLATE_SLOTS = [
 
 function meshesOf(node: TransformNode): AbstractMesh[] {
   return node.getChildMeshes(false);
-}
-
-function flatMaterial(scene: Scene, name: string, color: Color3): StandardMaterial {
-  const mat = new StandardMaterial(name, scene);
-  mat.diffuseColor = color;
-  mat.specularColor = Color3.Black();
-  return mat;
 }
 
 function unlitMaterial(scene: Scene, name: string, color: Color3): StandardMaterial {
@@ -133,121 +125,6 @@ class ProgressBar {
   }
 }
 
-// Which Blender character plays each role ("all senses" practice uses the mute chef's model).
-const CHEF_MODELS: Record<Role, string> = {
-  full: "Chef_Mute",
-  blind: "Chef_Blind",
-  deaf: "Chef_Deaf",
-  mute: "Chef_Mute",
-};
-const CHEF_SCALE = 0.95;
-
-/**
- * A chef on screen: the Blender character when it's available (arms swing from the shoulder),
- * otherwise a simple capsule placeholder.
- */
-class ChefModel {
-  readonly root: TransformNode;
-  private readonly body: TransformNode;
-  private readonly arms: { node: TransformNode; rest: Quaternion; side: number }[] = [];
-  private readonly placeholderArms: Mesh[] = [];
-  private walk = 0;
-
-  constructor(scene: Scene, shadows: ShadowGenerator, apronColor: Color3, lib: AssetLibrary, role: Role) {
-    this.root = new TransformNode("chef", scene);
-    this.body = new TransformNode("chefBody", scene);
-    this.body.parent = this.root;
-    const model = CHEF_MODELS[role];
-    if (lib.has(model)) {
-      const node = lib.spawn(model);
-      node.parent = this.body;
-      node.scaling.setAll(CHEF_SCALE);
-      for (const mesh of node.getChildMeshes(false)) shadows.addShadowCaster(mesh);
-      // the arm pivots are the nodes named *_ArmL / *_ArmR (their meshes may be split into primitives below them)
-      for (const child of node.getDescendants(false)) {
-        if (!(child instanceof TransformNode)) continue;
-        const side = child.name.endsWith("_ArmL") ? -1 : child.name.endsWith("_ArmR") ? 1 : 0;
-        if (!side) continue;
-        child.rotationQuaternion ??= Quaternion.FromEulerVector(child.rotation);
-        this.arms.push({ node: child, rest: child.rotationQuaternion.clone(), side });
-      }
-      return;
-    }
-    this.buildPlaceholder(scene, shadows, apronColor);
-  }
-
-  private buildPlaceholder(scene: Scene, shadows: ShadowGenerator, apronColor: Color3) {
-    const white = flatMaterial(scene, "chefWhite", new Color3(0.76, 0.76, 0.74)); // tone-mapped, so keep below pure white
-    const apron = flatMaterial(scene, "chefApron", apronColor);
-    const skin = flatMaterial(scene, "chefSkin", new Color3(0.86, 0.64, 0.48));
-    const dark = flatMaterial(scene, "chefDark", new Color3(0.08, 0.08, 0.08));
-
-    const parts: Mesh[] = [];
-    const torso = MeshBuilder.CreateCapsule("torso", { height: 1.1, radius: 0.27, tessellation: 10 }, scene);
-    torso.position.y = 0.6;
-    torso.material = white;
-    const apronMesh = MeshBuilder.CreateBox("apron", { width: 0.4, height: 0.55, depth: 0.04 }, scene);
-    apronMesh.position.set(0, 0.5, 0.25);
-    apronMesh.material = apron;
-    const head = MeshBuilder.CreateSphere("head", { diameter: 0.38, segments: 6 }, scene);
-    head.position.y = 1.32;
-    head.material = skin;
-    const hat = MeshBuilder.CreateCylinder("hat", { height: 0.24, diameter: 0.3, tessellation: 8 }, scene);
-    hat.position.y = 1.6;
-    hat.material = white;
-    const puff = MeshBuilder.CreateSphere("puff", { diameter: 0.36, segments: 5 }, scene);
-    puff.position.y = 1.75;
-    puff.scaling.y = 0.6;
-    puff.material = white;
-    for (const side of [-1, 1]) {
-      const eye = MeshBuilder.CreateSphere("eye", { diameter: 0.05, segments: 4 }, scene);
-      eye.position.set(side * 0.07, 1.36, 0.17);
-      eye.material = dark;
-      parts.push(eye);
-      const arm = MeshBuilder.CreateBox("arm", { width: 0.1, height: 0.1, depth: 0.42 }, scene);
-      arm.position.set(side * 0.24, 0.9, 0.2);
-      arm.material = white;
-      this.placeholderArms.push(arm);
-      parts.push(arm);
-    }
-    parts.push(torso, apronMesh, head, hat, puff);
-    for (const part of parts) {
-      part.parent = this.body;
-      shadows.addShadowCaster(part);
-    }
-  }
-
-  /** @param smooth true for other players' chefs: glide between network snapshots */
-  sync(x: number, z: number, facing: number, dt: number, chopping: boolean, holding: boolean, time: number, smooth: boolean) {
-    const t = smooth ? Math.min(1, dt * 12) : 1;
-    const moving = Math.hypot(x - this.root.position.x, z - this.root.position.z) > 0.01;
-    this.root.position.x += (x - this.root.position.x) * t;
-    this.root.position.z += (z - this.root.position.z) * t;
-    // turn smoothly along the shortest arc
-    let diff = facing - this.root.rotation.y;
-    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-    this.root.rotation.y += diff * Math.min(1, dt * 14);
-    this.walk = moving ? this.walk + dt * 12 : 0;
-    this.body.position.y = moving ? Math.abs(Math.sin(this.walk)) * 0.04 : 0;
-
-    if (this.arms.length) {
-      for (const arm of this.arms) {
-        // swing from the shoulder: carry = both forward, chop = alternate, walk = opposite swing
-        let angle = 0;
-        if (chopping) angle = -1.15 + Math.sin(time * 22 + (arm.side > 0 ? 0 : Math.PI)) * 0.3;
-        else if (holding) angle = -1.25;
-        else if (moving) angle = Math.sin(this.walk) * 0.45 * arm.side;
-        const target = arm.rest.multiply(Quaternion.RotationAxis(Axis.X, angle));
-        arm.node.rotationQuaternion = Quaternion.Slerp(arm.node.rotationQuaternion!, target, Math.min(1, dt * 14));
-      }
-      return;
-    }
-    const chop = chopping ? Math.sin(time * 22) * 0.12 : 0;
-    this.placeholderArms[0].position.y = 0.9 + chop;
-    this.placeholderArms[1].position.y = 0.9 - chop;
-  }
-}
-
 // Apron colours tell the chefs apart at a glance.
 const APRON: Record<Role, Color3> = {
   full: Color3.FromHexString("#3a6ea5"),
@@ -270,6 +147,8 @@ export class GameView {
   private readonly bars = new Map<number, ProgressBar>();
   private readonly items = new Map<number, { node: TransformNode; key: string }>();
   private readonly chefs = new Map<string, ChefEntry>();
+  /** a chef put a foot down (for positional footstep sounds) */
+  onFootstep: ((chefId: string, x: number, z: number) => void) | null = null;
   private readonly pings = new Map<number, { root: TransformNode; ring: Mesh; glow: StandardMaterial }>();
   private highlighted: Station | null = null;
   private selfVisible = false;
@@ -290,7 +169,9 @@ export class GameView {
     let entry = this.chefs.get(chef.id);
     if (!entry || entry.role !== chef.role) {
       if (entry) this.disposeChef(chef.id, entry);
-      const model = new ChefModel(this.scene, this.shadows, APRON[chef.role], this.lib, chef.role);
+      const model = new ChefModel(this.scene, this.shadows, this.lib, chef.role, APRON[chef.role]);
+      const id = chef.id;
+      model.onStep = (x, z) => this.onFootstep?.(id, x, z);
       model.root.position.set(chef.x, 0, chef.z);
       // name tags only over other players' chefs
       const tag = isMe ? null : makeTag(this.scene, `name-${chef.id}`, chef.name, "#1d2024");
@@ -301,7 +182,8 @@ export class GameView {
   }
 
   private disposeChef(id: string, entry: ChefEntry) {
-    entry.model.root.dispose(false, true);
+    // keep materials: they're shared with every other copy of this character model
+    entry.model.root.dispose(false, false);
     entry.tag?.dispose(false, true);
     entry.bubble?.mesh.dispose(false, true);
     this.chefs.delete(id);
@@ -313,7 +195,22 @@ export class GameView {
       live.add(chef.id);
       const isMe = chef.id === me.id;
       const entry = this.chefEntry(chef, isMe);
-      entry.model.sync(chef.x, chef.z, chef.facing, dt, chef.chopping, !!chef.held, this.time, !isMe);
+      entry.model.update(
+        {
+          x: chef.x,
+          z: chef.z,
+          facing: chef.facing,
+          pitch: chef.pitch,
+          chopping: chef.chopping,
+          holding: !!chef.held,
+          gesture: chef.gesture,
+          guided: !!chef.guidedBy,
+          guiding: game.chefs.some((c) => c.guidedBy === chef.id),
+        },
+        dt,
+        this.time,
+        !isMe,
+      );
       entry.model.root.setEnabled(!isMe || this.selfVisible);
       const at = entry.model.root.position;
       entry.tag?.position.set(at.x, 2.05, at.z);
