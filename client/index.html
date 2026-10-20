@@ -47,6 +47,7 @@
           <div id="clock" class="chip" role="timer" aria-label="Time left">
             <div id="clock-ring"><span id="time">3:00</span></div>
           </div>
+          <button id="book-button" class="round-btn" type="button" aria-label="Recipe book (R)"><i data-icon="book"></i><kbd>R</kbd></button>
           <button id="menu-button" class="round-btn" type="button" aria-label="Menu (P)"><i data-icon="menu"></i></button>
         </div>
 
@@ -111,6 +112,7 @@
       <div class="menu-actions">
         <button id="resume" type="button" class="primary big"><i data-icon="play"></i> Resume</button>
         <button id="open-help" type="button"><i data-icon="gamepad"></i> Controls</button>
+        <button id="open-book" type="button"><i data-icon="book"></i> Recipes</button>
       </div>
       <fieldset id="role-picker">
         <legend>Practice as <span class="muted">(keys 0–3)</span></legend>
@@ -140,6 +142,7 @@
           <p><kbd>Space</kbd> use: pick up, put down, plate, serve</p>
           <p>Hold <kbd>F</kbd> chop on a board</p>
           <p><kbd>Z</kbd> sniff for spoiled food</p>
+          <p><kbd>R</kbd> recipe book (read aloud for the blind chef)</p>
         </section>
         <section>
           <h3>Team</h3>
@@ -162,6 +165,13 @@
       </ol>
       <p class="muted">Tickets are seen, phone orders are heard once. When a sizzle <em>whistles</em>, take it off for a perfect bonus.</p>
       <button id="close-help" type="button" class="primary">Got it!</button>
+    </dialog>
+
+    <dialog id="recipe-book" class="card-dialog wide" aria-labelledby="book-title" aria-describedby="book-note">
+      <h2 id="book-title"><i data-icon="book"></i> Recipe book</h2>
+      <p id="book-note" class="muted small"></p>
+      <ol id="book-pages" aria-label="Recipes"></ol>
+      <button id="close-book" type="button" class="primary">Back to cooking <kbd>R</kbd></button>
     </dialog>
 
     <dialog id="lobby" class="title-screen" aria-labelledby="lobby-title">

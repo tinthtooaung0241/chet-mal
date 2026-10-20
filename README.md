@@ -32,5 +32,5 @@ npm start            # http://localhost:8787
 
 ## Controls
 
-W/S walk · A/D step sideways · mouse or ←/→ look · Space/E use · hold F chop · H take a teammate's hand · Q describe surroundings · V first-person/overhead · P pause (solo) · 0–3 switch chef (solo).
+W/S walk · A/D step sideways · mouse or ←/→ look · Space/E use · hold F chop · H take a teammate's hand · Q describe surroundings · R recipe book (read aloud for the blind chef) · V first-person/overhead · P pause (solo) · 0–3 switch chef (solo).
 Mute chef: G ping · B bell · hold T + 1–6 emotes.

@@ -246,7 +246,7 @@ select:focus-visible {
   position: absolute;
   top: var(--edge);
   left: var(--edge);
-  right: 400px;
+  right: 476px; /* clear of the scoreboard */
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -320,7 +320,7 @@ select:focus-visible {
 
 .order .tag {
   display: block;
-  font-size: 0.6rem;
+  font-size: 0.62rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-soft);
@@ -542,7 +542,7 @@ select:focus-visible {
 
 .chip-label {
   display: block;
-  font-size: 0.58rem;
+  font-size: 0.62rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-soft);
@@ -770,7 +770,8 @@ select:focus-visible {
   }
 }
 
-#menu-button {
+#menu-button,
+#book-button {
   width: 44px;
   height: 44px;
 }
@@ -842,7 +843,7 @@ select:focus-visible {
   content: "Today's chef";
   display: block;
   font-family: "Nunito", sans-serif;
-  font-size: 0.58rem;
+  font-size: 0.6rem;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1650,6 +1651,160 @@ button .icon-img {
   margin: 8px 0 0;
 }
 
+/* ====================================================================== recipe book */
+
+#book-button .icon-svg {
+  width: 24px;
+  height: 24px;
+}
+
+#book-title .icon-svg {
+  width: 30px;
+  height: 30px;
+  vertical-align: -5px;
+}
+
+#book-note {
+  margin: 0 0 10px;
+}
+
+#book-pages {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 10px 4px 6px; /* room for the "On order" badges */
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: var(--gap);
+  text-align: left;
+}
+
+.book-page {
+  position: relative;
+  padding: 10px 10px 8px;
+  border-radius: var(--r-md);
+  background: var(--paper);
+  box-shadow:
+    0 0 0 2px var(--oat),
+    0 3px 0 2px var(--oat);
+  outline: none;
+  transition: box-shadow 0.15s;
+}
+
+.book-page.bowl {
+  background: #fdf6ea;
+}
+
+.book-page.ordered {
+  box-shadow:
+    0 0 0 2px var(--honey),
+    0 3px 0 2px var(--honey-edge);
+}
+
+/* the page being read aloud (or reached with the keyboard) */
+.book-page.current:focus-visible,
+.read-aloud .book-page.current {
+  box-shadow:
+    0 0 0 3px var(--focus),
+    0 3px 0 3px #3f86c2;
+}
+
+.book-head {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.book-head .dish {
+  position: relative;
+  grid-row: 1 / 3;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+}
+
+.book-head .dish > .icon-img:first-child {
+  width: 48px;
+  height: 48px;
+}
+
+.book-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.book-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.book-meta .icon-svg {
+  width: 15px;
+  height: 15px;
+}
+
+.book-badge {
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  padding: 1px 8px;
+  border-radius: var(--pill);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4a2d07;
+  background: var(--honey);
+  box-shadow: 0 2px 0 var(--honey-edge);
+}
+
+.book-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  font-size: 0.76rem;
+}
+
+.book-steps li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 2px 8px 2px 3px;
+  border-radius: var(--pill);
+  background: var(--oat);
+}
+
+.book-steps li.book-item {
+  background: var(--mint-soft);
+}
+
+.book-steps li:last-child {
+  background: var(--peach-soft);
+}
+
+.book-steps .icon-img,
+.book-steps .icon-svg {
+  width: 22px;
+  height: 22px;
+}
+
+.book-steps .arrow {
+  color: var(--ink-faint);
+  margin: 0 1px;
+}
+
 /* ====================================================================== icons */
 
 i[data-icon],
@@ -1735,7 +1890,7 @@ i[data-img] {
 
 @media (max-width: 1100px) {
   #left-stack {
-    right: 360px;
+    right: 476px;
   }
   .order {
     width: 126px;
@@ -1767,11 +1922,29 @@ i[data-img] {
     left: var(--edge);
     justify-content: flex-end;
   }
+  #scoreboard {
+    gap: 6px;
+  }
   #score-chip {
-    min-width: 116px;
+    min-width: 100px;
+    padding: 6px 10px;
+  }
+  #level-chip {
+    min-width: 60px;
+    padding: 12px 8px 6px;
   }
   #level-chip .chip-sub {
     display: none;
+  }
+  #clock-ring {
+    width: 58px;
+    height: 58px;
+  }
+  #book-button kbd {
+    display: none;
+  }
+  #blindfold {
+    padding-bottom: 300px; /* above the kitchen feed */
   }
   #role-badge {
     top: 100px;

@@ -2,6 +2,7 @@
 // right now ("[Space] Add to pot 2/3", "[F] Chop"). Read-only: it never changes the game.
 import {
   FOOD_RULES,
+  MAX_PLATE_ITEMS,
   SOUP_INGREDIENTS,
   SOUP_SIZE,
   SOUP_TIME,
@@ -86,6 +87,7 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
   const st = targetStation(g, me);
   if (!st) {
     const mate = chefInFront(g, me);
+    if (mate && held?.type === "food" && mate.held?.type === "plate") return [{ key: "Space", text: `Put on ${mate.name.split(" (")[0]}'s plate` }];
     if (mate && held && !mate.held) return [{ key: "Space", text: `Hand to ${mate.name.split(" (")[0]}` }];
     if (mate) return [{ key: "H", text: `Take ${mate.name.split(" (")[0]}'s hand` }];
     return [];
@@ -95,12 +97,14 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
     case "crate":
       if (!held) return [use(`Take ${article(st.crate!.toLowerCase())}`)];
       if (held.type === "food" && held.state === "raw" && held.kind === st.crate) return [use("Put it back")];
+      if (held.type === "plate") return [held.contents.length < MAX_PLATE_ITEMS ? use(`Add ${article(st.crate!.toLowerCase())} to the plate`) : { text: "Plate is full" }];
       return [{ text: "Hands full" }];
     case "plates":
     case "bowls": {
       const thing = st.kind === "plates" ? "plate" : "bowl";
       if (!held) return [use(`Take a ${thing}`)];
       if (held.type === thing && (held.type === "plate" ? !held.contents.length : !held.soup)) return [use("Put it back")];
+      if (thing === "plate" && held.type === "food") return [use("Plate it")];
       return [{ text: "Hands full" }];
     }
     case "trash":
@@ -144,7 +148,10 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
     } else if (st.kind === "board" && held.type !== "food") prompts.push({ text: "Plates go on a counter" });
     else prompts.push(use(st.kind === "board" ? "Put on the board" : "Put it down"));
   } else if (held && onTop) {
-    if ((held.type === "plate" && onTop.type === "food") || (held.type === "food" && onTop.type === "plate")) prompts.push(use("Add to the plate"));
+    const plate = held.type === "plate" ? held : onTop.type === "plate" ? onTop : null;
+    if (plate && (held.type === "food" || onTop.type === "food")) {
+      prompts.push(plate.contents.length < MAX_PLATE_ITEMS ? use("Add to the plate") : { text: "Plate is full" });
+    }
     else prompts.push({ text: `${stationName(st)} is taken` });
   }
   return prompts;

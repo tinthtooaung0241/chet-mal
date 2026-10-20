@@ -770,7 +770,7 @@ function liftFrom(station: Station, item: Item) {
   if (station.kind === "stove" && item.type === "food") item.perfect = stovePhase(item) === "perfect";
 }
 
-function addToPlate(g: Game, chef: Chef, plate: Plate, food: Food, at: Station): boolean {
+function addToPlate(g: Game, chef: Chef, plate: Plate, food: Food, at: { x: number; z: number }): boolean {
   if (plate.contents.length >= MAX_PLATE_ITEMS) {
     emit(g, "invalid", "The plate is full.", at, FELT, [chef.id]);
     return false;
@@ -919,6 +919,11 @@ function handOff(g: Game, chef: Chef, mate: Chef) {
     emit(g, "invalid", `${mate.name} is in front of you. You have nothing to give.`, chef, FELT, [chef.id]);
     return;
   }
+  // food straight onto the plate a teammate is holding out
+  if (chef.held.type === "food" && mate.held?.type === "plate") {
+    if (addToPlate(g, chef, mate.held, chef.held, mate)) chef.held = null;
+    return;
+  }
   if (mate.held) {
     emit(g, "invalid", `${mate.name}'s hands are full.`, chef, FELT, [chef.id]);
     return;
@@ -951,6 +956,9 @@ export function interact(g: Game, chef: Chef) {
       } else if (held.type === "food" && held.state === "raw" && held.kind === st.crate) {
         chef.held = null;
         emit(g, "place", `Put the ${held.kind.toLowerCase()} back.`, st, EVERYONE, me);
+      } else if (held.type === "plate") {
+        // a fresh one straight onto the plate (salad leaves, bread…)
+        addToPlate(g, chef, held, newFood(g, st.crate!), st);
       } else {
         emit(g, "invalid", "Your hands are full.", st, FELT, me);
       }
@@ -962,6 +970,10 @@ export function interact(g: Game, chef: Chef) {
       } else if (held.type === "plate" && held.contents.length === 0) {
         chef.held = null;
         emit(g, "place", "Put the plate back.", st, EVERYONE, me);
+      } else if (held.type === "food") {
+        // food in hand at the rack: take a plate with it already on
+        chef.held = { type: "plate", id: g.nextId++, contents: [held] };
+        emit(g, "place", `Plated ${describeItem(held)}.`, st, EVERYONE, me);
       } else {
         emit(g, "invalid", "Your hands are full.", st, FELT, me);
       }

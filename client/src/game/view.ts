@@ -56,6 +56,9 @@ const MODEL_SUFFIXES: Record<FoodState, string[]> = {
   burnt: ["_Burnt"],
 };
 
+// height of the plate's well above its base, at game scale (the rim stands higher)
+const PLATE_WELL = 0.016;
+
 // Small offsets so up to three foods sit side by side on a plate.
 const PLATE_SLOTS = [
   [[0, 0]],
@@ -111,30 +114,49 @@ function makeTag(scene: Scene, name: string, text: string, bg = "#2f3e4f", fg = 
   return plane;
 }
 
-/** A billboarded progress bar floating above a station. */
+// One colour language for every bar in the kitchen (matches the HUD):
+// mint = work in progress (chopping, filling the pot), honey = cooking, peach→tomato = about to burn.
+const BAR = {
+  frame: Color3.FromHexString("#3b2f27"),
+  track: Color3.FromHexString("#f6ecdc"),
+  work: Color3.FromHexString("#7fc98a"),
+  cook: Color3.FromHexString("#f2a541"),
+  safe: Color3.FromHexString("#f6c35b"),
+  burn: Color3.FromHexString("#e4553f"),
+};
+const BAR_HEIGHT = 1.42; // every bar floats at the same height, whatever it sits over
+
+/** A billboarded progress bar floating above a station: dark outline, cream track, coloured fill. */
 class ProgressBar {
   private readonly root: TransformNode;
   private readonly fill: Mesh;
   private readonly fillMat: StandardMaterial;
-  private static readonly WIDTH = 0.5;
+  private static readonly WIDTH = 0.44;
 
-  constructor(scene: Scene, x: number, y: number, z: number) {
+  constructor(scene: Scene, x: number, z: number) {
     this.root = new TransformNode("bar", scene);
-    this.root.position.set(x, y, z);
+    this.root.position.set(x, BAR_HEIGHT, z);
     this.root.billboardMode = TransformNode.BILLBOARDMODE_ALL;
-    const bg = MeshBuilder.CreatePlane("barBg", { width: ProgressBar.WIDTH + 0.04, height: 0.09 }, scene);
-    bg.material = unlitMaterial(scene, "barBgMat", new Color3(0.08, 0.08, 0.09));
-    bg.parent = this.root;
-    this.fill = MeshBuilder.CreatePlane("barFill", { width: ProgressBar.WIDTH, height: 0.05 }, scene);
-    this.fillMat = unlitMaterial(scene, "barFillMat", Color3.White());
-    this.fillMat.zOffset = -2; // draw over the background
-    this.fill.material = this.fillMat;
-    this.fill.parent = this.root;
+    const layer = (name: string, width: number, height: number, color: Color3, zOffset: number) => {
+      const mesh = MeshBuilder.CreatePlane(name, { width, height }, scene);
+      const mat = unlitMaterial(scene, `${name}Mat`, color);
+      mat.zOffset = zOffset; // stack the layers without z-fighting
+      mesh.material = mat;
+      mesh.parent = this.root;
+      mesh.isPickable = false;
+      mesh.renderingGroupId = 1; // never hidden behind a pot or its steam
+      return { mesh, mat };
+    };
+    layer("barFrame", ProgressBar.WIDTH + 0.05, 0.1, BAR.frame, 0);
+    layer("barTrack", ProgressBar.WIDTH + 0.01, 0.06, BAR.track, -1);
+    const fill = layer("barFill", ProgressBar.WIDTH, 0.045, BAR.work, -2);
+    this.fill = fill.mesh;
+    this.fillMat = fill.mat;
     this.hide();
   }
 
   show(progress: number, color: Color3) {
-    const p = Scalar.Clamp(progress, 0.001, 1);
+    const p = Scalar.Clamp(progress, 0.02, 1);
     this.fill.scaling.x = p;
     this.fill.position.x = (-(1 - p) * ProgressBar.WIDTH) / 2;
     this.fillMat.emissiveColor = color;
@@ -283,7 +305,7 @@ export class GameView {
         knife.position.set(0.3, COUNTER_TOP + 0.002, -0.22);
         knife.rotation.y = 1.4;
         surface = COUNTER_TOP + 0.021 * ITEM_SCALE;
-        this.bars.set(s.id, new ProgressBar(this.scene, s.x, 1.3, s.z));
+        this.bars.set(s.id, new ProgressBar(this.scene, s.x, s.z));
         break;
       }
       case "pot": {
@@ -301,7 +323,7 @@ export class GameView {
         surfaceMesh.material = mat;
         surfaceMesh.isPickable = false;
         this.potSoup.set(s.id, { mesh: surfaceMesh, mat });
-        this.bars.set(s.id, new ProgressBar(this.scene, s.x, 1.45, s.z));
+        this.bars.set(s.id, new ProgressBar(this.scene, s.x, s.z));
         break;
       }
       case "bowls":
@@ -313,7 +335,7 @@ export class GameView {
         const pan = this.spawnInto(root, "FryingPan", 0.926, 1.6); // resting on the grates
         pan.rotation.y = Math.PI / 2; // handle points sideways, not at the chef
         surface = 0.926 + 0.008 * 1.6;
-        this.bars.set(s.id, new ProgressBar(this.scene, s.x, 1.3, s.z));
+        this.bars.set(s.id, new ProgressBar(this.scene, s.x, s.z));
         break;
       }
       case "crate": {
@@ -466,10 +488,15 @@ export class GameView {
     const shrink = scale / ITEM_SCALE;
     entry.node.scaling.setAll(item.type === "plate" ? PLATE_SCALE * shrink : item.type === "bowl" ? BOWL_SCALE * shrink : scale);
     if (item.type === "plate") {
-      const slots = PLATE_SLOTS[item.contents.length - 1] ?? [];
+      const slots = PLATE_SLOTS[Math.min(item.contents.length, PLATE_SLOTS.length) - 1] ?? [];
+      const cos = Math.cos(yaw);
+      const sin = Math.sin(yaw);
       item.contents.forEach((food, i) => {
-        const [ox, oz] = slots[i] ?? [0, 0];
-        this.placeItem(food, x + ox * shrink, y + 0.012 * shrink, z + oz * shrink, yaw, ITEM_SCALE * 0.75 * shrink, seen);
+        // slots turn with the plate so food never hangs over the rim, whichever way it faces
+        const [ox, oz] = slots[i % slots.length] ?? [0, 0];
+        const dx = ox * cos + oz * sin;
+        const dz = -ox * sin + oz * cos;
+        this.placeItem(food, x + dx * shrink, y + PLATE_WELL * shrink, z + dz * shrink, yaw + i * 0.7, ITEM_SCALE * 0.75 * shrink, seen);
       });
     }
   }
@@ -554,17 +581,17 @@ export class GameView {
       const food = s.item?.type === "food" ? s.item : null;
       const rule = food && FOOD_RULES[food.kind];
       if (s.kind === "board" && food && rule?.chop && food.state === "raw" && food.chop > 0) {
-        bar.show(food.chop, new Color3(0.92, 0.92, 0.92));
+        bar.show(food.chop, BAR.work);
       } else if (s.kind === "stove" && food && rule?.cookFrom && food.state === rule.cookFrom) {
-        bar.show(food.cook / (rule.cookTime ?? 6), new Color3(1, 0.6, 0.1));
+        bar.show(food.cook / (rule.cookTime ?? 6), BAR.cook);
       } else if (s.kind === "stove" && food && rule?.cookFrom && food.state === "cooked") {
         // counts down to burning; flashes red once the warning has been given
         const left = 1 - (food.cook - (rule.cookTime ?? 6)) / (rule.burnTime ?? 6);
         this.showBurnCountdown(bar, left, food.warned);
       } else if (s.pot && s.pot.state === "filling" && s.pot.contents.length) {
-        bar.show(s.pot.contents.length / SOUP_SIZE, new Color3(0.92, 0.92, 0.92));
+        bar.show(s.pot.contents.length / SOUP_SIZE, BAR.work);
       } else if (s.pot && s.pot.state === "cooking") {
-        bar.show(s.pot.cook / SOUP_TIME, new Color3(1, 0.6, 0.1));
+        bar.show(s.pot.cook / SOUP_TIME, BAR.cook);
       } else if (s.pot && s.pot.state === "done") {
         this.showBurnCountdown(bar, 1 - (s.pot.cook - SOUP_TIME) / SOUP_BURN, s.pot.warned);
       } else {
@@ -575,7 +602,7 @@ export class GameView {
 
   private showBurnCountdown(bar: ProgressBar, left: number, warned: boolean) {
     const flash = warned && Math.floor(this.time * 6) % 2 === 0;
-    bar.show(left, flash ? new Color3(1, 0.15, 0.1) : Color3.Lerp(new Color3(1, 0.2, 0.1), new Color3(0.3, 0.85, 0.35), left));
+    bar.show(left, flash ? BAR.frame : Color3.Lerp(BAR.burn, BAR.safe, left));
   }
 
   /** Soup level and colour in each pot. */

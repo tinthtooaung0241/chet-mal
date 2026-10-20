@@ -78,6 +78,7 @@ const GLYPHS: Record<string, string> = {
   play: `<path d="M10 6l16 10-16 10z" fill="#5cbf6b" ${s}/>`,
   gamepad: `<path d="M9 9h14a6 6 0 0 1 5.8 7.5l-1.5 6a3.3 3.3 0 0 1-5.8 1.2L19 21h-6l-2.5 2.7a3.3 3.3 0 0 1-5.8-1.2l-1.5-6A6 6 0 0 1 9 9z" fill="#8e6bbf" ${s}/><path d="M10 13v5M7.5 15.5h5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><circle cx="21" cy="14" r="1.5" fill="#ffd257"/><circle cx="24" cy="17" r="1.5" fill="#e4553f"/>`,
   link: `<path d="M13.5 18.5l5-5" ${s}/><path d="M14.5 10.5l2-2a5 5 0 0 1 7 7l-2 2M17.5 21.5l-2 2a5 5 0 0 1-7-7l2-2" fill="none" stroke="#5aa9e6" stroke-width="3" stroke-linecap="round"/>`,
+  book: `<path d="M16 8c-3-2.4-7-3-11-2.4v18c4-.6 8 0 11 2.4 3-2.4 7-3 11-2.4v-18c-4-.6-8 0-11 2.4z" fill="#f6a491" ${s}/><path d="M16 8v18" ${s}/><path d="M8.5 11c2-.2 3.8.2 5 1M8.5 15c2-.2 3.8.2 5 1M18.5 12c1.2-.8 3-1.2 5-1M18.5 16c1.2-.8 3-1.2 5-1" stroke="#fffaf0" stroke-width="1.6" stroke-linecap="round"/>`,
   crate: `<rect x="4" y="8" width="24" height="18" rx="2" fill="#c98a55" ${s}/><path d="M4 14h24M4 20h24" ${s}/><path d="M9 8v18M23 8v18" stroke="#8a5530" stroke-width="2"/>`,
   sink: `<path d="M4 18h24l-3 8H7z" fill="#c5cad0" ${s}/><path d="M17 18V8a3 3 0 0 1 6 0v2" fill="none" ${s}/><path d="M23 13v2" stroke="#5aa9e6" stroke-width="2.4" stroke-linecap="round"/>`,
   counter: `<rect x="4" y="9" width="24" height="5" rx="1.5" fill="#c5cad0" ${s}/><rect x="6" y="14" width="20" height="13" rx="1" fill="#2f3e4f" ${s}/><path d="M16 14v13M13 19v3M19 19v3" stroke="#c5cad0" stroke-width="1.8" stroke-linecap="round"/>`,

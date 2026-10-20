@@ -19,6 +19,7 @@ import { setupLook } from "./game/look";
 import { PovController } from "./game/pov";
 import { Effects } from "./game/effects";
 import { GameView } from "./game/view";
+import { RecipeBook } from "./game/recipeBook";
 import { Lobby } from "./lobby";
 import { recordStars } from "./progress";
 import { LocalSession, NetSession, type Session } from "./session";
@@ -159,7 +160,8 @@ function closeMenu() {
 }
 
 pauseMenu.addEventListener("close", () => {
-  if (paused) {
+  // going from the menu straight into the recipe book keeps the kitchen paused
+  if (paused && !book.open) {
     paused = false;
     feedback.setPaused(false);
     feedback.say("Back to the kitchen!");
@@ -171,6 +173,37 @@ $("menu-button").addEventListener("click", () => {
   feedback.unlock();
   openMenu();
 });
+// --- recipe book (R) -------------------------------------------------------------
+
+const book = new RecipeBook();
+
+function openBook() {
+  const game = session?.game;
+  const me = meNow();
+  if (!game || !me || game.phase !== "playing" || book.open) return;
+  if (document.pointerLockElement) document.exitPointerLock();
+  closeMenu();
+  // solo: the kitchen waits while you read; online it keeps going
+  if (!session?.online && !paused) {
+    paused = true;
+    feedback.setPaused(true);
+  }
+  book.show(game, me.role);
+}
+
+book.dialog.addEventListener("close", () => {
+  if (paused && !pauseMenu.open) {
+    paused = false;
+    feedback.setPaused(false);
+  }
+  canvas.focus();
+});
+$("book-button").addEventListener("click", () => {
+  feedback.unlock();
+  openBook();
+});
+$("open-book").addEventListener("click", openBook);
+
 $("open-help").addEventListener("click", () => helpCard.showModal());
 $("close-help").addEventListener("click", () => helpCard.close());
 helpCard.addEventListener("close", () => {
@@ -352,6 +385,8 @@ window.addEventListener("keydown", (e) => {
       break;
     case "KeyR":
       if (session.game.phase === "over") restart();
+      else if (book.open) book.close();
+      else if (!target?.closest("dialog")) openBook();
       break;
     case "KeyV":
       setFirstPerson(!pov.active);
