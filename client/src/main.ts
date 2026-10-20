@@ -111,14 +111,73 @@ function sendEmote(word: Emote) {
   session.emote(word);
 }
 
-for (const button of document.querySelectorAll<HTMLButtonElement>("#signals button")) {
+for (const button of document.querySelectorAll<HTMLButtonElement>("#signals [data-signal]")) {
   button.addEventListener("click", () => {
     feedback.unlock();
-    const word = button.dataset.emote as Emote | undefined;
-    if (word) sendEmote(word);
-    else act(button.dataset.signal === "ping" ? "ping" : "bell");
+    act(button.dataset.signal === "ping" ? "ping" : "bell");
+    canvas.focus();
   });
 }
+
+// the sign wheel: hold T (or tap its button), then pick a sign with 1-6 or a click
+const wheel = $("emote-wheel");
+const showWheel = (on: boolean) => {
+  wheel.hidden = !on || !meNow() || !ROLES[meNow()!.role].signals;
+};
+$("wheel-button").addEventListener("click", () => showWheel(wheel.hidden !== false));
+for (const button of wheel.querySelectorAll<HTMLButtonElement>("[data-emote]")) {
+  button.addEventListener("click", () => {
+    feedback.unlock();
+    sendEmote(button.dataset.emote as Emote);
+    showWheel(false);
+    canvas.focus();
+  });
+}
+
+// --- menus --------------------------------------------------------------------------
+
+const pauseMenu = $<HTMLDialogElement>("pause-menu");
+const helpCard = $<HTMLDialogElement>("help");
+
+function openMenu() {
+  const game = session?.game;
+  if (!game || game.phase !== "playing" || pauseMenu.open) return;
+  if (document.pointerLockElement) document.exitPointerLock();
+  $("pause-note").textContent = session?.online ? "Your friends are still cooking — the kitchen doesn't stop online!" : "The kitchen is on hold.";
+  $("pause-title").textContent = session?.online ? "Menu" : "Paused";
+  if (!session?.online) {
+    paused = true;
+    feedback.setPaused(true);
+  }
+  pauseMenu.showModal();
+}
+
+function closeMenu() {
+  if (pauseMenu.open) pauseMenu.close();
+}
+
+pauseMenu.addEventListener("close", () => {
+  if (paused) {
+    paused = false;
+    feedback.setPaused(false);
+    feedback.say("Back to the kitchen!");
+  }
+  canvas.focus();
+});
+$("resume").addEventListener("click", closeMenu);
+$("menu-button").addEventListener("click", () => {
+  feedback.unlock();
+  openMenu();
+});
+$("open-help").addEventListener("click", () => helpCard.showModal());
+$("close-help").addEventListener("click", () => helpCard.close());
+helpCard.addEventListener("close", () => {
+  if (!pauseMenu.open) canvas.focus();
+});
+$("quit").addEventListener("click", () => {
+  // back to the title screen (the server keeps an online seat for a while if you return)
+  location.href = location.pathname;
+});
 
 // --- sessions -----------------------------------------------------------------------
 
@@ -136,6 +195,9 @@ function beginRound() {
   paused = false;
   shownGameOver = false;
   hud.hideGameOver();
+  hud.reset();
+  feedback.clearLog();
+  $("hud").hidden = false;
   presentRole(me.role);
   $("role-picker").hidden = session?.online ?? false;
   setFirstPerson(true);
@@ -199,7 +261,7 @@ const keys = new Set<string>();
 const GAME_KEYS = new Set([
   "KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
   "Space", "KeyE", "KeyF", "KeyQ", "KeyP", "Escape", "KeyR", "KeyV", "KeyH",
-  "KeyG", "KeyB", "KeyT", "KeyZ", "KeyN", "Digit0", "Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6",
+  "KeyG", "KeyB", "KeyT", "KeyZ", "KeyN", "Slash", "F1", "Digit0", "Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6",
 ]);
 
 const held = (...codes: string[]) => codes.some((c) => keys.has(c));
@@ -226,18 +288,6 @@ function setFirstPerson(on: boolean) {
   scene.activeCamera = on ? pov.camera : camera;
   view?.setSelfVisible(!on);
   $("crosshair").hidden = !on;
-}
-
-function togglePause() {
-  const game = session?.game;
-  if (!game || game.phase !== "playing") return;
-  if (session?.online) {
-    feedback.say("The kitchen can't pause while friends are cooking.");
-    return;
-  }
-  paused = !paused;
-  feedback.setPaused(paused);
-  feedback.say(paused ? "Paused. Press P to resume." : "Resumed.");
 }
 
 function restart(level?: number) {
@@ -288,7 +338,15 @@ window.addEventListener("keydown", (e) => {
       break;
     case "KeyP":
     case "Escape":
-      togglePause();
+      openMenu();
+      break;
+    case "Slash":
+    case "F1":
+      if (document.pointerLockElement) document.exitPointerLock();
+      helpCard.showModal();
+      break;
+    case "KeyT":
+      showWheel(true);
       break;
     case "KeyR":
       if (session.game.phase === "over") restart();
@@ -311,7 +369,10 @@ window.addEventListener("keydown", (e) => {
       break;
   }
 });
-window.addEventListener("keyup", (e) => keys.delete(e.code));
+window.addEventListener("keyup", (e) => {
+  keys.delete(e.code);
+  if (e.code === "KeyT") showWheel(false);
+});
 window.addEventListener("blur", () => keys.clear());
 canvas.addEventListener("pointerdown", () => {
   feedback.unlock();
@@ -376,7 +437,7 @@ scene.onBeforeRenderObservable.add(() => {
   view.sync(game, me, paused ? 0 : dt, pov.active ? pov.handPosition() : null);
   if (!paused) feedback.update(game, me, dt);
   voice.update(game, me);
-  hud.update(game, me, paused);
+  hud.update(game, me, pov.active);
 });
 
 if (import.meta.env.DEV) Object.assign(window, { getSession: () => session, scene, pov, voice }); // console debugging

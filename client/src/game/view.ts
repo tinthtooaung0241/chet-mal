@@ -174,6 +174,7 @@ export class GameView {
   private readonly pings = new Map<number, { root: TransformNode; ring: Mesh; glow: StandardMaterial }>();
   private highlighted: Station | null = null;
   private selfVisible = false;
+  private readonly labels: Mesh[] = [];
   private time = 0;
 
   constructor(
@@ -353,7 +354,10 @@ export class GameView {
   }
 
   private label(s: Station, text: string, y = 1.4) {
-    makeTag(this.scene, `label-${s.id}`, text).position.set(s.x, y, s.z);
+    const tag = makeTag(this.scene, `label-${s.id}`, text);
+    tag.position.set(s.x, y, s.z);
+    tag.setEnabled(this.selfVisible);
+    this.labels.push(tag);
   }
 
   // --- pings and the emote bubble ---------------------------------------------------
@@ -477,6 +481,8 @@ export class GameView {
 
   /** First person hides your own chef's body (the camera sits inside it). */
   setSelfVisible(visible: boolean) {
+    // overhead view: show crate labels; first person has the HUD target tag instead
+    for (const tag of this.labels) tag.setEnabled(visible);
     this.selfVisible = visible;
   }
 

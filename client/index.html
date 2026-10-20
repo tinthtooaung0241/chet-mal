@@ -4,144 +4,212 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kitchen Co-op</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap"
+    />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <main id="app">
-      <section id="stage" aria-label="Kitchen">
-        <canvas id="scene" aria-label="Kitchen view. Use the side panel and announcements to follow the game." tabindex="0"></canvas>
+      <canvas id="scene" aria-label="Kitchen view. Announcements describe what happens; press Q to hear what's around you." tabindex="0"></canvas>
 
-        <div id="top-bar">
-          <section aria-labelledby="orders-heading" id="orders-box">
-            <h2 id="orders-heading" class="visually-hidden">Orders</h2>
-            <ol id="orders"></ol>
-          </section>
-          <dl id="stats">
-            <div><dt>Level</dt><dd id="level-number" title="">1</dd></div>
-            <div><dt>Score</dt><dd id="score">0</dd></div>
-            <div><dt>Time</dt><dd id="time">3:00</dd></div>
-          </dl>
-        </div>
-
-        <div id="blindfold" aria-hidden="true" hidden>
-          <p>Blind chef — play by ear.<br /><kbd>Q</kbd> feel around · listen for sizzles, chimes and the phone</p>
-        </div>
-        <div id="crosshair" aria-hidden="true" hidden></div>
-        <p id="paused" hidden>Paused — press P to resume</p>
-        <p id="loading">Loading kitchen…</p>
-      </section>
-
-      <aside id="panel" aria-label="Game information">
-        <h1>Kitchen Co-op</h1>
-
-        <fieldset id="role-picker">
-          <legend>Your chef <span class="hint">(keys 0–3)</span></legend>
-          <label><input type="radio" name="role" value="full" /> All senses</label>
-          <label><input type="radio" name="role" value="blind" /> Blind</label>
-          <label><input type="radio" name="role" value="deaf" /> Deaf</label>
-          <label><input type="radio" name="role" value="mute" /> Mute</label>
-        </fieldset>
-        <p id="role-name" class="role-name"></p>
-        <p id="role-summary" class="hint"></p>
-
-        <section id="signals" aria-labelledby="signals-heading" hidden>
-          <h2 id="signals-heading">Signals</h2>
-          <div class="signal-buttons">
-            <button type="button" data-signal="ping">Ping (G)</button>
-            <button type="button" data-signal="bell">Bell (B)</button>
-            <button type="button" data-emote="Yes">Yes (T+1)</button>
-            <button type="button" data-emote="No">No (T+2)</button>
-            <button type="button" data-emote="Here">Here (T+3)</button>
-            <button type="button" data-emote="Hurry">Hurry (T+4)</button>
-            <button type="button" data-emote="Stop">Stop (T+5)</button>
-            <button type="button" data-emote="Done">Done (T+6)</button>
-          </div>
+      <!-- HUD: everything drawn over the kitchen -->
+      <div id="hud" hidden>
+        <section id="orders-box" aria-labelledby="orders-heading">
+          <h2 id="orders-heading" class="visually-hidden">Orders</h2>
+          <ol id="orders"></ol>
         </section>
 
-        <dl id="chef-status">
-          <div><dt>Holding</dt><dd id="held">nothing</dd></div>
-          <div><dt>Facing</dt><dd id="facing">nothing</dd></div>
-        </dl>
+        <div id="scoreboard">
+          <div id="level-chip" class="chip">
+            <span class="chip-label">Level</span>
+            <strong id="level-number">1</strong>
+            <span id="level-name" class="chip-sub"></span>
+          </div>
+          <div id="score-chip" class="chip">
+            <span class="coin" aria-hidden="true">🪙</span>
+            <strong id="score" aria-label="Score">0</strong>
+            <div id="star-meter" aria-hidden="true">
+              <div id="star-fill"></div>
+              <span class="star-mark" data-star="0">★</span>
+              <span class="star-mark" data-star="1">★</span>
+              <span class="star-mark" data-star="2">★</span>
+            </div>
+            <div id="score-pops" aria-hidden="true"></div>
+          </div>
+          <div id="clock" class="chip" role="timer" aria-label="Time left">
+            <div id="clock-ring"><span id="time">3:00</span></div>
+          </div>
+          <button id="menu-button" class="round-btn" type="button" aria-label="Menu (P)">☰</button>
+        </div>
 
-        <h2>Kitchen log</h2>
-        <ol id="log" aria-label="Recent kitchen events"></ol>
+        <div id="toasts" aria-hidden="true"></div>
 
-        <h2>Controls</h2>
-        <ul id="controls">
-          <li><kbd>W</kbd><kbd>S</kbd> / <kbd>↑</kbd><kbd>↓</kbd> — walk, <kbd>A</kbd><kbd>D</kbd> — step sideways</li>
-          <li>Mouse (click the view first) or <kbd>←</kbd><kbd>→</kbd> — look / turn</li>
-          <li><kbd>V</kbd> — switch first-person / overhead view</li>
-          <li><kbd>Space</kbd> / <kbd>E</kbd> — pick up, put down, plate, serve</li>
-          <li>Hold <kbd>F</kbd> — chop on a cutting board</li>
-          <li><kbd>Q</kbd> — describe what's around you</li>
-          <li><kbd>Z</kbd> — sniff what you hold (spoiled food smells off)</li>
-          <li><kbd>H</kbd> — take a teammate's hand to lead them</li>
-          <li><kbd>P</kbd> / <kbd>Esc</kbd> — pause</li>
-          <li><kbd>0</kbd>–<kbd>3</kbd> — switch chef (all senses, blind, deaf, mute)</li>
-        </ul>
+        <div id="target-tag" aria-hidden="true" hidden></div>
 
-        <h2>How to cook</h2>
-        <ul id="how-to">
-          <li>Take food from a crate, chop it on a board, cook it on a stove.</li>
-          <li>Orders arrive as printed tickets (seen) or phone calls (heard once).</li>
-          <li>Cooked food burns if you leave it. When the sizzle whistles, take it off for a <strong>perfect</strong> bonus.</li>
-          <li>Grab a plate, put the finished food on it, take it to the pass.</li>
-        </ul>
+        <div id="hand-bar">
+          <div id="hand-slot" aria-label="Holding">
+            <span id="held-icon" aria-hidden="true">✋</span>
+            <span id="held">nothing</span>
+          </div>
+          <div id="prompts" aria-hidden="true"></div>
+        </div>
 
-        <label id="speak-toggle"><input type="checkbox" id="speak" /> Read events aloud</label>
-        <p class="hint"><a href="/gallery.html">Asset gallery</a></p>
+        <div id="role-badge">
+          <div id="role-avatar" aria-hidden="true">👨‍🍳</div>
+          <div>
+            <p id="role-name" class="role-name"></p>
+            <ul id="senses" aria-label="Your senses"></ul>
+          </div>
+        </div>
 
-        <div id="announce-polite" class="visually-hidden" role="status" aria-live="polite"></div>
-        <div id="announce-urgent" class="visually-hidden" role="alert" aria-live="assertive"></div>
-      </aside>
+        <div id="signals" hidden>
+          <button type="button" class="round-btn signal" data-signal="ping" aria-label="Ping (G)">📍<kbd>G</kbd></button>
+          <button type="button" class="round-btn signal" data-signal="bell" aria-label="Bell (B)">🔔<kbd>B</kbd></button>
+          <button type="button" class="round-btn signal" id="wheel-button" aria-label="Signs wheel (hold T)">💬<kbd>T</kbd></button>
+        </div>
+
+        <div id="emote-wheel" hidden>
+          <button type="button" data-emote="Yes" style="--i: 0"><span>👍</span>Yes<kbd>1</kbd></button>
+          <button type="button" data-emote="No" style="--i: 1"><span>👎</span>No<kbd>2</kbd></button>
+          <button type="button" data-emote="Here" style="--i: 2"><span>👇</span>Here<kbd>3</kbd></button>
+          <button type="button" data-emote="Hurry" style="--i: 3"><span>⏩</span>Hurry<kbd>4</kbd></button>
+          <button type="button" data-emote="Stop" style="--i: 4"><span>✋</span>Stop<kbd>5</kbd></button>
+          <button type="button" data-emote="Done" style="--i: 5"><span>🙌</span>Done<kbd>6</kbd></button>
+          <p class="wheel-center">Signs</p>
+        </div>
+
+        <div id="crosshair" aria-hidden="true" hidden></div>
+        <p id="help-hint" class="corner-hint" aria-hidden="true">Press <kbd>?</kbd> for controls</p>
+      </div>
+
+      <div id="blindfold" aria-hidden="true" hidden>
+        <p>🦯 Blind chef — play by ear<br /><span><kbd>Q</kbd> feel around · listen for sizzles, chimes and the phone</span></p>
+      </div>
+
+      <p id="loading" class="big-banner"><span class="spinner" aria-hidden="true"></span>Warming up the kitchen…</p>
+
+      <!-- for screen readers: the full text of everything this chef perceives -->
+      <dl class="visually-hidden">
+        <dt>Facing</dt>
+        <dd id="facing">nothing</dd>
+      </dl>
+      <p id="role-summary" class="visually-hidden"></p>
+      <ol id="log" class="visually-hidden" aria-label="Recent kitchen events"></ol>
+      <div id="announce-polite" class="visually-hidden" role="status" aria-live="polite"></div>
+      <div id="announce-urgent" class="visually-hidden" role="alert" aria-live="assertive"></div>
     </main>
 
-    <dialog id="lobby" aria-labelledby="lobby-title">
-      <h2 id="lobby-title">Kitchen Co-op</h2>
-      <p class="hint">Three friends, one kitchen: a blind chef, a deaf chef and a chef who can't speak.</p>
+    <dialog id="pause-menu" class="card-dialog" aria-labelledby="pause-title">
+      <h2 id="pause-title">Paused</h2>
+      <p id="pause-note" class="muted"></p>
+      <div class="menu-actions">
+        <button id="resume" type="button" class="primary big">▶ Resume</button>
+        <button id="open-help" type="button">🎮 Controls</button>
+      </div>
+      <fieldset id="role-picker">
+        <legend>Practice as <span class="muted">(keys 0–3)</span></legend>
+        <label><input type="radio" name="role" value="full" /><span>🌟 All senses</span></label>
+        <label><input type="radio" name="role" value="blind" /><span>🦯 Blind</span></label>
+        <label><input type="radio" name="role" value="deaf" /><span>🧏 Deaf</span></label>
+        <label><input type="radio" name="role" value="mute" /><span>🤐 Mute</span></label>
+      </fieldset>
+      <label class="toggle"><input type="checkbox" id="speak" /><span>Read events aloud</span></label>
+      <div class="menu-actions">
+        <button id="quit" type="button" class="danger">Leave kitchen</button>
+        <a class="muted small" href="/gallery.html">Asset gallery</a>
+      </div>
+    </dialog>
+
+    <dialog id="help" class="card-dialog wide" aria-labelledby="help-title">
+      <h2 id="help-title">How to cook</h2>
+      <div class="help-grid">
+        <section>
+          <h3>Move</h3>
+          <p><kbd>W</kbd><kbd>S</kbd> walk · <kbd>A</kbd><kbd>D</kbd> step</p>
+          <p>Mouse or <kbd>←</kbd><kbd>→</kbd> look</p>
+          <p><kbd>V</kbd> first-person / overhead</p>
+        </section>
+        <section>
+          <h3>Cook</h3>
+          <p><kbd>Space</kbd> use: pick up, put down, plate, serve</p>
+          <p>Hold <kbd>F</kbd> chop on a board</p>
+          <p><kbd>Z</kbd> sniff for spoiled food</p>
+        </section>
+        <section>
+          <h3>Team</h3>
+          <p><kbd>Space</kbd> on a teammate: hand food over</p>
+          <p><kbd>H</kbd> take a teammate's hand</p>
+          <p><kbd>Q</kbd> describe what's around you</p>
+        </section>
+        <section>
+          <h3>Mute chef</h3>
+          <p><kbd>G</kbd> ping · <kbd>B</kbd> bell</p>
+          <p>Hold <kbd>T</kbd> + <kbd>1</kbd>–<kbd>6</kbd> signs</p>
+        </section>
+      </div>
+      <ol class="recipe-steps">
+        <li><span>🧺</span>Take food from a crate</li>
+        <li><span>🔪</span>Chop it on a board</li>
+        <li><span>🍳</span>Fry it, or 🍲 three veg in the pot</li>
+        <li><span>🍽️</span>Plate it (soup goes in a bowl)</li>
+        <li><span>🛎️</span>Serve at the pass</li>
+      </ol>
+      <p class="muted">Tickets are seen, phone orders are heard once. When a sizzle <em>whistles</em>, take it off for a perfect bonus.</p>
+      <button id="close-help" type="button" class="primary">Got it!</button>
+    </dialog>
+
+    <dialog id="lobby" class="title-screen" aria-labelledby="lobby-title">
+      <div class="title-logo" aria-hidden="true">👨‍🍳🍲👩‍🍳</div>
+      <h1 id="lobby-title">Kitchen Co-op</h1>
+      <p class="tagline">Three friends, one kitchen: a blind chef, a deaf chef and a chef who can't speak.</p>
 
       <label class="field">Level <select id="level-select"></select></label>
-      <p id="level-blurb" class="hint"></p>
+      <p id="level-blurb" class="muted"></p>
 
       <div id="lobby-start">
-        <label class="field">Your name <input id="player-name" maxlength="20" autocomplete="nickname" /></label>
+        <label class="field">Your name <input id="player-name" maxlength="20" autocomplete="nickname" placeholder="Chef" /></label>
         <div class="lobby-actions">
-          <button id="create-room" type="button" class="primary">Create a kitchen</button>
+          <button id="create-room" type="button" class="primary big">🍽️ Create a kitchen</button>
           <form id="join-form">
             <input id="room-code" maxlength="4" placeholder="CODE" aria-label="Kitchen code" autocapitalize="characters" />
             <button type="submit">Join</button>
           </form>
-          <button id="play-solo" type="button">Practice solo</button>
+          <button id="play-solo" type="button">🥄 Practice solo</button>
         </div>
       </div>
 
       <div id="lobby-room" hidden>
         <p class="room-line">
           Kitchen code <strong id="room-code-display"></strong>
-          <button id="copy-link" type="button">Copy invite link</button>
+          <button id="copy-link" type="button">🔗 Copy invite link</button>
         </p>
         <fieldset id="lobby-roles">
           <legend>Pick your chef</legend>
-          <button type="button" data-role="blind"><strong>Blind chef</strong><span>Plays by sound. Hears phone orders and the perfect sizzle.</span></button>
-          <button type="button" data-role="deaf"><strong>Deaf chef</strong><span>Plays by sight. Reads tickets, watches the stove.</span></button>
-          <button type="button" data-role="mute"><strong>Mute chef</strong><span>Sees and hears all. Talks with pings, signs and a bell.</span></button>
+          <button type="button" data-role="blind" class="chef-card blind"><span class="chef-emoji" aria-hidden="true">🦯</span><strong>Blind chef</strong><span>Plays by sound. Hears phone orders and the perfect sizzle.</span></button>
+          <button type="button" data-role="deaf" class="chef-card deaf"><span class="chef-emoji" aria-hidden="true">🧏</span><strong>Deaf chef</strong><span>Plays by sight. Reads tickets, watches the stove.</span></button>
+          <button type="button" data-role="mute" class="chef-card mute"><span class="chef-emoji" aria-hidden="true">🤐</span><strong>Mute chef</strong><span>Sees and hears all. Talks with pings, signs and a bell.</span></button>
         </fieldset>
-        <h3 class="hint">Chefs in this kitchen</h3>
+        <h3 class="muted small">Chefs in this kitchen</h3>
         <ul id="lobby-players"></ul>
-        <button id="start-game" type="button" class="primary">Start cooking</button>
-        <p id="lobby-status" class="hint" role="status"></p>
+        <button id="start-game" type="button" class="primary big">🔥 Start cooking</button>
+        <p id="lobby-status" class="muted" role="status"></p>
       </div>
 
       <p id="lobby-error" role="alert"></p>
     </dialog>
 
-    <dialog id="game-over" aria-labelledby="game-over-title">
+    <dialog id="game-over" class="card-dialog" aria-labelledby="game-over-title">
       <h2 id="game-over-title">Time's up!</h2>
       <p id="final-stars" class="stars" aria-hidden="true"></p>
       <p id="final-score"></p>
-      <div class="over-actions">
-        <button id="restart" type="button">Play again (R)</button>
-        <button id="next-level" type="button" class="primary">Next level (N)</button>
+      <dl id="final-stats"></dl>
+      <div class="menu-actions">
+        <button id="restart" type="button">↻ Play again <kbd>R</kbd></button>
+        <button id="next-level" type="button" class="primary">Next level <kbd>N</kbd></button>
       </div>
     </dialog>
 

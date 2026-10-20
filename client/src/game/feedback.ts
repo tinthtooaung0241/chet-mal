@@ -95,6 +95,37 @@ const ROUTINE = new Set<EventKind>(["pickup", "place", "trash"]);
 const THUNDER: Note[] = [n(55, 0, 1.6, "sawtooth", 0.35, 35), n(80, 0.05, 1.2, "square", 0.15, 40)];
 
 const LOG_SIZE = 6;
+const MAX_TOASTS = 3;
+
+const TOAST_ICONS: Partial<Record<EventKind | "info", string>> = {
+  pickup: "✋",
+  place: "📥",
+  handoff: "🤲",
+  hand: "🤝",
+  chopped: "🔪",
+  cooked: "🔥",
+  perfect: "✨",
+  smoking: "💨",
+  burnt: "☠️",
+  served: "✅",
+  wrong: "❌",
+  sick: "🤢",
+  sniff: "👃",
+  order: "🧾",
+  phone: "📞",
+  impatient: "⏰",
+  expired: "😠",
+  trash: "🗑️",
+  invalid: "⚠️",
+  ping: "📍",
+  emote: "💬",
+  bell: "🔔",
+  blackout: "🌑",
+  storm: "⛈️",
+  over: "🏁",
+  info: "👨‍🍳",
+};
+const GOOD = new Set<EventKind | "info">(["served", "cooked", "chopped", "perfect", "order", "phone"]);
 const SMOKE_BEEP_INTERVAL = 0.6;
 
 interface Sizzle {
@@ -165,13 +196,14 @@ export class Feedback {
     if (!isActor && ROUTINE.has(event.kind)) return;
     // the caller's voice: phone orders are spoken aloud to anyone who can hear
     if (event.kind === "phone" && hearsNow) this.speakAloud(event.text.replace(/^Phone order: /, ""), true);
-    this.say(event.text, event.urgent ?? false, event.kind !== "phone");
+    this.say(event.text, event.urgent ?? false, event.kind !== "phone", event.kind);
   }
 
-  /** Text message: log + screen reader (+ speech if enabled). */
-  say(text: string, urgent = false, speech = true) {
+  /** Text message: toast + screen reader (+ speech if enabled). */
+  say(text: string, urgent = false, speech = true, kind: EventKind | "info" = "info") {
     this.announce(text, urgent);
     this.addLog(text, urgent);
+    this.toast(text, urgent, kind);
     if (speech && this.speak) this.speakAloud(text, urgent);
   }
 
@@ -403,7 +435,30 @@ export class Feedback {
     while (this.log.children.length > LOG_SIZE) this.log.lastElementChild?.remove();
   }
 
+  /** A message card that pops in at the left and fades out. */
+  private toast(text: string, urgent: boolean, kind: EventKind | "info") {
+    const box = document.getElementById("toasts");
+    if (!box) return;
+    const el = document.createElement("div");
+    const tone = urgent ? "urgent" : GOOD.has(kind) ? "good" : kind === "invalid" ? "soft" : "";
+    el.className = `toast ${tone}`;
+    const icon = document.createElement("span");
+    icon.className = "icon";
+    icon.textContent = TOAST_ICONS[kind] ?? "💬";
+    const body = document.createElement("span");
+    body.className = "text";
+    body.textContent = text;
+    el.title = text;
+    el.append(icon, body);
+    box.prepend(el);
+    while (box.children.length > MAX_TOASTS) box.lastElementChild?.remove();
+    const life = urgent ? 6500 : kind === "invalid" ? 2500 : 4200;
+    setTimeout(() => el.classList.add("out"), life);
+    setTimeout(() => el.remove(), life + 450);
+  }
+
   clearLog() {
     this.log.replaceChildren();
+    document.getElementById("toasts")?.replaceChildren();
   }
 }
