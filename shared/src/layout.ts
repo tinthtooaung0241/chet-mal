@@ -1,4 +1,14 @@
-export type StationKind = "counter" | "crate" | "board" | "stove" | "plates" | "serve" | "trash" | "sink";
+export type StationKind =
+  | "counter"
+  | "crate"
+  | "board"
+  | "stove"
+  | "pot"
+  | "plates"
+  | "bowls"
+  | "serve"
+  | "trash"
+  | "sink";
 
 interface LegendEntry {
   kind: StationKind;
@@ -9,7 +19,9 @@ const LEGEND: Record<string, LegendEntry> = {
   C: { kind: "counter" },
   B: { kind: "board" },
   O: { kind: "stove" },
+  P: { kind: "pot" },
   D: { kind: "plates" },
+  U: { kind: "bowls" },
   W: { kind: "serve" },
   X: { kind: "trash" },
   K: { kind: "sink" },
@@ -18,20 +30,26 @@ const LEGEND: Record<string, LegendEntry> = {
   p: { kind: "crate", crate: "Potato" },
   s: { kind: "crate", crate: "Steak" },
   f: { kind: "crate", crate: "Fish" },
+  e: { kind: "crate", crate: "Egg" },
+  b: { kind: "crate", crate: "Bread" },
+  c: { kind: "crate", crate: "Cheese" },
+  n: { kind: "crate", crate: "Onion" },
+  m: { kind: "crate", crate: "Mushroom" },
+  k: { kind: "crate", crate: "Carrot" },
 };
 
 // Row 0 is the back wall (far from the camera). "." is walkable floor.
-// Restaurant layout: stoves under the hood, sinks under the window, produce racks on the
-// left wall, chopping on the right, and the pass (serving window) facing the dining terrace.
+// Restaurant layout: pans and the soup pot under the hood, a sink under the window, the pantry
+// along the back and left walls, chopping on the right, and the pass facing the dining terrace.
 // Must match the room built in Blender (assets/kitchen/environment/Kitchen_Room.glb).
 export const KITCHEN = [
-  "CCOOOCKKC",
-  "t.......C",
-  "l.......B",
-  "p.......B",
-  "s.......C",
-  "f.......D",
-  "CXCWWWCCC",
+  "ebOOOPKCcnm",
+  "t.........C",
+  "l.........B",
+  "p.........B",
+  "s.........B",
+  "f.........C",
+  "kXCWWWCUDCC",
 ];
 
 export function legend(char: string): LegendEntry | null {

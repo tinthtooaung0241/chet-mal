@@ -64,7 +64,9 @@ export class Hud {
     this.time.classList.toggle("urgent", game.timeLeft < 30);
     this.paused.hidden = !isPaused;
     const { sees } = currentSenses(game, me);
-    const mouldy = sees && me.held && (me.held.type === "food" ? me.held.spoiled : me.held.contents.some((f) => f.spoiled));
+    const held = me.held;
+    const mouldy =
+      sees && held && (held.type === "food" ? held.spoiled : held.type === "bowl" ? held.spoiled : held.contents.some((f) => f.spoiled));
     this.setText(this.held, me.held ? `${describeItem(me.held)}${mouldy ? " (mouldy!)" : ""}` : "nothing");
     const target = targetStation(game, me);
     const mate = target ? undefined : chefInFront(game, me);

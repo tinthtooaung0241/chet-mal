@@ -122,17 +122,20 @@ Mid-shift chaos events flip who leads, so each chef gets a hero moment:
 
 ---
 
-## 7. Level structure (first five levels)
+## 7. Level structure (six levels)
 
 Each level teaches one mechanic (defined in `shared/src/rules.ts` → `LEVELS`):
 
-1. **Opening day:** salad and grilled fish, tickets only. Learn hand-offs and basic roles.
+1. **Opening day:** salad, grilled fish, cheese toastie; tickets only. Learn hand-offs and basic roles.
 2. **The grill:** steak and fish dishes. The perfect sizzle makes the blind chef the grill master.
-3. **Phone lines:** phone orders appear; the team learns to relay.
-4. **Bad batch:** 25% of produce is spoiled. Sighted chefs see mould; anyone can sniff (Z).
-5. **Storm night:** a power cut at 0:50 (nobody can see, except the blind chef plays as usual) and a storm at 2:05 (nobody can hear, voices ducked; the deaf chef plays as usual). The role-reversal finale.
+3. **Soup's on:** the soup pot (three chopped vegetables, boil, ladle into a bowl), and phone orders start.
+4. **Breakfast rush:** fried egg + toast + mushrooms on one plate, plus soups and fish & chips.
+5. **Bad batch:** 25% of produce is spoiled. Sighted chefs see mould; anyone can sniff (Z).
+6. **Storm night:** a power cut at 0:55 (nobody can see, except the blind chef plays as usual) and a storm at 2:15 (nobody can hear, voices ducked; the deaf chef plays as usual). The role-reversal finale.
 
-Recipes: salad, grilled fish, steak & fries, fish & chips, steak salad.
+**Recipes (11):** salad, grilled fish, cheese toastie, steak & fries, steak & onions, steak salad, fish & chips, full breakfast, tomato soup, vegetable soup, mushroom soup.
+
+**Equipment:** 11 ingredient crates (tomato, lettuce, potato, steak, fish, egg, bread, cheese, onion, mushroom, carrot), three cutting boards, three pans, the soup pot (boils dry and burns if left; scrape it out empty-handed), plate rack, bowl rack, the pass, a bin, and a sink.
 Scoring: points per dish plus a speed tip, a **Perfect** bonus (+10 per perfectly timed item, sound-only cue), −10 for an expired order, −15 for serving spoiled food. 1–3 stars per level; best stars are saved in the browser.
 
 ---

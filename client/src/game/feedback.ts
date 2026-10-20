@@ -6,10 +6,12 @@
 import {
   EMOTES,
   FOOD_RULES,
+  SOUP_TIME,
   ROLES,
   currentSenses,
   perceivesEvent,
   stationName,
+  potPhase,
   stovePhase,
   targetStation,
   type Chef,
@@ -81,6 +83,8 @@ const STATION_SIGNATURES: Record<StationKind, Note[]> = {
   board: [n(160, 0, 0.06, "triangle", 0.25), n(160, 0.1, 0.06, "triangle", 0.25)],
   stove: [n(110, 0, 0.18, "sawtooth", 0.08)],
   plates: [n(2400, 0, 0.05, "sine", 0.12), n(2900, 0.06, 0.06, "sine", 0.1)],
+  bowls: [n(1900, 0, 0.06, "sine", 0.12), n(2300, 0.07, 0.07, "sine", 0.1)],
+  pot: [n(140, 0, 0.12, "sine", 0.18), n(210, 0.1, 0.12, "sine", 0.14), n(170, 0.2, 0.12, "sine", 0.12)],
   serve: [n(1568, 0, 0.25, "sine", 0.15)],
   trash: [n(100, 0, 0.12, "square", 0.12)],
   sink: [n(900, 0, 0.12, "sine", 0.12, 500)],
@@ -182,7 +186,9 @@ export class Feedback {
 
     this.smokeTimer -= dt;
     if (this.smokeTimer <= 0) {
-      const smoking = game.stations.find((s) => s.kind === "stove" && s.item?.type === "food" && stovePhase(s.item) === "smoking");
+      const smoking = game.stations.find(
+        (s) => (s.kind === "stove" && s.item?.type === "food" && stovePhase(s.item) === "smoking") || (s.pot && potPhase(s.pot) === "smoking"),
+      );
       if (smoking) {
         this.play(SOUNDS.smoking!, smoking.x, smoking.z, me);
         this.smokeTimer = SMOKE_BEEP_INTERVAL;
@@ -271,9 +277,9 @@ export class Feedback {
     }
     const active = new Set<number>();
     for (const s of game.stations) {
-      if (s.kind !== "stove" || s.item?.type !== "food") continue;
-      const food = s.item;
-      const phase = stovePhase(food);
+      const food = s.kind === "stove" && s.item?.type === "food" ? s.item : null;
+      const pot = s.pot && (s.pot.state === "cooking" || s.pot.state === "done") ? s.pot : null;
+      const phase = food ? stovePhase(food) : pot ? potPhase(pot) : null;
       if (!phase) continue;
       active.add(s.id);
       let sizzle = this.sizzles.get(s.id);
@@ -292,15 +298,24 @@ export class Feedback {
         sizzle = { source, filter, gain, whistle, whistleGain, panner };
         this.sizzles.set(s.id, sizzle);
       }
-      const rule = FOOD_RULES[food.kind];
-      const progress = Math.min(1, food.cook / (rule.cookTime ?? 6));
-      const settings: Record<string, [number, number, number]> = {
-        // [band frequency, noise gain, whistle gain]
-        cooking: [700 + 900 * progress, 0.05 + 0.05 * progress, 0],
-        cooked: [1700, 0.1, 0],
-        perfect: [2300, 0.12, 0.07 * (0.6 + 0.4 * Math.sin(this.time * 18))],
-        smoking: [800, 0.18, 0],
-      };
+      const progress = Math.min(1, food ? food.cook / (FOOD_RULES[food.kind].cookTime ?? 6) : pot!.cook / SOUP_TIME);
+      const whistleNow = 0.07 * (0.6 + 0.4 * Math.sin(this.time * 18));
+      // a pot bubbles (low, pulsing); a pan sizzles (high, hissing)
+      const bubble = 0.55 + 0.45 * Math.abs(Math.sin(this.time * 7 + s.id));
+      const settings: Record<string, [number, number, number]> = food
+        ? {
+            // [band frequency, noise gain, whistle gain]
+            cooking: [700 + 900 * progress, 0.05 + 0.05 * progress, 0],
+            cooked: [1700, 0.1, 0],
+            perfect: [2300, 0.12, whistleNow],
+            smoking: [800, 0.18, 0],
+          }
+        : {
+            cooking: [260 + 260 * progress, (0.06 + 0.06 * progress) * bubble, 0],
+            cooked: [560, 0.12 * bubble, 0],
+            perfect: [760, 0.13 * bubble, whistleNow],
+            smoking: [420, 0.2, 0],
+          };
       const [freq, level, whistle] = settings[phase];
       const t = ctx.currentTime;
       sizzle.filter.frequency.setTargetAtTime(freq, t, 0.08);

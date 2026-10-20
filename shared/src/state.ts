@@ -18,6 +18,10 @@ import {
   PERFECT_BONUS,
   PERFECT_DELAY,
   PERFECT_WINDOW,
+  SOUP_BURN,
+  SOUP_INGREDIENTS,
+  SOUP_SIZE,
+  SOUP_TIME,
   PING_TIME,
   REACH,
   TILE,
@@ -29,6 +33,7 @@ import {
   type OrderChannel,
   type Recipe,
   recipeById,
+  soupName,
 } from "./rules";
 
 export interface Food {
@@ -56,7 +61,26 @@ export interface Plate {
   contents: Food[];
 }
 
-export type Item = Food | Plate;
+/** A soup bowl: empty, or holding the kinds of vegetables that went into the soup. */
+export interface Bowl {
+  type: "bowl";
+  id: number;
+  soup: string[] | null;
+  spoiled: boolean;
+  perfect: boolean;
+}
+
+export type Item = Food | Plate | Bowl;
+
+/** The soup pot never leaves its station; chopped vegetables go in, soup comes out by the bowl. */
+export interface Pot {
+  contents: Food[];
+  /** seconds boiling since it filled up */
+  cook: number;
+  state: "filling" | "cooking" | "done" | "burnt";
+  warned: boolean;
+  perfectCued: boolean;
+}
 
 export interface Station {
   id: number;
@@ -69,6 +93,8 @@ export interface Station {
   /** yaw (radians) the station's front faces */
   facing: number;
   item: Item | null;
+  /** only on soup pot stations */
+  pot?: Pot;
 }
 
 export interface Chef {
@@ -338,6 +364,7 @@ export function createGame(levelNumber = 1): Game {
     }
   }
   rebuildGrid(g);
+  for (const s of g.stations) if (s.kind === "pot") s.pot = emptyPot();
 
   // Turn every station to face the walkable floor next to it.
   const isFloor = (row: number, col: number) => inGrid(g, row, col) && KITCHEN[row][col] === ".";
@@ -384,6 +411,7 @@ export function removeChef(g: Game, id: string) {
 // --- descriptions (shared by announcements and the HUD) ---------------------------
 
 export function describeItem(item: Item): string {
+  if (item.type === "bowl") return item.soup ? `bowl of ${soupName(item.soup)}` : "empty bowl";
   if (item.type === "food") return describeFood(item.kind, item.state);
   if (item.contents.length === 0) return "empty plate";
   return `plate of ${item.contents.map((f) => describeFood(f.kind, f.state)).join(" and ")}`;
@@ -397,6 +425,10 @@ export function stationName(s: Station): string {
       return "cutting board";
     case "plates":
       return "plate rack";
+    case "bowls":
+      return "bowl rack";
+    case "pot":
+      return "soup pot";
     case "serve":
       return "pass";
     case "trash":
@@ -412,8 +444,9 @@ export function describeSurroundings(g: Game, chef: Chef): string {
   const held = chef.held ? `You are holding ${describeItem(chef.held)}.` : "Your hands are empty.";
   const target = targetStation(g, chef);
   const mate = target ? undefined : chefInFront(g, chef);
+  const contents = target?.pot ? ` with ${describePot(target.pot)}` : target?.item ? ` with ${describeItem(target.item)}` : "";
   const facing = target
-    ? `In front of you: ${stationName(target)}${target.item ? ` with ${describeItem(target.item)}` : ""}.`
+    ? `In front of you: ${stationName(target)}${contents}.`
     : mate
       ? `In front of you: ${mate.name}.`
       : "Nothing is in front of you.";
@@ -616,6 +649,27 @@ export function stepWorld(g: Game, dt: number) {
     }
   }
 
+  // soup pots: boil once full, then a perfect window (heard only), then they boil dry
+  for (const s of g.stations) {
+    const pot = s.pot;
+    if (!pot || (pot.state !== "cooking" && pot.state !== "done")) continue;
+    pot.cook += dt;
+    const name = soupName(pot.contents.map((f) => f.kind));
+    if (pot.state === "cooking" && pot.cook >= SOUP_TIME) {
+      pot.state = "done";
+      emit(g, "cooked", `The ${name} is ready. Ladle it into a bowl!`, s, SEEN_HEARD);
+    } else if (pot.state === "done" && !pot.perfectCued && pot.cook >= SOUP_TIME + PERFECT_DELAY) {
+      pot.perfectCued = true;
+      emit(g, "perfect", `The ${name} bubbles just right. Ladle it now for a perfect bowl!`, s, HEARD);
+    } else if (pot.state === "done" && !pot.warned && pot.cook >= SOUP_TIME + SOUP_BURN * 0.5) {
+      pot.warned = true;
+      emit(g, "smoking", `The ${name} is boiling dry!`, s, SEEN_HEARD, undefined, true);
+    } else if (pot.state === "done" && pot.cook >= SOUP_TIME + SOUP_BURN) {
+      pot.state = "burnt";
+      emit(g, "burnt", `The ${name} burnt to the bottom of the pot.`, s, SEEN_HEARD, undefined, true);
+    }
+  }
+
   // orders (sounds and messages come from the pass)
   const pass = g.stations.find((s) => s.kind === "serve") ?? { x: 0, z: 0 };
   for (const order of [...g.orders]) {
@@ -726,41 +780,137 @@ function addToPlate(g: Game, chef: Chef, plate: Plate, food: Food, at: Station):
   return true;
 }
 
-function sameDish(recipe: Recipe, contents: Food[]): boolean {
-  if (recipe.items.length !== contents.length) return false;
+function sameDish(recipe: Recipe, dish: Plate | Bowl): boolean {
+  if (dish.type === "bowl") {
+    if (recipe.vessel !== "bowl" || !dish.soup) return false;
+    return recipe.items.map((i) => i.kind).sort().join() === [...dish.soup].sort().join();
+  }
+  const contents = dish.contents;
+  if (recipe.vessel !== "plate" || recipe.items.length !== contents.length) return false;
   const want = recipe.items.map((i) => `${i.kind}:${i.state}`).sort();
   const have = contents.map((f) => `${f.kind}:${f.state}`).sort();
   return want.every((k, i) => k === have[i]);
 }
 
-function serve(g: Game, chef: Chef, plate: Plate, at: Station) {
+function serve(g: Game, chef: Chef, dish: Plate | Bowl, at: Station) {
   chef.held = null;
   const order = g.orders
-    .filter((o) => sameDish(o.recipe, plate.contents))
+    .filter((o) => sameDish(o.recipe, dish))
     .sort((a, b) => a.timeLeft - b.timeLeft)[0];
   if (!order) {
-    emit(g, "wrong", `Nobody ordered ${describeItem(plate)}. The dish was wasted.`, at, EVERYONE, [chef.id], true);
+    emit(g, "wrong", `Nobody ordered ${describeItem(dish)}. The dish was wasted.`, at, EVERYONE, [chef.id], true);
     return;
   }
-  const bad = plate.contents.filter((f) => f.spoiled);
+  const bad = dish.type === "bowl" ? (dish.spoiled ? dish.soup! : []) : dish.contents.filter((f) => f.spoiled).map((f) => f.kind);
   if (bad.length) {
     // the customer eats it and gets sick: no points, a penalty, and they leave
     g.orders.splice(g.orders.indexOf(order), 1);
     g.score = Math.max(0, g.score - SICK_PENALTY);
-    const what = bad.map((f) => f.kind.toLowerCase()).join(" and ");
+    const what = [...new Set(bad)].map((k) => k.toLowerCase()).join(" and ");
     emit(g, "sick", `A customer got sick from spoiled ${what}! Minus ${SICK_PENALTY} points.`, at, EVERYONE, [chef.id], true);
     return;
   }
-  const perfect = plate.contents.filter((f) => f.perfect);
+  const perfect = dish.type === "bowl" ? (dish.perfect ? ["soup"] : []) : dish.contents.filter((f) => f.perfect).map((f) => f.kind.toLowerCase());
   const bonus = perfect.length * PERFECT_BONUS;
   const points = order.recipe.reward + Math.ceil((order.timeLeft / order.recipe.time) * 10) + bonus;
   g.score += points;
   g.served += 1;
   g.perfects += perfect.length;
   g.orders.splice(g.orders.indexOf(order), 1);
-  const praise = perfect.length ? ` Perfect ${perfect.map((f) => f.kind.toLowerCase()).join(" and ")}!` : "";
+  const praise = perfect.length ? ` Perfect ${perfect.join(" and ")}!` : "";
   emit(g, "served", `Served ${order.recipe.name}!${praise} Plus ${points} points.`, at, EVERYONE, [chef.id]);
   if (g.orders.length === 0) g.nextOrderIn = Math.min(g.nextOrderIn, 2);
+}
+
+// --- the soup pot ---------------------------------------------------------------------
+
+function emptyPot(): Pot {
+  return { contents: [], cook: 0, state: "filling", warned: false, perfectCued: false };
+}
+
+/** Where a pot is in its boil, using the same phases as a pan so audio and bars can share them. */
+export function potPhase(pot: Pot): StovePhase | null {
+  if (pot.state === "cooking") return "cooking";
+  if (pot.state !== "done") return null;
+  const over = pot.cook - SOUP_TIME;
+  if (over >= PERFECT_DELAY && over < PERFECT_DELAY + PERFECT_WINDOW) return "perfect";
+  return pot.warned ? "smoking" : "cooked";
+}
+
+export function describePot(pot: Pot): string {
+  if (pot.state === "burnt") return "burnt soup";
+  if (!pot.contents.length) return "nothing yet";
+  const counts = new Map<string, number>();
+  for (const f of pot.contents) counts.set(f.kind, (counts.get(f.kind) ?? 0) + 1);
+  const list = [...counts].map(([k, n]) => `${n > 1 ? `${n} ` : ""}chopped ${k.toLowerCase()}`).join(", ");
+  if (pot.state === "filling") return `${list} (${pot.contents.length} of ${SOUP_SIZE})`;
+  return `${soupName(pot.contents.map((f) => f.kind))}${pot.state === "done" ? ", ready" : ", boiling"}`;
+}
+
+function usePot(g: Game, chef: Chef, st: Station) {
+  const me = [chef.id];
+  const pot = st.pot!;
+  const held = chef.held;
+  if (pot.state === "burnt") {
+    if (held) emit(g, "invalid", "The soup burnt. Empty-handed, scrape it out first.", st, FELT, me);
+    else {
+      st.pot = emptyPot();
+      emit(g, "trash", "You scrape the burnt soup out of the pot.", st, EVERYONE, me);
+    }
+    return;
+  }
+  if (!held) {
+    emit(g, "invalid", `The soup pot has ${describePot(pot)}.`, st, FELT, me);
+    return;
+  }
+  if (held.type === "food") {
+    if (pot.state !== "filling") {
+      emit(g, "invalid", "The pot is already full.", st, FELT, me);
+      return;
+    }
+    if (!SOUP_INGREDIENTS.includes(held.kind)) {
+      emit(g, "invalid", `${held.kind} doesn't go in soup.`, st, FELT, me);
+      return;
+    }
+    if (held.state !== "chopped") {
+      emit(g, "invalid", held.state === "raw" ? `Chop the ${held.kind.toLowerCase()} before it goes in the pot.` : "Only chopped vegetables go in the soup.", st, FELT, me);
+      return;
+    }
+    pot.contents.push(held);
+    chef.held = null;
+    if (pot.contents.length < SOUP_SIZE) {
+      emit(g, "place", `Added ${describeItem(held)} to the pot (${pot.contents.length} of ${SOUP_SIZE}).`, st, EVERYONE, me);
+    } else {
+      pot.state = "cooking";
+      pot.cook = 0;
+      emit(g, "place", `Added ${describeItem(held)}. The pot is full and starts to boil.`, st, EVERYONE, me);
+    }
+    return;
+  }
+  if (held.type === "plate") {
+    emit(g, "invalid", "Soup goes in a bowl, not on a plate.", st, FELT, me);
+    return;
+  }
+  if (held.soup) {
+    emit(g, "invalid", "That bowl is already full.", st, FELT, me);
+    return;
+  }
+  if (pot.state !== "done") {
+    emit(
+      g,
+      "invalid",
+      pot.state === "cooking" ? "The soup is still boiling." : `The pot needs ${SOUP_SIZE - pot.contents.length} more chopped vegetables.`,
+      st,
+      FELT,
+      me,
+    );
+    return;
+  }
+  held.soup = pot.contents.map((f) => f.kind);
+  held.spoiled = pot.contents.some((f) => f.spoiled);
+  held.perfect = potPhase(pot) === "perfect";
+  st.pot = emptyPot();
+  emit(g, "pickup", `Ladled ${soupName(held.soup)} into the bowl.`, st, EVERYONE, me);
 }
 
 /** Pass what you hold to the chef in front of you. */
@@ -816,6 +966,20 @@ export function interact(g: Game, chef: Chef) {
         emit(g, "invalid", "Your hands are full.", st, FELT, me);
       }
       return;
+    case "bowls":
+      if (!held) {
+        chef.held = { type: "bowl", id: g.nextId++, soup: null, spoiled: false, perfect: false };
+        emit(g, "pickup", "Took a clean bowl.", st, EVERYONE, me);
+      } else if (held.type === "bowl" && !held.soup) {
+        chef.held = null;
+        emit(g, "place", "Put the bowl back.", st, EVERYONE, me);
+      } else {
+        emit(g, "invalid", "Your hands are full.", st, FELT, me);
+      }
+      return;
+    case "pot":
+      usePot(g, chef, st);
+      return;
     case "trash":
       if (!held) emit(g, "invalid", "You have nothing to throw away.", st, FELT, me);
       else if (held.type === "plate") {
@@ -824,15 +988,23 @@ export function interact(g: Game, chef: Chef) {
           held.contents = [];
           emit(g, "trash", "Emptied the plate into the bin.", st, EVERYONE, me);
         }
+      } else if (held.type === "bowl") {
+        if (!held.soup) emit(g, "invalid", "The bowl is already empty.", st, FELT, me);
+        else {
+          held.soup = null;
+          held.spoiled = held.perfect = false;
+          emit(g, "trash", "Poured the soup away.", st, EVERYONE, me);
+        }
       } else {
         chef.held = null;
         emit(g, "trash", `Threw away the ${describeItem(held)}.`, st, EVERYONE, me);
       }
       return;
     case "serve":
-      if (!held) emit(g, "invalid", "Bring a plated dish here to serve it.", st, FELT, me);
+      if (!held) emit(g, "invalid", "Bring a plated dish or a bowl of soup here to serve it.", st, FELT, me);
       else if (held.type === "food") emit(g, "invalid", "Put it on a plate first.", st, FELT, me);
-      else if (held.contents.length === 0) emit(g, "invalid", "The plate is empty.", st, FELT, me);
+      else if (held.type === "plate" && held.contents.length === 0) emit(g, "invalid", "The plate is empty.", st, FELT, me);
+      else if (held.type === "bowl" && !held.soup) emit(g, "invalid", "The bowl is empty. Fill it at the soup pot.", st, FELT, me);
       else serve(g, chef, held, st);
       return;
     case "sink":
@@ -856,11 +1028,11 @@ export function interact(g: Game, chef: Chef) {
 
   if (!onTop) {
     if (st.kind === "stove" && (held.type !== "food" || !canCook(held))) {
-      emit(g, "invalid", held.type === "food" ? cookHint(held) : "Plates don't go on the stove.", st, FELT, me);
+      emit(g, "invalid", held.type === "food" ? cookHint(held) : `${held.type === "plate" ? "Plates" : "Bowls"} don't go on the stove.`, st, FELT, me);
       return;
     }
-    if (st.kind === "board" && held.type === "plate") {
-      emit(g, "invalid", "Plates go on a counter, not the cutting board.", st, FELT, me);
+    if (st.kind === "board" && held.type !== "food") {
+      emit(g, "invalid", `${held.type === "plate" ? "Plates" : "Bowls"} go on a counter, not the cutting board.`, st, FELT, me);
       return;
     }
     if (st.kind === "stove" && held.type === "food") held.perfect = false;
@@ -878,6 +1050,10 @@ export function interact(g: Game, chef: Chef) {
   }
   if (held.type === "food" && onTop.type === "plate") {
     if (addToPlate(g, chef, onTop, held, st)) chef.held = null;
+    return;
+  }
+  if ((held.type === "bowl" && onTop.type === "food") || (held.type === "food" && onTop.type === "bowl")) {
+    emit(g, "invalid", "Food goes on a plate; bowls are for soup from the pot.", st, FELT, me);
     return;
   }
   emit(g, "invalid", `The ${here} already has ${describeItem(onTop)}.`, st, FELT, me);
@@ -898,7 +1074,7 @@ export function chopHint(g: Game, chef: Chef) {
   }
   const food = st.item;
   if (!food) emit(g, "invalid", "Put an ingredient on the board first.", st, FELT, me);
-  else if (food.type === "plate") emit(g, "invalid", "You can't chop a plate.", st, FELT, me);
+  else if (food.type !== "food") emit(g, "invalid", "You can't chop that.", st, FELT, me);
   else if (food.state !== "raw") emit(g, "invalid", `The ${describeItem(food)} is already done.`, st, FELT, me);
   else if (!FOOD_RULES[food.kind]?.chop) emit(g, "invalid", `${food.kind} doesn't need chopping.`, st, FELT, me);
 }
@@ -937,11 +1113,13 @@ export function sniff(g: Game, chef: Chef) {
     emit(g, "sniff", "You sniff the air. Nothing to smell up close.", chef, FELT, me);
     return;
   }
-  const foods = item.type === "plate" ? item.contents : [item];
-  const bad = foods.filter((f) => f.spoiled);
-  const text = bad.length
-    ? `Ugh! The ${bad.map((f) => f.kind.toLowerCase()).join(" and ")} smells off. Bin it!`
-    : `The ${describeItem(item)} smells fresh.`;
+  const bad =
+    item.type === "bowl"
+      ? item.spoiled
+        ? ["soup"]
+        : []
+      : (item.type === "plate" ? item.contents : [item]).filter((f) => f.spoiled).map((f) => f.kind.toLowerCase());
+  const text = bad.length ? `Ugh! The ${bad.join(" and ")} smells off. Bin it!` : `The ${describeItem(item)} smells fresh.`;
   emit(g, "sniff", text, chef, FELT, me, bad.length > 0);
 }
 

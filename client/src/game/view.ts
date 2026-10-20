@@ -15,6 +15,9 @@ import type { AssetLibrary } from "../assets";
 import { ChefModel } from "./chef";
 import {
   FOOD_RULES,
+  SOUP_BURN,
+  SOUP_SIZE,
+  SOUP_TIME,
   targetStation,
   type Chef,
   type FoodState,
@@ -26,6 +29,24 @@ import {
 
 const ITEM_SCALE = 2; // food and tools are real-size; scale up so they read at game distance
 const PLATE_SCALE = 1.8;
+const BOWL_SCALE = 1.8;
+const POT_SCALE = 1.7;
+const STOVE_TOP = 0.926; // top of the cast-iron grates
+
+// Soup takes the colour of what went in.
+const SOUP_COLORS: Record<string, string> = {
+  Tomato: "#c8442c",
+  Carrot: "#e07b2a",
+  Onion: "#d6bd86",
+  Potato: "#e6d6a2",
+  Mushroom: "#8a6a4a",
+};
+
+function soupColor(kinds: string[]): Color3 {
+  const c = new Color3(0, 0, 0);
+  for (const k of kinds) c.addInPlace(Color3.FromHexString(SOUP_COLORS[k] ?? "#c9a36b"));
+  return kinds.length ? c.scale(1 / kinds.length).toLinearSpace() : new Color3(0.6, 0.7, 0.8);
+}
 const COUNTER_TOP = 0.9;
 
 const MODEL_SUFFIXES: Record<FoodState, string[]> = {
@@ -147,6 +168,7 @@ export class GameView {
   private readonly bars = new Map<number, ProgressBar>();
   private readonly items = new Map<number, { node: TransformNode; key: string }>();
   private readonly chefs = new Map<string, ChefEntry>();
+  private readonly potSoup = new Map<number, { mesh: Mesh; mat: StandardMaterial }>();
   /** a chef put a foot down (for positional footstep sounds) */
   onFootstep: ((chefId: string, x: number, z: number) => void) | null = null;
   private readonly pings = new Map<number, { root: TransformNode; ring: Mesh; glow: StandardMaterial }>();
@@ -195,6 +217,7 @@ export class GameView {
       live.add(chef.id);
       const isMe = chef.id === me.id;
       const entry = this.chefEntry(chef, isMe);
+      const target = game.phase === "playing" ? targetStation(game, chef) : null;
       entry.model.update(
         {
           x: chef.x,
@@ -206,6 +229,8 @@ export class GameView {
           gesture: chef.gesture,
           guided: !!chef.guidedBy,
           guiding: game.chefs.some((c) => c.guidedBy === chef.id),
+          stirring: !!target?.pot && (target.pot.state === "cooking" || target.pot.state === "done") && !chef.held,
+          look: target ? { x: target.x, z: target.z } : null,
         },
         dt,
         this.time,
@@ -249,11 +274,38 @@ export class GameView {
       case "counter":
         this.spawnInto(root, "Counter");
         break;
-      case "board":
+      case "board": {
         this.spawnInto(root, "Counter");
         this.spawnInto(root, "CuttingBoard", COUNTER_TOP, ITEM_SCALE);
+        // a knife resting by the board (the chopping chef holds their own)
+        const knife = this.spawnInto(root, "Knife", COUNTER_TOP + 0.002, 1.6);
+        knife.position.set(0.3, COUNTER_TOP + 0.002, -0.22);
+        knife.rotation.y = 1.4;
         surface = COUNTER_TOP + 0.021 * ITEM_SCALE;
         this.bars.set(s.id, new ProgressBar(this.scene, s.x, 1.3, s.z));
+        break;
+      }
+      case "pot": {
+        this.spawnInto(root, "Stove");
+        this.spawnInto(root, "Pot", STOVE_TOP, POT_SCALE);
+        const ladle = this.spawnInto(root, "Ladle", STOVE_TOP + 0.12, 1.5);
+        ladle.position.set(0.05, STOVE_TOP + 0.13, 0.04);
+        ladle.rotation.set(0, 0.6, -0.9);
+        // the soup surface rises as vegetables go in, and takes their colour
+        const surfaceMesh = MeshBuilder.CreateDisc(`potSoup-${s.id}`, { radius: 0.15, tessellation: 20 }, this.scene);
+        surfaceMesh.rotation.x = Math.PI / 2;
+        surfaceMesh.parent = root;
+        const mat = new StandardMaterial(`potSoupMat-${s.id}`, this.scene);
+        mat.specularColor = new Color3(0.3, 0.3, 0.3);
+        surfaceMesh.material = mat;
+        surfaceMesh.isPickable = false;
+        this.potSoup.set(s.id, { mesh: surfaceMesh, mat });
+        this.bars.set(s.id, new ProgressBar(this.scene, s.x, 1.45, s.z));
+        break;
+      }
+      case "bowls":
+        this.spawnInto(root, "Counter");
+        for (let i = 0; i < 3; i++) this.spawnInto(root, "Bowl", COUNTER_TOP + i * 0.045, BOWL_SCALE);
         break;
       case "stove": {
         this.spawnInto(root, "Stove");
@@ -355,6 +407,23 @@ export class GameView {
 
   private makeItem(item: Item): TransformNode {
     if (item.type === "plate") return this.lib.spawn("Plate");
+    if (item.type === "bowl") {
+      const node = this.lib.spawn("Bowl");
+      for (const mesh of meshesOf(node)) this.shadows.addShadowCaster(mesh);
+      if (item.soup) {
+        // the soup surface, just under the rim (bowl model is 0.07 m tall before scaling)
+        const surface = MeshBuilder.CreateDisc("soup", { radius: 0.07, tessellation: 16 }, this.scene);
+        surface.rotation.x = Math.PI / 2;
+        surface.position.y = 0.055;
+        const mat = new StandardMaterial("soupMat", this.scene);
+        mat.diffuseColor = soupColor(item.soup);
+        mat.specularColor = new Color3(0.25, 0.25, 0.25);
+        if (item.spoiled) mat.diffuseColor = Color3.Lerp(mat.diffuseColor, new Color3(0.3, 0.45, 0.1), 0.5);
+        surface.material = mat;
+        surface.parent = node;
+      }
+      return node;
+    }
     const { name, burnt } = this.foodModel(item.kind, item.state);
     const node = this.lib.spawn(name);
     for (const mesh of meshesOf(node)) {
@@ -375,7 +444,12 @@ export class GameView {
 
   private placeItem(item: Item, x: number, y: number, z: number, yaw: number, scale: number, seen: Set<number>) {
     seen.add(item.id);
-    const key = item.type === "plate" ? "plate" : `${item.kind}:${item.state}:${item.spoiled ? "mould" : ""}`;
+    const key =
+      item.type === "plate"
+        ? "plate"
+        : item.type === "bowl"
+          ? `bowl:${item.soup?.join() ?? ""}:${item.spoiled}`
+          : `${item.kind}:${item.state}:${item.spoiled ? "mould" : ""}`;
     let entry = this.items.get(item.id);
     if (!entry || entry.key !== key) {
       entry?.node.dispose();
@@ -384,7 +458,7 @@ export class GameView {
     }
     entry.node.position.set(x, y, z);
     entry.node.rotation.y = yaw;
-    entry.node.scaling.setAll(item.type === "plate" ? PLATE_SCALE : scale);
+    entry.node.scaling.setAll(item.type === "plate" ? PLATE_SCALE : item.type === "bowl" ? BOWL_SCALE : scale);
     if (item.type === "plate") {
       const slots = PLATE_SLOTS[item.contents.length - 1] ?? [];
       item.contents.forEach((food, i) => {
@@ -424,14 +498,17 @@ export class GameView {
         this.placeItem(chef.held, hand.x, hand.y, hand.z, chef.facing, 1, seen);
         continue;
       }
-      // carried in front of the (smoothed) chef model
-      const root = this.chefs.get(chef.id)?.model.root;
-      const x = root?.position.x ?? chef.x;
-      const z = root?.position.z ?? chef.z;
-      const yaw = root?.rotation.y ?? chef.facing;
-      // where the chef model's hands are in the carry pose
-      const reach = 0.48;
-      this.placeItem(chef.held, x + Math.sin(yaw) * reach, 0.98, z + Math.cos(yaw) * reach, yaw, ITEM_SCALE, seen);
+      // carried in the chef model's hands (fallback: in front of it)
+      const model = this.chefs.get(chef.id)?.model;
+      const yaw = model?.root.rotation.y ?? chef.facing;
+      const palms = model?.carryPoint();
+      if (palms) {
+        this.placeItem(chef.held, palms.x, palms.y - 0.03, palms.z, yaw, ITEM_SCALE, seen);
+      } else {
+        const x = model?.root.position.x ?? chef.x;
+        const z = model?.root.position.z ?? chef.z;
+        this.placeItem(chef.held, x + Math.sin(yaw) * 0.48, 0.98, z + Math.cos(yaw) * 0.48, yaw, ITEM_SCALE, seen);
+      }
     }
     for (const [id, entry] of this.items) {
       if (!seen.has(id)) {
@@ -442,6 +519,7 @@ export class GameView {
 
     this.syncHighlight(game.phase === "playing" ? targetStation(game, me) : null);
     this.syncBars(game);
+    this.syncPots(game);
     this.syncSignals(game);
   }
 
@@ -474,11 +552,45 @@ export class GameView {
       } else if (s.kind === "stove" && food && rule?.cookFrom && food.state === "cooked") {
         // counts down to burning; flashes red once the warning has been given
         const left = 1 - (food.cook - (rule.cookTime ?? 6)) / (rule.burnTime ?? 6);
-        const flash = food.warned && Math.floor(this.time * 6) % 2 === 0;
-        bar.show(left, flash ? new Color3(1, 0.15, 0.1) : Color3.Lerp(new Color3(1, 0.2, 0.1), new Color3(0.3, 0.85, 0.35), left));
+        this.showBurnCountdown(bar, left, food.warned);
+      } else if (s.pot && s.pot.state === "filling" && s.pot.contents.length) {
+        bar.show(s.pot.contents.length / SOUP_SIZE, new Color3(0.92, 0.92, 0.92));
+      } else if (s.pot && s.pot.state === "cooking") {
+        bar.show(s.pot.cook / SOUP_TIME, new Color3(1, 0.6, 0.1));
+      } else if (s.pot && s.pot.state === "done") {
+        this.showBurnCountdown(bar, 1 - (s.pot.cook - SOUP_TIME) / SOUP_BURN, s.pot.warned);
       } else {
         bar.hide();
       }
+    }
+  }
+
+  private showBurnCountdown(bar: ProgressBar, left: number, warned: boolean) {
+    const flash = warned && Math.floor(this.time * 6) % 2 === 0;
+    bar.show(left, flash ? new Color3(1, 0.15, 0.1) : Color3.Lerp(new Color3(1, 0.2, 0.1), new Color3(0.3, 0.85, 0.35), left));
+  }
+
+  /** Soup level and colour in each pot. */
+  private syncPots(game: Game) {
+    for (const s of game.stations) {
+      const view = s.pot && this.potSoup.get(s.id);
+      if (!view || !s.pot) continue;
+      const pot = s.pot;
+      const fill = pot.state === "filling" ? pot.contents.length / SOUP_SIZE : 1;
+      view.mesh.setEnabled(pot.contents.length > 0 || pot.state === "burnt");
+      // the surface sits inside the pot model (0.14 m deep before scaling)
+      view.mesh.position.y = STOVE_TOP + 0.02 + (0.05 + 0.07 * fill) * POT_SCALE;
+      const base = soupColor(pot.contents.map((f) => f.kind));
+      const burnt = new Color3(0.08, 0.05, 0.03);
+      view.mat.diffuseColor =
+        pot.state === "burnt"
+          ? burnt
+          : pot.state === "filling"
+            ? Color3.Lerp(new Color3(0.55, 0.62, 0.68), base, 0.45) // still mostly water
+            : pot.warned
+              ? Color3.Lerp(base, burnt, 0.45)
+              : base;
+      if (pot.contents.some((f) => f.spoiled)) view.mat.diffuseColor = Color3.Lerp(view.mat.diffuseColor, new Color3(0.3, 0.45, 0.1), 0.45);
     }
   }
 }

@@ -17,6 +17,7 @@ import { Feedback } from "./game/feedback";
 import { Hud } from "./game/hud";
 import { setupLook } from "./game/look";
 import { PovController } from "./game/pov";
+import { Effects } from "./game/effects";
 import { GameView } from "./game/view";
 import { Lobby } from "./lobby";
 import { recordStars } from "./progress";
@@ -38,6 +39,7 @@ const pov = new PovController(scene, canvas);
 scene.activeCamera = camera;
 
 const look = setupLook(scene, [pov.camera, camera]);
+const effects = new Effects(scene);
 const { shadows } = look;
 
 const hud = new Hud();
@@ -352,7 +354,11 @@ scene.onBeforeRenderObservable.add(() => {
     if (pov.active) pov.turn(axis(["ArrowRight"], ["ArrowLeft"]), dt);
     session.step(dt, readInput());
   }
-  for (const event of session.drainEvents()) feedback.handle(event, me, game);
+  for (const event of session.drainEvents()) {
+    feedback.handle(event, me, game);
+    if (event.kind === "served") effects.confetti(event.x, event.z);
+  }
+  effects.sync(game);
   if (game.phase === "over" && !shownGameOver) {
     shownGameOver = true;
     const stars = hud.showGameOver(game);
@@ -376,7 +382,7 @@ scene.onBeforeRenderObservable.add(() => {
 if (import.meta.env.DEV) Object.assign(window, { getSession: () => session, scene, pov, voice }); // console debugging
 
 // Footprint of the floating island in Kitchen_Room.glb (metres).
-const ISLAND = { width: 9.4, depth: 10.6 };
+const ISLAND = { width: 11.1, depth: 10.6 };
 
 /** Pull the overhead camera back just far enough that the whole island fits the canvas. */
 function fitCamera() {

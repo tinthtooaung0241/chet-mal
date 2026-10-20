@@ -1,7 +1,8 @@
 // A chef on screen, animated procedurally from game state so teammates can read each other:
 // a real walk cycle (feet planted to the distance travelled), the head following where the
-// player looks, and poses for every action and emote. Built from the Blender characters,
-// which are split into Torso, Head, ArmL/R and LegL/R pieces that pivot at their joints.
+// player looks and glancing at what they work on, elbows that bend for carrying, chopping,
+// stirring and every emote, a knife in hand while chopping, and blinking eyes.
+// Built from the Blender characters, split into pieces that pivot at their joints.
 import {
   Axis,
   Color3,
@@ -10,6 +11,7 @@ import {
   Scalar,
   StandardMaterial,
   TransformNode,
+  Vector3,
   type Scene,
   type ShadowGenerator,
 } from "@babylonjs/core";
@@ -25,13 +27,14 @@ const CHEF_MODELS: Record<Role, string> = {
 };
 const CHEF_SCALE = 0.95;
 const STRIDE = 1.1; // metres travelled per full walk cycle (two steps)
+const FOREARM = 0.275; // elbow to palm, in model units
 
 // Rotation signs for the converted glTF joints (checked in the browser): a negative X turn
 // swings a hanging limb forward; a positive X turn tips the torso/head forward.
-const FORWARD_LIMB = -1;
-const FORWARD_TILT = 1;
+const FWD = -1;
+const TILT = 1;
 
-type JointName = "torso" | "head" | "armL" | "armR" | "legL" | "legR";
+type JointName = "torso" | "head" | "eyes" | "armL" | "armR" | "foreL" | "foreR" | "legL" | "legR";
 
 interface Joint {
   node: TransformNode;
@@ -54,19 +57,25 @@ export interface ChefState {
   pitch: number;
   chopping: boolean;
   holding: boolean;
+  stirring: boolean;
   gesture: Chef["gesture"];
   guided: boolean;
   guiding: boolean;
+  /** the station this chef is facing, to glance at */
+  look: { x: number; z: number } | null;
 }
 
 export class ChefModel {
   readonly root: TransformNode;
   private readonly bob: TransformNode;
   private readonly joints: Partial<Record<JointName, Joint>> = {};
+  private knife: TransformNode | null = null;
   private phase = 0;
   private speed = 0;
   private turnRate = 0;
   private lastStep = 0;
+  private nextBlink = 2 + Math.random() * 3;
+  private blink = 0;
   /** called on each footfall with the foot's world position */
   onStep: ((x: number, z: number) => void) | null = null;
 
@@ -83,13 +92,35 @@ export class ChefModel {
     node.parent = this.bob;
     node.scaling.setAll(CHEF_SCALE);
     for (const mesh of node.getChildMeshes(false)) shadows.addShadowCaster(mesh);
-    const parts = { Torso: "torso", Head: "head", ArmL: "armL", ArmR: "armR", LegL: "legL", LegR: "legR" } as const;
+    const parts: Record<string, JointName> = {
+      Torso: "torso",
+      Head: "head",
+      Eyes: "eyes",
+      ArmL: "armL",
+      ArmR: "armR",
+      ForearmL: "foreL",
+      ForearmR: "foreR",
+      LegL: "legL",
+      LegR: "legR",
+    };
     for (const child of node.getDescendants(false)) {
       if (!(child instanceof TransformNode)) continue;
-      const part = Object.entries(parts).find(([suffix]) => child.name.endsWith(`_${suffix}`));
-      if (!part) continue;
+      const suffix = Object.keys(parts).find((s) => child.name.endsWith(`_${s}`));
+      if (!suffix) continue;
       child.rotationQuaternion ??= Quaternion.FromEulerVector(child.rotation);
-      this.joints[part[1]] = { node: child, rest: child.rotationQuaternion.clone() };
+      this.joints[parts[suffix]] = { node: child, rest: child.rotationQuaternion.clone() };
+    }
+
+    // a knife that appears in the right hand while chopping
+    const hand = this.joints.foreR?.node;
+    if (hand && lib.has("Knife")) {
+      const knife = lib.spawn("Knife");
+      knife.parent = hand;
+      knife.position.set(0, -FOREARM + 0.01, 0.02);
+      knife.rotation.set(Math.PI / 2, -Math.PI / 2, 0); // blade forward out of the fist
+      knife.scaling.setAll(1.15);
+      knife.setEnabled(false);
+      this.knife = knife;
     }
   }
 
@@ -102,6 +133,17 @@ export class ChefModel {
     body.material = mat;
     body.parent = this.bob;
     shadows.addShadowCaster(body);
+  }
+
+  /** Where carried food should sit: between the palms (null without a character model). */
+  carryPoint(): Vector3 | null {
+    const l = this.joints.foreL?.node;
+    const r = this.joints.foreR?.node;
+    if (!l || !r) return null;
+    const palm = new Vector3(0, -FOREARM, 0.02);
+    const pl = Vector3.TransformCoordinates(palm, l.getWorldMatrix());
+    const pr = Vector3.TransformCoordinates(palm, r.getWorldMatrix());
+    return pl.addInPlace(pr).scaleInPlace(0.5);
   }
 
   /** @param smooth true for other players' chefs: glide between network snapshots */
@@ -142,43 +184,78 @@ export class ChefModel {
     const head = zero();
     const armL = zero();
     const armR = zero();
+    const foreL = zero();
+    const foreR = zero();
     const legL = zero();
     const legR = zero();
 
     // --- base: walk / idle ---
-    legL.x = FORWARD_LIMB * sin * 0.55 * walk;
-    legR.x = -FORWARD_LIMB * sin * 0.55 * walk;
-    armL.x = -FORWARD_LIMB * sin * 0.45 * walk;
-    armR.x = FORWARD_LIMB * sin * 0.45 * walk;
+    legL.x = FWD * sin * 0.55 * walk;
+    legR.x = -FWD * sin * 0.55 * walk;
+    armL.x = -FWD * sin * 0.45 * walk;
+    armR.x = FWD * sin * 0.45 * walk;
     armL.z = 0.06;
     armR.z = -0.06;
-    torso.x = FORWARD_TILT * 0.1 * walk;
+    // relaxed elbows, bending a bit more on the forward swing
+    foreL.x = FWD * (0.15 + 0.25 * walk + Math.max(0, -sin) * 0.3 * walk);
+    foreR.x = FWD * (0.15 + 0.25 * walk + Math.max(0, sin) * 0.3 * walk);
+    torso.x = TILT * 0.1 * walk;
     torso.y = sin * 0.08 * walk;
     torso.z = Math.sin(this.phase * 2) * 0.02 * walk;
     const breathe = Math.sin(time * 2.1) * (1 - walk);
-    torso.x += FORWARD_TILT * breathe * 0.012;
+    torso.x += TILT * breathe * 0.012;
     this.bob.position.y = Math.abs(Math.cos(this.phase)) * 0.035 * walk;
     // the head follows where the player is looking (others can see what you look at)
-    head.x = FORWARD_TILT * Scalar.Clamp(s.pitch * 0.75, -0.45, 0.6);
+    head.x = TILT * Scalar.Clamp(s.pitch * 0.75, -0.45, 0.6);
+    // ...and glances at the station in front when standing at it
+    if (s.look && walk < 0.3) {
+      const want = Math.atan2(s.look.x - root.position.x, s.look.z - root.position.z);
+      let rel = want - root.rotation.y;
+      rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+      head.y = Scalar.Clamp(rel, -0.5, 0.5) * 0.7;
+      head.x += TILT * 0.15;
+    }
 
     // --- holding hands ---
-    if (s.guided) armR.x = FORWARD_LIMB * 0.9; // reaching for the guide
-    if (s.guiding) armL.x = -FORWARD_LIMB * 0.45; // hand held back for the one following
+    if (s.guided) {
+      armR.x = FWD * 0.85; // reaching for the guide
+      foreR.x = FWD * 0.2;
+    }
+    if (s.guiding) {
+      armL.x = -FWD * 0.45; // hand held back for the one following
+      foreL.x = FWD * 0.1;
+    }
 
-    // --- carrying ---
+    // --- carrying: hands out in front at waist height ---
     if (s.holding) {
-      armL.x = armR.x = FORWARD_LIMB * (1.25 + sin * 0.06 * walk);
-      armL.z = 0.12;
+      armL.x = armR.x = FWD * (0.55 + sin * 0.05 * walk);
+      foreL.x = foreR.x = FWD * 1.05;
+      armL.z = 0.16;
+      armR.z = -0.16;
+    }
+
+    // --- stirring the soup pot ---
+    if (s.stirring && !s.holding) {
+      const c = time * 4;
+      armR.x = FWD * (0.75 + Math.sin(c) * 0.12);
+      armR.z = -0.12 + Math.cos(c) * 0.12;
+      foreR.x = FWD * (0.95 + Math.cos(c) * 0.15);
+      torso.x += TILT * 0.08;
+      head.x += TILT * 0.25;
+    }
+
+    // --- chopping: lean in, other hand steadies the food, knife hand chops from the elbow ---
+    if (s.chopping) {
+      torso.x = TILT * 0.16;
+      head.x = TILT * 0.45;
+      armL.x = FWD * 0.6;
+      foreL.x = FWD * 1.1;
+      armL.z = 0.2;
+      armR.x = FWD * 0.65;
+      foreR.x = FWD * (0.75 + (Math.sin(time * 22) * 0.5 + 0.5) * 0.7);
       armR.z = -0.12;
     }
-
-    // --- chopping: lean in, eyes on the board, knife hand going ---
-    if (s.chopping) {
-      torso.x = FORWARD_TILT * 0.18;
-      head.x = FORWARD_TILT * 0.4;
-      armL.x = FORWARD_LIMB * 1.05;
-      armR.x = FORWARD_LIMB * (1.0 + Math.sin(time * 22) * 0.35);
-    }
+    this.knife?.setEnabled(s.chopping);
 
     // --- gestures (actions and emotes), eased in and out ---
     const g = s.gesture;
@@ -186,74 +263,100 @@ export class ChefModel {
       const p = 1 - g.ttl / g.total;
       const env = Math.sin(Math.PI * Scalar.Clamp(p, 0, 1));
       const wave = (hz: number) => Math.sin(p * Math.PI * 2 * hz);
+      const both = (upper: number, fore: number) => {
+        armL.x = armR.x = FWD * upper;
+        foreL.x = foreR.x = FWD * fore;
+      };
       switch (g.kind) {
         case "pickup":
         case "place":
-          torso.x += FORWARD_TILT * 0.35 * env;
-          head.x += FORWARD_TILT * 0.25 * env;
-          armL.x = armR.x = FORWARD_LIMB * (0.6 + 0.4 * env) * (s.holding || g.kind === "place" ? 1.3 : 1);
+          torso.x += TILT * 0.35 * env;
+          head.x += TILT * 0.25 * env;
+          both(0.5 + 0.5 * env, 0.6 + 0.3 * env);
           break;
         case "trash":
           torso.y += 0.35 * env;
-          armR.x = FORWARD_LIMB * 1.4 * env;
+          armR.x = FWD * 1.0 * env;
+          foreR.x = FWD * 0.5 * env;
           break;
         case "serve":
         case "give":
-          torso.x += FORWARD_TILT * 0.15 * env;
-          armL.x = armR.x = FORWARD_LIMB * (1.25 + 0.3 * env);
+          torso.x += TILT * 0.15 * env;
+          both(0.7 + 0.5 * env, 0.9 - 0.6 * env); // arms extend to pass it over
           break;
         case "receive":
-          armL.x = armR.x = FORWARD_LIMB * 1.3 * env;
+          both(0.6 + 0.4 * env, 1.1 - 0.3 * env);
           break;
         case "sniff":
-          torso.x += FORWARD_TILT * 0.2 * env;
-          head.x += FORWARD_TILT * (0.45 * env + wave(3) * 0.05);
-          armR.x = FORWARD_LIMB * 2.3 * env; // hand up near the nose
-          armR.z = -0.35 * env;
+          torso.x += TILT * 0.2 * env;
+          head.x += TILT * (0.4 * env + wave(3) * 0.05);
+          armR.x = FWD * 0.9 * env; // bring it up to the nose
+          foreR.x = FWD * 2.1 * env;
+          armR.z = -0.25 * env;
           break;
         case "ping":
-          armR.x = FORWARD_LIMB * 1.6 * env; // pointing straight ahead
-          head.x = FORWARD_TILT * 0.1;
+          armR.x = FWD * 1.5 * env; // arm straight out, pointing
+          foreR.x = FWD * 0.05;
+          head.x = TILT * 0.1;
           break;
         case "bell":
-          armR.x = FORWARD_LIMB * (0.95 + Math.max(0, wave(2)) * 0.25) * env;
-          head.x += FORWARD_TILT * 0.15 * env;
+          armR.x = FWD * 0.7 * env;
+          foreR.x = FWD * (0.6 + Math.max(0, wave(2)) * 0.5) * env; // tapping the bell
+          head.x += TILT * 0.15 * env;
           break;
         case "hand":
-          armR.x = FORWARD_LIMB * 1.1 * env;
+          armR.x = FWD * 0.9 * env;
+          foreR.x = FWD * 0.3 * env;
           break;
         case "yes":
-          head.x += FORWARD_TILT * wave(3) * 0.32 * env;
+          head.x += TILT * wave(3) * 0.32 * env;
           break;
         case "no":
           head.y += wave(3) * 0.5 * env;
           break;
         case "here":
-          armR.x = FORWARD_LIMB * (1.1 + wave(4) * 0.18) * env; // jabbing at the spot
-          head.x += FORWARD_TILT * 0.25 * env;
+          armR.x = FWD * (1.0 + wave(4) * 0.12) * env; // jabbing at the spot
+          foreR.x = FWD * 0.15;
+          head.x += TILT * 0.25 * env;
           break;
         case "hurry":
-          armL.x = FORWARD_LIMB * (1.2 + wave(5) * 0.45) * env;
-          armR.x = FORWARD_LIMB * (1.2 - wave(5) * 0.45) * env;
+          // both arms up, forearms beckoning
+          armL.x = armR.x = FWD * 1.1 * env;
+          foreL.x = FWD * (0.8 + wave(5) * 0.6) * env;
+          foreR.x = FWD * (0.8 - wave(5) * 0.6) * env;
           break;
         case "stop":
-          armR.x = FORWARD_LIMB * 2.4 * env; // palm up and out
+          armR.x = FWD * 1.6 * env; // palm out like a traffic warden
+          foreR.x = FWD * 1.4 * env;
           armR.z = -0.15 * env;
           break;
         case "done":
-          armL.x = armR.x = FORWARD_LIMB * 2.9 * env; // both arms up
+          armL.x = armR.x = FWD * 2.9 * env; // both arms up
+          foreL.x = foreR.x = FWD * 0.15 * env;
           armL.z = 0.35 * env;
           armR.z = -0.35 * env;
-          head.x -= FORWARD_TILT * 0.2 * env;
+          head.x -= TILT * 0.2 * env;
           break;
       }
     }
+
+    // --- blinking ---
+    this.nextBlink -= dt;
+    if (this.nextBlink <= 0) {
+      this.blink = 0.14;
+      this.nextBlink = 2 + Math.random() * 4;
+    }
+    this.blink = Math.max(0, this.blink - dt);
+    const eyes = this.joints.eyes?.node;
+    if (eyes) eyes.scaling.y = this.blink > 0 ? 0.12 : 1;
 
     const rate = Math.min(1, dt * 16);
     this.apply("torso", torso, rate);
     this.apply("head", head, rate);
     this.apply("armL", armL, rate);
     this.apply("armR", armR, rate);
+    this.apply("foreL", foreL, rate);
+    this.apply("foreR", foreR, rate);
     this.apply("legL", legL, rate);
     this.apply("legR", legR, rate);
   }
