@@ -1,0 +1,21 @@
+{
+  "name": "kitchen-client",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@kitchen/shared": "*",
+    "@babylonjs/core": "9.31.0",
+    "@babylonjs/loaders": "9.31.0"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "8.3.4"
+  }
+}
