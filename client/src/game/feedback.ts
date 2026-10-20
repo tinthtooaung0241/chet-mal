@@ -21,6 +21,7 @@ import {
   type Role,
   type StationKind,
 } from "@kitchen/shared";
+import { glyph } from "../ui/icons";
 
 type Wave = OscillatorType;
 interface Note {
@@ -98,32 +99,32 @@ const LOG_SIZE = 6;
 const MAX_TOASTS = 3;
 
 const TOAST_ICONS: Partial<Record<EventKind | "info", string>> = {
-  pickup: "✋",
-  place: "📥",
-  handoff: "🤲",
-  hand: "🤝",
-  chopped: "🔪",
-  cooked: "🔥",
-  perfect: "✨",
-  smoking: "💨",
-  burnt: "☠️",
-  served: "✅",
-  wrong: "❌",
-  sick: "🤢",
-  sniff: "👃",
-  order: "🧾",
-  phone: "📞",
-  impatient: "⏰",
-  expired: "😠",
-  trash: "🗑️",
-  invalid: "⚠️",
-  ping: "📍",
-  emote: "💬",
-  bell: "🔔",
-  blackout: "🌑",
-  storm: "⛈️",
-  over: "🏁",
-  info: "👨‍🍳",
+  pickup: "pickup",
+  place: "place",
+  handoff: "give",
+  hand: "hands",
+  chopped: "knife",
+  cooked: "flame",
+  perfect: "sparkle",
+  smoking: "smoke",
+  burnt: "burnt",
+  served: "check",
+  wrong: "cross",
+  sick: "sick",
+  sniff: "smell",
+  order: "ticket",
+  phone: "phone",
+  impatient: "alarm",
+  expired: "angry",
+  trash: "bin",
+  invalid: "warning",
+  ping: "pin",
+  emote: "signs",
+  bell: "bell",
+  blackout: "moon",
+  storm: "storm",
+  over: "flag",
+  info: "chef",
 };
 const GOOD = new Set<EventKind | "info">(["served", "cooked", "chopped", "perfect", "order", "phone"]);
 const SMOKE_BEEP_INTERVAL = 0.6;
@@ -444,7 +445,7 @@ export class Feedback {
     el.className = `toast ${tone}`;
     const icon = document.createElement("span");
     icon.className = "icon";
-    icon.textContent = TOAST_ICONS[kind] ?? "💬";
+    icon.append(glyph(TOAST_ICONS[kind] ?? "signs"));
     const body = document.createElement("span");
     body.className = "text";
     body.textContent = text;

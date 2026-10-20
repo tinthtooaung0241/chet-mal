@@ -30,20 +30,20 @@
             <span id="level-name" class="chip-sub"></span>
           </div>
           <div id="score-chip" class="chip">
-            <span class="coin" aria-hidden="true">🪙</span>
+            <span class="coin" data-icon="coin"></span>
             <strong id="score" aria-label="Score">0</strong>
             <div id="star-meter" aria-hidden="true">
               <div id="star-fill"></div>
-              <span class="star-mark" data-star="0">★</span>
-              <span class="star-mark" data-star="1">★</span>
-              <span class="star-mark" data-star="2">★</span>
+              <span class="star-mark" data-star="0"><i data-icon="star"></i></span>
+              <span class="star-mark" data-star="1"><i data-icon="star"></i></span>
+              <span class="star-mark" data-star="2"><i data-icon="star"></i></span>
             </div>
             <div id="score-pops" aria-hidden="true"></div>
           </div>
           <div id="clock" class="chip" role="timer" aria-label="Time left">
             <div id="clock-ring"><span id="time">3:00</span></div>
           </div>
-          <button id="menu-button" class="round-btn" type="button" aria-label="Menu (P)">☰</button>
+          <button id="menu-button" class="round-btn" type="button" aria-label="Menu (P)"><i data-icon="menu"></i></button>
         </div>
 
         <div id="toasts" aria-hidden="true"></div>
@@ -52,14 +52,14 @@
 
         <div id="hand-bar">
           <div id="hand-slot" aria-label="Holding">
-            <span id="held-icon" aria-hidden="true">✋</span>
+            <span id="held-icon" aria-hidden="true"><i data-icon="hand"></i></span>
             <span id="held">nothing</span>
           </div>
           <div id="prompts" aria-hidden="true"></div>
         </div>
 
         <div id="role-badge">
-          <div id="role-avatar" aria-hidden="true">👨‍🍳</div>
+          <div id="role-avatar" aria-hidden="true"><i data-icon="chef"></i></div>
           <div>
             <p id="role-name" class="role-name"></p>
             <ul id="senses" aria-label="Your senses"></ul>
@@ -67,18 +67,18 @@
         </div>
 
         <div id="signals" hidden>
-          <button type="button" class="round-btn signal" data-signal="ping" aria-label="Ping (G)">📍<kbd>G</kbd></button>
-          <button type="button" class="round-btn signal" data-signal="bell" aria-label="Bell (B)">🔔<kbd>B</kbd></button>
-          <button type="button" class="round-btn signal" id="wheel-button" aria-label="Signs wheel (hold T)">💬<kbd>T</kbd></button>
+          <button type="button" class="round-btn signal" data-signal="ping" aria-label="Ping (G)"><i data-icon="pin"></i><kbd>G</kbd></button>
+          <button type="button" class="round-btn signal" data-signal="bell" aria-label="Bell (B)"><i data-icon="bell"></i><kbd>B</kbd></button>
+          <button type="button" class="round-btn signal" id="wheel-button" aria-label="Signs wheel (hold T)"><i data-icon="signs"></i><kbd>T</kbd></button>
         </div>
 
         <div id="emote-wheel" hidden>
-          <button type="button" data-emote="Yes" style="--i: 0"><span>👍</span>Yes<kbd>1</kbd></button>
-          <button type="button" data-emote="No" style="--i: 1"><span>👎</span>No<kbd>2</kbd></button>
-          <button type="button" data-emote="Here" style="--i: 2"><span>👇</span>Here<kbd>3</kbd></button>
-          <button type="button" data-emote="Hurry" style="--i: 3"><span>⏩</span>Hurry<kbd>4</kbd></button>
-          <button type="button" data-emote="Stop" style="--i: 4"><span>✋</span>Stop<kbd>5</kbd></button>
-          <button type="button" data-emote="Done" style="--i: 5"><span>🙌</span>Done<kbd>6</kbd></button>
+          <button type="button" data-emote="Yes" style="--i: 0"><i data-icon="yes"></i>Yes<kbd>1</kbd></button>
+          <button type="button" data-emote="No" style="--i: 1"><i data-icon="no"></i>No<kbd>2</kbd></button>
+          <button type="button" data-emote="Here" style="--i: 2"><i data-icon="here"></i>Here<kbd>3</kbd></button>
+          <button type="button" data-emote="Hurry" style="--i: 3"><i data-icon="hurry"></i>Hurry<kbd>4</kbd></button>
+          <button type="button" data-emote="Stop" style="--i: 4"><i data-icon="stop"></i>Stop<kbd>5</kbd></button>
+          <button type="button" data-emote="Done" style="--i: 5"><i data-icon="done"></i>Done<kbd>6</kbd></button>
           <p class="wheel-center">Signs</p>
         </div>
 
@@ -87,7 +87,7 @@
       </div>
 
       <div id="blindfold" aria-hidden="true" hidden>
-        <p>🦯 Blind chef — play by ear<br /><span><kbd>Q</kbd> feel around · listen for sizzles, chimes and the phone</span></p>
+        <p><i data-icon="ear" class="blindfold-icon"></i><br />Blind chef — play by ear<br /><span><kbd>Q</kbd> feel around · listen for sizzles, chimes and the phone</span></p>
       </div>
 
       <p id="loading" class="big-banner"><span class="spinner" aria-hidden="true"></span>Warming up the kitchen…</p>
@@ -107,15 +107,15 @@
       <h2 id="pause-title">Paused</h2>
       <p id="pause-note" class="muted"></p>
       <div class="menu-actions">
-        <button id="resume" type="button" class="primary big">▶ Resume</button>
-        <button id="open-help" type="button">🎮 Controls</button>
+        <button id="resume" type="button" class="primary big"><i data-icon="play"></i> Resume</button>
+        <button id="open-help" type="button"><i data-icon="gamepad"></i> Controls</button>
       </div>
       <fieldset id="role-picker">
         <legend>Practice as <span class="muted">(keys 0–3)</span></legend>
-        <label><input type="radio" name="role" value="full" /><span>🌟 All senses</span></label>
-        <label><input type="radio" name="role" value="blind" /><span>🦯 Blind</span></label>
-        <label><input type="radio" name="role" value="deaf" /><span>🧏 Deaf</span></label>
-        <label><input type="radio" name="role" value="mute" /><span>🤐 Mute</span></label>
+        <label><input type="radio" name="role" value="full" /><span><i data-icon="chef"></i> All senses</span></label>
+        <label><input type="radio" name="role" value="blind" /><span><i data-img="Avatar_Blind"></i> Blind</span></label>
+        <label><input type="radio" name="role" value="deaf" /><span><i data-img="Avatar_Deaf"></i> Deaf</span></label>
+        <label><input type="radio" name="role" value="mute" /><span><i data-img="Avatar_Mute"></i> Mute</span></label>
       </fieldset>
       <label class="toggle"><input type="checkbox" id="speak" /><span>Read events aloud</span></label>
       <div class="menu-actions">
@@ -152,18 +152,18 @@
         </section>
       </div>
       <ol class="recipe-steps">
-        <li><span>🧺</span>Take food from a crate</li>
-        <li><span>🔪</span>Chop it on a board</li>
-        <li><span>🍳</span>Fry it, or 🍲 three veg in the pot</li>
-        <li><span>🍽️</span>Plate it (soup goes in a bowl)</li>
-        <li><span>🛎️</span>Serve at the pass</li>
+        <li><i data-icon="crate"></i>Take food from a crate</li>
+        <li><i data-img="CuttingBoard"></i>Chop it on a board</li>
+        <li><i data-img="FryingPan"></i>Fry it, or <i data-img="Pot"></i> three veg in the pot</li>
+        <li><i data-img="Plate"></i>Plate it (soup goes in a bowl)</li>
+        <li><i data-icon="bell"></i>Serve at the pass</li>
       </ol>
       <p class="muted">Tickets are seen, phone orders are heard once. When a sizzle <em>whistles</em>, take it off for a perfect bonus.</p>
       <button id="close-help" type="button" class="primary">Got it!</button>
     </dialog>
 
     <dialog id="lobby" class="title-screen" aria-labelledby="lobby-title">
-      <div class="title-logo" aria-hidden="true">👨‍🍳🍲👩‍🍳</div>
+      <div class="title-logo" aria-hidden="true"><i data-img="Avatar_Blind"></i><i data-img="Soup_Tomato" class="logo-soup"></i><i data-img="Avatar_Deaf"></i><i data-img="Avatar_Mute"></i></div>
       <h1 id="lobby-title">Kitchen Co-op</h1>
       <p class="tagline">Three friends, one kitchen: a blind chef, a deaf chef and a chef who can't speak.</p>
 
@@ -173,29 +173,29 @@
       <div id="lobby-start">
         <label class="field">Your name <input id="player-name" maxlength="20" autocomplete="nickname" placeholder="Chef" /></label>
         <div class="lobby-actions">
-          <button id="create-room" type="button" class="primary big">🍽️ Create a kitchen</button>
+          <button id="create-room" type="button" class="primary big"><i data-img="Pot"></i> Create a kitchen</button>
           <form id="join-form">
             <input id="room-code" maxlength="4" placeholder="CODE" aria-label="Kitchen code" autocapitalize="characters" />
             <button type="submit">Join</button>
           </form>
-          <button id="play-solo" type="button">🥄 Practice solo</button>
+          <button id="play-solo" type="button"><i data-icon="chef"></i> Practice solo</button>
         </div>
       </div>
 
       <div id="lobby-room" hidden>
         <p class="room-line">
           Kitchen code <strong id="room-code-display"></strong>
-          <button id="copy-link" type="button">🔗 Copy invite link</button>
+          <button id="copy-link" type="button"><i data-icon="link"></i> Copy invite link</button>
         </p>
         <fieldset id="lobby-roles">
           <legend>Pick your chef</legend>
-          <button type="button" data-role="blind" class="chef-card blind"><span class="chef-emoji" aria-hidden="true">🦯</span><strong>Blind chef</strong><span>Plays by sound. Hears phone orders and the perfect sizzle.</span></button>
-          <button type="button" data-role="deaf" class="chef-card deaf"><span class="chef-emoji" aria-hidden="true">🧏</span><strong>Deaf chef</strong><span>Plays by sight. Reads tickets, watches the stove.</span></button>
-          <button type="button" data-role="mute" class="chef-card mute"><span class="chef-emoji" aria-hidden="true">🤐</span><strong>Mute chef</strong><span>Sees and hears all. Talks with pings, signs and a bell.</span></button>
+          <button type="button" data-role="blind" class="chef-card blind"><i class="chef-emoji" data-img="Avatar_Blind" aria-hidden="true"></i><strong>Blind chef</strong><span>Plays by sound. Hears phone orders and the perfect sizzle.</span></button>
+          <button type="button" data-role="deaf" class="chef-card deaf"><i class="chef-emoji" data-img="Avatar_Deaf" aria-hidden="true"></i><strong>Deaf chef</strong><span>Plays by sight. Reads tickets, watches the stove.</span></button>
+          <button type="button" data-role="mute" class="chef-card mute"><i class="chef-emoji" data-img="Avatar_Mute" aria-hidden="true"></i><strong>Mute chef</strong><span>Sees and hears all. Talks with pings, signs and a bell.</span></button>
         </fieldset>
         <h3 class="muted small">Chefs in this kitchen</h3>
         <ul id="lobby-players"></ul>
-        <button id="start-game" type="button" class="primary big">🔥 Start cooking</button>
+        <button id="start-game" type="button" class="primary big"><i data-icon="flame"></i> Start cooking</button>
         <p id="lobby-status" class="muted" role="status"></p>
       </div>
 
@@ -208,7 +208,7 @@
       <p id="final-score"></p>
       <dl id="final-stats"></dl>
       <div class="menu-actions">
-        <button id="restart" type="button">↻ Play again <kbd>R</kbd></button>
+        <button id="restart" type="button"><i data-icon="play"></i> Play again <kbd>R</kbd></button>
         <button id="next-level" type="button" class="primary">Next level <kbd>N</kbd></button>
       </div>
     </dialog>

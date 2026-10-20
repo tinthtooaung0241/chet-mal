@@ -22,10 +22,12 @@ import { GameView } from "./game/view";
 import { Lobby } from "./lobby";
 import { recordStars } from "./progress";
 import { LocalSession, NetSession, type Session } from "./session";
+import { hydrateIcons } from "./ui/icons";
 import { Voice } from "./voice";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>("scene");
+hydrateIcons(); // fill every data-icon / data-img placeholder in the page
 
 const engine = new Engine(canvas, true, { stencil: true });
 const scene = new Scene(engine);

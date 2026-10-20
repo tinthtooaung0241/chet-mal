@@ -462,12 +462,14 @@ export class GameView {
     }
     entry.node.position.set(x, y, z);
     entry.node.rotation.y = yaw;
-    entry.node.scaling.setAll(item.type === "plate" ? PLATE_SCALE : item.type === "bowl" ? BOWL_SCALE : scale);
+    // plates and bowls follow the same shrink as food when held close to the eye
+    const shrink = scale / ITEM_SCALE;
+    entry.node.scaling.setAll(item.type === "plate" ? PLATE_SCALE * shrink : item.type === "bowl" ? BOWL_SCALE * shrink : scale);
     if (item.type === "plate") {
       const slots = PLATE_SLOTS[item.contents.length - 1] ?? [];
       item.contents.forEach((food, i) => {
         const [ox, oz] = slots[i] ?? [0, 0];
-        this.placeItem(food, x + ox, y + 0.012, z + oz, yaw, ITEM_SCALE * 0.75, seen);
+        this.placeItem(food, x + ox * shrink, y + 0.012 * shrink, z + oz * shrink, yaw, ITEM_SCALE * 0.75 * shrink, seen);
       });
     }
   }

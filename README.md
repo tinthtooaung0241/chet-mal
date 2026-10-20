@@ -26,7 +26,8 @@ npm start            # http://localhost:8787
 | `shared/` | Pure game rules (`state.ts`), recipes and timings (`rules.ts`), roles and senses (`roles.ts`), the kitchen grid (`layout.ts`) and network messages (`protocol.ts`). Used by both client and server. |
 | `server/` | WebSocket game server: rooms of up to three chefs, lobby, 20 Hz authoritative kitchen, WebRTC voice signalling. |
 | `client/` | Babylon.js game: view, first-person camera, role-filtered audio/text feedback, HUD, lobby, voice chat. |
-| `assets/` | `kitchen_assets.blend` (source) and exported GLBs. The client picks up any GLB under `assets/kitchen/` automatically. |
+| `assets/` | `kitchen_assets.blend` (source) and exported GLBs. The client picks up any GLB under `assets/kitchen/` automatically. `assets/icons/` holds UI icons rendered from the same models (the `IconStudio` scene in the .blend: cartoon outline, transparent background). |
+| `client/src/ui/icons.ts` | The icon set: rendered model icons plus hand-drawn SVG glyphs for UI symbols. |
 | `docs/` | Game design. |
 
 ## Controls

@@ -1,8 +1,8 @@
 import { defineConfig } from "vite";
 
-// GLBs exported from Blender live outside the client root; watch them so a new export
+// GLBs and icons exported from Blender live outside the client root; watch them so a new export
 // appears in the game without restarting the dev server.
-const kitchenAssets = decodeURIComponent(new URL("../assets/kitchen", import.meta.url).pathname);
+const kitchenAssets = decodeURIComponent(new URL("../assets", import.meta.url).pathname);
 
 export default defineConfig({
   plugins: [

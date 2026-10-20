@@ -13,46 +13,63 @@ import {
   type Chef,
   type Game,
   type Item,
+  type FoodState,
   type Station,
 } from "@kitchen/shared";
+import { glyph, img, renderedIcon } from "../ui/icons";
 
-export const FOOD_ICONS: Record<string, string> = {
-  Tomato: "🍅",
-  Lettuce: "🥬",
-  Potato: "🥔",
-  Steak: "🥩",
-  Fish: "🐟",
-  Egg: "🥚",
-  Bread: "🍞",
-  Cheese: "🧀",
-  Onion: "🧅",
-  Mushroom: "🍄",
-  Carrot: "🥕",
+const STATE_SUFFIXES: Record<FoodState, string[]> = {
+  raw: [""],
+  chopped: ["_Chopped", "_Sliced"],
+  cooked: ["_Cooked", "_Fries", "_Fried", "_Toasted"],
+  burnt: ["_Burnt"],
 };
 
-const STATION_ICONS: Record<Station["kind"], string> = {
-  counter: "🧱",
-  crate: "🧺",
-  board: "🔪",
-  stove: "🍳",
-  pot: "🍲",
-  plates: "🍽️",
-  bowls: "🥣",
-  serve: "🛎️",
-  trash: "🗑️",
-  sink: "🚰",
-};
-
-export function itemIcon(item: Item | null): string {
-  if (!item) return "✋";
-  if (item.type === "plate") return item.contents.length ? item.contents.map((f) => FOOD_ICONS[f.kind] ?? "🍽️").join("") : "🍽️";
-  if (item.type === "bowl") return item.soup ? "🍲" : "🥣";
-  if (item.state === "burnt") return "🔥";
-  return FOOD_ICONS[item.kind] ?? "🍽️";
+/** Name of the rendered icon for a food in a given state (falls back sensibly). */
+export function foodIcon(kind: string, state: FoodState): string {
+  for (const suffix of STATE_SUFFIXES[state]) if (renderedIcon(kind + suffix)) return kind + suffix;
+  return state === "burnt" ? foodIcon(kind, "cooked") : kind;
 }
 
-export function stationIcon(s: Station): string {
-  return s.kind === "crate" ? (FOOD_ICONS[s.crate!] ?? "🧺") : STATION_ICONS[s.kind];
+export function soupIcon(kinds: string[]): string {
+  if (kinds.every((k) => k === "Tomato")) return "Soup_Tomato";
+  if (kinds.filter((k) => k === "Mushroom").length >= 2) return "Soup_Mushroom";
+  return "Soup_Veg";
+}
+
+/** Icon for what a chef holds: the food itself, a plate with its food, a bowl of soup, or an open hand. */
+export function itemIconNode(item: Item | null): HTMLElement {
+  const box = document.createElement("span");
+  box.className = "item-icon";
+  if (!item) box.append(glyph("hand"));
+  else if (item.type === "food") box.append(img(foodIcon(item.kind, item.state)));
+  else if (item.type === "bowl") box.append(img(item.soup ? soupIcon(item.soup) : "Bowl"));
+  else {
+    box.append(img("Plate"));
+    for (const f of item.contents.slice(0, 3)) {
+      const food = img(foodIcon(f.kind, f.state));
+      food.classList.add("on-plate");
+      box.append(food);
+    }
+    box.dataset.count = String(item.contents.length);
+  }
+  return box;
+}
+
+const STATION_IMG: Partial<Record<Station["kind"], string>> = {
+  board: "CuttingBoard",
+  stove: "FryingPan",
+  pot: "Pot",
+  plates: "Plate",
+  bowls: "Bowl",
+  trash: "TrashBin",
+};
+const STATION_GLYPH: Partial<Record<Station["kind"], string>> = { serve: "bell", sink: "sink", counter: "counter" };
+
+export function stationIconNode(s: Station): Element {
+  if (s.kind === "crate") return img(s.crate!);
+  const name = STATION_IMG[s.kind];
+  return name ? img(name) : glyph(STATION_GLYPH[s.kind] ?? "counter");
 }
 
 export interface Prompt {

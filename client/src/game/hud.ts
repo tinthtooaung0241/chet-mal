@@ -16,7 +16,8 @@ import {
   type Game,
   type Role,
 } from "@kitchen/shared";
-import { FOOD_ICONS, actionHints, itemIcon, stationIcon } from "./hints";
+import { glyph, img } from "../ui/icons";
+import { actionHints, foodIcon, itemIconNode, soupIcon, stationIconNode } from "./hints";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -25,11 +26,11 @@ function clock(seconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-const ROLE_LOOK: Record<Role, { emoji: string; color: string }> = {
-  full: { emoji: "🌟", color: "#3a6ea5" },
-  blind: { emoji: "🦯", color: "#2a9d8f" },
-  deaf: { emoji: "🧏", color: "#e07a3f" },
-  mute: { emoji: "🤐", color: "#8e6bbf" },
+const ROLE_LOOK: Record<Role, { avatar: string | null; color: string }> = {
+  full: { avatar: null, color: "#3a6ea5" },
+  blind: { avatar: "Avatar_Blind", color: "#2a9d8f" },
+  deaf: { avatar: "Avatar_Deaf", color: "#e07a3f" },
+  mute: { avatar: "Avatar_Mute", color: "#8e6bbf" },
 };
 
 export class Hud {
@@ -68,17 +69,17 @@ export class Hud {
     const look = ROLE_LOOK[role];
     $("role-name").textContent = info.name;
     $("role-summary").textContent = info.summary;
-    $("role-avatar").textContent = look.emoji;
+    $("role-avatar").replaceChildren(look.avatar ? img(look.avatar) : glyph("chef"));
     $("role-badge").style.setProperty("--role-color", look.color);
-    const senses: [string, boolean][] = [
-      ["👁 Sight", info.sees],
-      ["👂 Hearing", info.hears],
-      role === "mute" ? ["💬 Signs", true] : ["🗣 Voice", true],
+    const senses: [string, string, boolean][] = [
+      ["eye", "Sight", info.sees],
+      ["ear", "Hearing", info.hears],
+      role === "mute" ? ["signs", "Signs", true] : ["voice", "Voice", true],
     ];
     $("senses").replaceChildren(
-      ...senses.map(([label, on]) => {
+      ...senses.map(([icon, label, on]) => {
         const li = document.createElement("li");
-        li.textContent = label;
+        li.append(glyph(icon), label);
         if (!on) li.classList.add("off");
         return li;
       }),
@@ -117,7 +118,7 @@ export class Hud {
       this.lastHeld = heldText;
       this.held.textContent = heldText;
       this.held.classList.toggle("mouldy", mouldy);
-      this.heldIcon.textContent = itemIcon(held);
+      this.heldIcon.replaceChildren(itemIconNode(held));
       this.handSlot.classList.toggle("empty", !held);
       this.handSlot.classList.remove("changed");
       void this.handSlot.offsetWidth; // restart the little bump animation
@@ -131,7 +132,11 @@ export class Hud {
     this.setText(this.facing, target ? `${stationName(target)}${contents}` : (mate?.name ?? "nothing"));
     const showTag = firstPerson && sees && !!(target || mate);
     this.targetTag.hidden = !showTag;
-    if (showTag) this.setText(this.targetTag, target ? `${stationIcon(target)} ${stationName(target)}${contents}` : `🧑‍🍳 ${mate!.name}`);
+    const tagText = target ? `${stationName(target)}${contents}` : (mate?.name ?? "");
+    if (showTag && this.targetTag.dataset.text !== tagText) {
+      this.targetTag.dataset.text = tagText;
+      this.targetTag.replaceChildren(target ? stationIconNode(target) : glyph("chef"), tagText);
+    }
 
     // contextual key prompts
     const hints = actionHints(game, me);
@@ -190,7 +195,7 @@ export class Hud {
         const s = document.createElement("span");
         s.className = i < stars ? "star on" : "star";
         s.style.animationDelay = `${0.25 + i * 0.25}s`;
-        s.textContent = "★";
+        s.append(glyph("star"));
         return s;
       }),
     );
@@ -235,20 +240,40 @@ export class Hud {
           tag.className = "tag";
           tag.textContent = order.channel === "ticket" ? `Ticket #${order.id}` : "Phone order (heard)";
           const name = document.createElement("strong");
-          name.textContent = `${order.recipe.vessel === "bowl" ? "🍲 " : ""}${order.recipe.name}`;
+          name.textContent = order.recipe.name;
+          if (order.channel === "phone") {
+            const badge = document.createElement("span");
+            badge.className = "phone-badge";
+            badge.append(glyph("phone"));
+            li.append(badge);
+          }
+          // the finished dish, then exactly what goes into it (pictured in the right state)
+          const dish = document.createElement("div");
+          dish.className = "dish";
+          if (order.recipe.vessel === "bowl") dish.append(img(soupIcon(order.recipe.items.map((i) => i.kind))));
+          else {
+            dish.append(img("Plate"));
+            for (const item of order.recipe.items) {
+              const food = img(foodIcon(item.kind, item.state));
+              food.classList.add("on-plate");
+              dish.append(food);
+            }
+            dish.dataset.count = String(order.recipe.items.length);
+          }
           const icons = document.createElement("div");
           icons.className = "dish-icons";
           for (const item of order.recipe.items) {
             const chip = document.createElement("span");
             chip.className = "ing";
-            const icon = document.createElement("b");
-            icon.textContent = FOOD_ICONS[item.kind] ?? "🍽️";
-            icon.setAttribute("aria-hidden", "true");
-            const how = item.state === "chopped" ? "🔪 chopped" : item.state === "cooked" ? "🔥 cooked" : "";
-            chip.append(icon, `${how} ${item.kind.toLowerCase()}`.trim());
+            chip.append(img(foodIcon(item.kind, item.state)), glyph(item.state === "cooked" ? "flame" : item.state === "chopped" ? "knife" : "check"));
+            chip.title = `${item.state} ${item.kind.toLowerCase()}`;
+            const label = document.createElement("span");
+            label.className = "visually-hidden";
+            label.textContent = `${item.state} ${item.kind.toLowerCase()}`;
+            chip.append(label);
             icons.append(chip);
           }
-          li.append(tag, name, icons);
+          li.append(tag, name, dish, icons);
           // a printed ticket shows its timer; a phone order is only what you remember hearing
           if (order.channel === "ticket") {
             const bar = document.createElement("div");
