@@ -226,6 +226,15 @@ export class Feedback {
     if (this.speak) this.speakAloud(name, true);
   }
 
+  /**
+   * The coach's next step (guided shift): to the screen reader, and spoken for the blind chef (or
+   * anyone with speech on). No toast: the coach banner shows it.
+   */
+  coach(text: string) {
+    this.announce(`Next: ${text}`, false);
+    if (this.speak || this.role === "blind") this.speakAloud(text, true);
+  }
+
   /** Text message: toast + screen reader (+ speech if enabled). */
   say(text: string, urgent = false, speech = true, kind: EventKind | "info" = "info") {
     this.announce(text, urgent);

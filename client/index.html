@@ -53,6 +53,15 @@
 
         <div id="target-tag" aria-hidden="true" hidden></div>
 
+        <!-- the coach: the next step, big and clear (guided first shift) -->
+        <div id="coach" aria-hidden="true" hidden><span class="coach-step">Next</span><span id="coach-text"></span></div>
+
+        <!-- what the dish in your hands still needs -->
+        <section id="checklist" aria-hidden="true" hidden>
+          <header><span id="checklist-title"></span><span id="checklist-table" class="muted"></span></header>
+          <ol id="checklist-steps"></ol>
+        </section>
+
         <div id="hand-bar">
           <div id="hand-slot" aria-label="Holding">
             <span id="held-icon" aria-hidden="true"><i data-icon="hand"></i></span>
@@ -114,13 +123,15 @@
         <button id="resume" type="button" class="primary big"><i data-icon="play"></i> Resume</button>
         <button id="open-help" type="button"><i data-icon="gamepad"></i> Controls</button>
         <button id="open-book" type="button"><i data-icon="book"></i> Recipes</button>
+        <button id="open-briefing" type="button"><i data-icon="flag"></i> Level tips</button>
       </div>
       <fieldset id="role-picker">
-        <legend>Practice as <span class="muted">(keys 0–3)</span></legend>
+        <legend>Practice as <span class="muted">(keys 0–4)</span></legend>
         <label><input type="radio" name="role" value="full" /><span><i data-icon="chef"></i> All senses</span></label>
-        <label><input type="radio" name="role" value="blind" /><span><i data-img="Avatar_Blind"></i> Blind</span></label>
+        <label><input type="radio" name="role" value="head" /><span><i data-icon="chef"></i> Head</span></label>
         <label><input type="radio" name="role" value="deaf" /><span><i data-img="Avatar_Deaf"></i> Deaf</span></label>
         <label><input type="radio" name="role" value="mute" /><span><i data-img="Avatar_Mute"></i> Mute</span></label>
+        <label><input type="radio" name="role" value="blind" /><span><i data-img="Avatar_Blind"></i> Blind (audio)</span></label>
       </fieldset>
       <label class="toggle"><input type="checkbox" id="speak" /><span>Read events aloud</span></label>
       <div class="menu-actions">
@@ -170,6 +181,46 @@
       <button id="close-help" type="button" class="primary">Got it!</button>
     </dialog>
 
+    <dialog id="how-to-play" class="card-dialog wide" aria-labelledby="how-title">
+      <h2 id="how-title">How to play</h2>
+      <p class="muted">A cooking game you win by talking to each other.</p>
+      <div class="how-grid">
+        <section>
+          <h3><i data-icon="bell"></i> The goal</h3>
+          <p>Customers sit down and order. Cook each dish, season it the way the ticket says, and serve it at the pass before they give up.</p>
+          <p>Nobody on the team knows everything. Say what you see, hear and hold!</p>
+        </section>
+        <section>
+          <h3><i data-icon="chef"></i> Three chefs</h3>
+          <p><b>Head chef:</b> runs the pass and sees every order and how each dish is going, but doesn't cook. Calls the shots, plates and serves.</p>
+          <p><b>Deaf chef:</b> cooks by sight; can't hear calls or phone orders.</p>
+          <p><b>Mute chef:</b> cooks and hears everything, but talks only with pings, signs and the bell.</p>
+        </section>
+        <section>
+          <h3><i data-icon="knife"></i> Cooking</h3>
+          <p>Take food from the fridges and pantry (<kbd>1</kbd>–<kbd>8</kbd>), chop it (hold <kbd>F</kbd>), fry it, season it at a spice rack, plate it and serve.</p>
+          <p>Hold something and a checklist shows what that order still needs.</p>
+        </section>
+        <section>
+          <h3><i data-icon="signs"></i> Talking</h3>
+          <p>Use voice chat. The mute chef points with <kbd>G</kbd>, rings <kbd>B</kbd> and signs with <kbd>T</kbd> + <kbd>1</kbd>–<kbd>6</kbd>.</p>
+          <p><kbd>Q</kbd> describes what's around you and what to do next. <kbd>R</kbd> opens the recipe book.</p>
+        </section>
+      </div>
+      <div class="menu-actions">
+        <button id="how-tutorial" type="button" class="primary big"><i data-icon="hands"></i> Try the tutorial kitchen</button>
+        <button id="how-close" type="button">Back</button>
+      </div>
+    </dialog>
+
+    <dialog id="briefing" class="card-dialog" aria-labelledby="briefing-title">
+      <p id="briefing-level" class="briefing-level"></p>
+      <h2 id="briefing-title"></h2>
+      <ul id="briefing-lines" class="briefing-lines"></ul>
+      <div id="briefing-role" class="briefing-role"></div>
+      <button id="briefing-go" type="button" class="primary big">Let's cook! <kbd>Enter</kbd></button>
+    </dialog>
+
     <dialog id="recipe-book" class="card-dialog wide" aria-labelledby="book-title" aria-describedby="book-note">
       <h2 id="book-title"><i data-icon="book"></i> Recipe book</h2>
       <p id="book-note" class="muted small"></p>
@@ -180,7 +231,7 @@
     <dialog id="lobby" class="title-screen" aria-labelledby="lobby-title">
       <div class="title-logo" aria-hidden="true"><i data-img="Avatar_Blind"></i><i data-img="Soup_Tomato" class="logo-soup"></i><i data-img="Avatar_Deaf"></i><i data-img="Avatar_Mute"></i></div>
       <h1 id="lobby-title">Kitchen Co-op</h1>
-      <p class="tagline">Three friends, one kitchen: a blind chef, a deaf chef and a chef who can't speak.</p>
+      <p class="tagline">Three friends, one kitchen: a head chef who can't cook, a chef who can't hear and a chef who can't speak.</p>
 
       <label class="field">Level <select id="level-select"></select></label>
       <p id="level-blurb" class="muted"></p>
@@ -194,6 +245,10 @@
             <button type="submit">Join</button>
           </form>
           <button id="play-solo" type="button"><i data-icon="chef"></i> Practice solo</button>
+          <div class="learn-row">
+            <button id="open-how" type="button"><i data-icon="book"></i> How to play</button>
+            <button id="play-tutorial" type="button"><i data-icon="hands"></i> Tutorial kitchen</button>
+          </div>
         </div>
       </div>
 
@@ -204,9 +259,10 @@
         </p>
         <fieldset id="lobby-roles">
           <legend>Pick your chef</legend>
-          <button type="button" data-role="blind" class="chef-card blind"><i class="chef-emoji" data-img="Avatar_Blind" aria-hidden="true"></i><strong>Blind chef</strong><span>Plays by sound. Hears phone orders and the perfect sizzle.</span></button>
-          <button type="button" data-role="deaf" class="chef-card deaf"><i class="chef-emoji" data-img="Avatar_Deaf" aria-hidden="true"></i><strong>Deaf chef</strong><span>Plays by sight. Reads tickets, watches the stove.</span></button>
-          <button type="button" data-role="mute" class="chef-card mute"><i class="chef-emoji" data-img="Avatar_Mute" aria-hidden="true"></i><strong>Mute chef</strong><span>Sees and hears all. Talks with pings, signs and a bell.</span></button>
+          <button type="button" data-role="head" class="chef-card head"><i class="chef-emoji" data-icon="chef" aria-hidden="true"></i><strong>Head chef</strong><span>Runs the pass. Sees every order and how each dish is going. Calls the shots, plates and serves.</span></button>
+          <button type="button" data-role="deaf" class="chef-card deaf"><i class="chef-emoji" data-img="Avatar_Deaf" aria-hidden="true"></i><strong>Deaf chef</strong><span>Cooks by sight. Reads tickets, watches the stove, can't hear calls.</span></button>
+          <button type="button" data-role="mute" class="chef-card mute"><i class="chef-emoji" data-img="Avatar_Mute" aria-hidden="true"></i><strong>Mute chef</strong><span>Cooks and hears everything. Talks with pings, signs and a bell.</span></button>
+          <button type="button" data-role="blind" class="chef-card blind-option"><i class="chef-emoji" data-img="Avatar_Blind" aria-hidden="true"></i><span><strong>Play by sound instead</strong> (accessibility): the blind cook, for players who are blind.</span></button>
         </fieldset>
         <h3 class="muted small">Chefs in this kitchen</h3>
         <ul id="lobby-players"></ul>

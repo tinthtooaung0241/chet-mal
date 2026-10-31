@@ -151,18 +151,28 @@ export const recipeById = (id: string): Recipe => {
 /** Tickets are printed (seen); phone orders are spoken once (heard). */
 export type OrderChannel = "ticket" | "phone";
 
-/** Mid-shift chaos that flips who leads: a blind chef doesn't mind the dark, a deaf chef doesn't mind the noise. */
+/** Mid-shift chaos that flips who leads: in the dark everyone talks it through; a deaf chef doesn't mind the noise. */
 export type KitchenEventKind = "blackout" | "storm";
 
 export interface Level {
   n: number;
   name: string;
   blurb: string;
+  /** what this level introduces, shown on the briefing card before the shift */
+  teach: { title: string; lines: string[] };
   recipes: string[];
   channels: OrderChannel[];
   time: number;
   /** chance that produce from a crate has gone off */
   spoilChance: number;
+  /** fridge food goes off if left out (introduced once the basics are learned) */
+  coldFood: boolean;
+  /** guided first shift: one order at a time, patient customers, a coach showing every step */
+  tutorial?: boolean;
+  /** most orders open at once (default MAX_ORDERS) */
+  maxOrders?: number;
+  /** how many times longer customers wait than usual */
+  patience?: number;
   events: { at: number; kind: KitchenEventKind; duration: number }[];
   /** points for one, two and three stars */
   stars: [number, number, number];
@@ -170,48 +180,109 @@ export interface Level {
 
 const ALL_RECIPES = RECIPES.map((r) => r.id);
 
+// The tutorial kitchen: entered from the title screen, not part of the level list.
+export const TUTORIAL: Level = {
+  n: 0,
+  name: "Tutorial kitchen",
+  blurb: "A guided shift: the coach shows every step of a salad. No rush.",
+  teach: {
+    title: "Your first salad",
+    lines: [
+      "Follow the glowing station and the coach banner.",
+      "Take a tomato and lettuce, chop them on a board (hold F), and put them on a plate.",
+      "Finish it at the spice rack (olive oil, lemon, salt), then serve it at the pass.",
+    ],
+  },
+  recipes: ["salad"],
+  channels: ["ticket"],
+  time: 240,
+  spoilChance: 0,
+  coldFood: false,
+  tutorial: true,
+  maxOrders: 1,
+  patience: 4,
+  events: [],
+  stars: [20, 45, 70],
+};
+
+// One new idea per level, so nobody has to learn the whole kitchen at once.
 export const LEVELS: Level[] = [
   {
     n: 1,
     name: "Opening day",
-    blurb: "Printed tickets only. Take cold food from the fridges and season each dish the way the ticket asks.",
+    blurb: "The stove opens. Season the fish and the bread before they cook.",
+    teach: {
+      title: "New: the stove, and seasoning before cooking",
+      lines: [
+        "Fry fish on a stove; take it off when it's cooked, before it burns.",
+        "Some seasoning goes on first: salt the raw fish, butter the bread, then cook.",
+        "The ticket shows the order: spice icons before the flame go on first.",
+      ],
+    },
     recipes: ["salad", "grilled-fish", "cheese-toastie"],
     channels: ["ticket"],
-    time: 150,
+    time: 170,
     spoilChance: 0,
+    coldFood: false,
+    maxOrders: 3,
+    patience: 1.5,
     events: [],
     stars: [40, 85, 130],
   },
   {
     n: 2,
     name: "The grill",
-    blurb: "Steak and fish all night. Season at the spice racks, and listen for the sizzle to whistle: that's a perfect cook.",
+    blurb: "Steaks all night. Salt and pepper before, salt the fries after, and listen for the perfect sizzle.",
+    teach: {
+      title: "New: seasoning after cooking, and the perfect sizzle",
+      lines: [
+        "Fries get their salt straight out of the pan: spice icons after the flame.",
+        "When a sizzle whistles, take it off for a perfect bonus.",
+      ],
+    },
     recipes: ["grilled-fish", "steak-fries", "steak-onions", "steak-salad", "soy-fish"],
     channels: ["ticket"],
     time: 180,
     spoilChance: 0,
+    coldFood: false,
     events: [],
     stars: [60, 120, 180],
   },
   {
     n: 3,
     name: "Soup's on",
-    blurb: "Three chopped vegetables in the pot, let it boil, ladle it into a bowl. The phone starts ringing too.",
+    blurb: "Three chopped vegetables in the pot, ladle into a bowl. The phone starts ringing too.",
+    teach: {
+      title: "New: soup, and phone orders",
+      lines: [
+        "Put three chopped vegetables in the soup pot, let it boil, ladle it into a bowl.",
+        "Phone orders are only heard, once. Whoever hears one must tell the others.",
+      ],
+    },
     recipes: ["tomato-soup", "veg-soup", "salad", "cheese-toastie"],
     channels: ["ticket", "phone"],
     time: 180,
     spoilChance: 0,
+    coldFood: false,
     events: [],
     stars: [60, 120, 175],
   },
   {
     n: 4,
     name: "Breakfast rush",
-    blurb: "Eggs, toast and mushrooms on one plate, soups and fish on the side. Keep the pans moving!",
+    blurb: "Busy mornings. Cold food now goes off if it sits out of the fridge too long.",
+    teach: {
+      title: "New: keep cold food cold",
+      lines: [
+        "Meat, fish, eggs, cheese, lettuce and mushrooms warm up once they're out of the fridge.",
+        "Use them soon or put them back. Left too long, they go off.",
+      ],
+    },
     recipes: ["breakfast", "mushroom-soup", "fish-chips", "stir-fry", "steak-onions"],
     channels: ["ticket", "phone"],
     time: 190,
     spoilChance: 0,
+    coldFood: true,
     events: [],
     stars: [60, 125, 185],
   },
@@ -219,21 +290,31 @@ export const LEVELS: Level[] = [
     n: 5,
     name: "Bad batch",
     blurb: "Some produce has gone off. Spot the mould, or sniff it (Z). Never serve it!",
+    teach: {
+      title: "New: spoiled produce",
+      lines: ["Some ingredients arrive mouldy. Sighted chefs can see it; anyone can sniff with Z.", "Serving it makes a customer sick."],
+    },
     recipes: ALL_RECIPES,
     channels: ["ticket", "phone"],
     time: 190,
     spoilChance: 0.25,
+    coldFood: true,
     events: [],
     stars: [55, 115, 170],
   },
   {
     n: 6,
     name: "Storm night",
-    blurb: "The power cuts out, then a storm drowns every sound. Your blind and deaf chefs lead the way.",
+    blurb: "The power cuts out, then a storm drowns every sound. Talk each other through the dark; follow the deaf chef in the storm.",
+    teach: {
+      title: "New: blackouts and storms",
+      lines: ["In a power cut nobody can see: describe where you are and what you hold.", "In a storm nobody can hear: watch the deaf chef, who's used to it."],
+    },
     recipes: ALL_RECIPES,
     channels: ["ticket", "phone"],
     time: 210,
     spoilChance: 0.15,
+    coldFood: true,
     events: [
       { at: 55, kind: "blackout", duration: 22 },
       { at: 135, kind: "storm", duration: 22 },
@@ -242,7 +323,7 @@ export const LEVELS: Level[] = [
   },
 ];
 
-export const levelByNumber = (n: number): Level => LEVELS.find((l) => l.n === n) ?? LEVELS[0];
+export const levelByNumber = (n: number): Level => (n === TUTORIAL.n ? TUTORIAL : (LEVELS.find((l) => l.n === n) ?? LEVELS[0]));
 
 export function starsFor(level: Level, score: number): number {
   return level.stars.filter((s) => score >= s).length;

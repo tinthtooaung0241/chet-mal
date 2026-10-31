@@ -411,9 +411,9 @@ export function createGame(levelNumber = 1): Game {
     else if (isFloor(s.row, s.col - 1)) s.facing = -Math.PI / 2;
   }
 
-  // two orders to start; on levels with phones, one of each channel so every chef has something to do
+  // two orders to start (one in the guided shift); with phones, one of each channel so every chef has something to do
   addOrder(g, recipeById(level.recipes[0]), "ticket");
-  addOrder(g, recipeById(level.recipes[1]), level.channels.includes("phone") ? "phone" : "ticket");
+  if ((level.maxOrders ?? MAX_ORDERS) > 1) addOrder(g, recipeById(level.recipes[1] ?? level.recipes[0]), level.channels.includes("phone") ? "phone" : "ticket");
   return g;
 }
 
@@ -655,6 +655,7 @@ export function stepWorld(g: Game, dt: number) {
     if (chef.bubble && (chef.bubble.ttl -= dt) <= 0) chef.bubble = null;
     if (chef.gesture && (chef.gesture.ttl -= dt) <= 0) chef.gesture = null;
     const target = targetStation(g, chef);
+    if (!ROLES[chef.role].cooks) continue;
     if (!chef.chopInput || chef.held || target?.kind !== "board" || target.item?.type !== "food") continue;
     const food = target.item;
     if (!FOOD_RULES[food.kind]?.chop || food.state !== "raw") continue;
@@ -741,7 +742,7 @@ export function stepWorld(g: Game, dt: number) {
   g.nextOrderIn -= dt;
   if (g.nextOrderIn <= 0) {
     g.nextOrderIn = ORDER_INTERVAL;
-    if (g.orders.length < MAX_ORDERS) addOrder(g);
+    if (g.orders.length < (levelByNumber(g.level).maxOrders ?? MAX_ORDERS)) addOrder(g);
   }
 
   // the level's chaos events: a power cut (nobody sees) and a storm (nobody hears)
@@ -754,7 +755,7 @@ export function stepWorld(g: Game, dt: number) {
     // everyone notices the change itself, whatever their senses: it's felt
     if (next.kind === "blackout") {
       g.blackout = next.duration;
-      emit(g, "blackout", "The power cuts out! The kitchen is pitch dark. Your blind chef knows the way.", pass, EVERYONE, everyone, true);
+      emit(g, "blackout", "The power cuts out! The kitchen is pitch dark. Talk each other through it.", pass, EVERYONE, everyone, true);
     } else {
       g.storm = next.duration;
       emit(g, "storm", "A storm hits! Thunder drowns out every sound. Watch your deaf chef.", pass, EVERYONE, everyone, true);
@@ -797,7 +798,8 @@ function addOrder(g: Game, recipe?: Recipe, channel?: OrderChannel) {
   recipe ??= recipeById(level.recipes[Math.floor(Math.random() * level.recipes.length)]);
   channel ??= level.channels[Math.floor(Math.random() * level.channels.length)];
   const id = g.nextId++;
-  g.orders.push({ id, recipe, timeLeft: recipe.time, channel, warned: false });
+  const wait = recipe.time * (level.patience ?? 1);
+  g.orders.push({ id, recipe: { ...recipe, time: wait }, timeLeft: wait, channel, warned: false });
   addDiner(g, id);
   const pass = g.stations.find((s) => s.kind === "serve") ?? { x: 0, z: 0 };
   const items = describeRecipe(recipe);
@@ -1003,6 +1005,7 @@ function* allFood(g: Game): Generator<{ food: Food; at: { x: number; z: number }
 
 /** Fridge ingredients left out raw (or chopped) warm up and, eventually, go off. */
 function warmUp(g: Game, dt: number) {
+  if (!levelByNumber(g.level).coldFood) return; // taught from the breakfast rush onwards
   for (const { food, at, holder, cooking } of allFood(g)) {
     if (!FOOD_RULES[food.kind]?.cold || food.spoiled || cooking) continue;
     if (food.state !== "raw" && food.state !== "chopped") continue;
@@ -1118,6 +1121,10 @@ function handOff(g: Game, chef: Chef, mate: Chef) {
     emit(g, "invalid", `${mate.name} is in front of you. You have nothing to give.`, chef, FELT, [chef.id]);
     return;
   }
+  if (chef.held.type === "food" && !ROLES[mate.role].cooks && mate.held?.type !== "plate") {
+    emit(g, "invalid", `${mate.name} doesn't handle raw food. Hand it over on a plate.`, chef, FELT, [chef.id]);
+    return;
+  }
   // food straight onto the plate a teammate is holding out
   if (chef.held.type === "food" && mate.held?.type === "plate") {
     if (addToPlate(g, chef, mate.held, chef.held, mate)) chef.held = null;
@@ -1133,6 +1140,16 @@ function handOff(g: Game, chef: Chef, mate: Chef) {
   emit(g, "handoff", `${chef.name} handed ${describeItem(item)} to ${mate.name}.`, mate, EVERYONE, [chef.id, mate.id]);
 }
 
+/** What a head chef would be doing here that's a cook's job (null if it's fine). */
+function headChefCant(st: Station, held: Item | null): string | null {
+  if (st.kind === "crate" || st.kind === "fridge" || st.kind === "pantry") return "fetch the ingredients";
+  if (st.kind === "pot") return held?.type === "bowl" ? null : "make the soup";
+  if (held?.type === "food") return "take this";
+  // empty-handed at a surface with food on it: bring a plate to plate it instead
+  if (!held && st.item?.type === "food") return st.kind === "board" ? "chop that" : "handle the food, or bring a plate to plate it";
+  return null;
+}
+
 /** The single "use" button: pick up, put down, combine, serve, bin or hand over. */
 export function interact(g: Game, chef: Chef) {
   if (g.phase !== "playing") return;
@@ -1146,6 +1163,13 @@ export function interact(g: Game, chef: Chef) {
   const me = [chef.id];
   const held = chef.held;
   const here = stationName(st);
+
+  // the head chef runs the pass: plates, bowls, finishing and serving, never raw food
+  const handsOff = !ROLES[chef.role].cooks ? headChefCant(st, held) : null;
+  if (handsOff) {
+    emit(g, "invalid", `The head chef doesn't cook. Ask a cook to ${handsOff}.`, st, FELT, me);
+    return;
+  }
 
   switch (st.kind) {
     case "crate":
@@ -1283,6 +1307,10 @@ export function interact(g: Game, chef: Chef) {
 export function chopHint(g: Game, chef: Chef) {
   if (g.phase !== "playing") return;
   const me = [chef.id];
+  if (!ROLES[chef.role].cooks) {
+    emit(g, "invalid", "The head chef doesn't chop. Ask a cook to.", chef, FELT, me);
+    return;
+  }
   const st = targetStation(g, chef);
   if (st?.kind !== "board") {
     emit(g, "invalid", "Face a cutting board to chop.", chef, FELT, me);

@@ -21,6 +21,8 @@ import {
   type Role,
   type Spice,
   type Station,
+  type Guide,
+  orderProgress,
 } from "@kitchen/shared";
 import { glyph, img } from "../ui/icons";
 import { SPICE_GLYPHS, actionHints, foodIcon, itemIconNode, soupIcon, stationIconNode, stockIconNode, stockName } from "./hints";
@@ -38,6 +40,7 @@ function clock(seconds: number): string {
 
 const ROLE_LOOK: Record<Role, { avatar: string | null; color: string }> = {
   full: { avatar: null, color: "#3a6ea5" },
+  head: { avatar: null, color: "#c98a2e" },
   blind: { avatar: "Avatar_Blind", color: "#2a9d8f" },
   deaf: { avatar: "Avatar_Deaf", color: "#e07a3f" },
   mute: { avatar: "Avatar_Mute", color: "#8e6bbf" },
@@ -69,9 +72,17 @@ export class Hud {
   private readonly blindfold = $("blindfold");
   private readonly signals = $("signals");
   private readonly picker = $("picker");
+  private readonly tagBar = Object.assign(document.createElement("span"), { className: "tag-bar", hidden: true });
+  private readonly tagFill = document.createElement("i");
+  private readonly checklist = $("checklist");
+  private readonly checklistSteps = $<HTMLOListElement>("checklist-steps");
+  private readonly coach = $("coach");
+  private lastGuide = "";
   private lastPicker = "";
   private orderKey = "";
   private bars = new Map<number, HTMLElement>();
+  /** ingredient chips of each ticket, in recipe order */
+  private ingChips = new Map<number, HTMLElement[]>();
   private lastScore: number | null = null;
   private lastHeld = "";
   private lastPrompts = "";
@@ -111,9 +122,10 @@ export class Hud {
     this.orderKey = "";
   }
 
-  update(game: Game, me: Chef, firstPerson: boolean) {
+  /** @param bar the progress bar of the station you're facing (shown in the target tag in first person) */
+  update(game: Game, me: Chef, firstPerson: boolean, bar: { progress: number; color: string } | null = null) {
     const level = levelByNumber(game.level);
-    this.setText(this.levelNumber, String(level.n));
+    this.setText(this.levelNumber, level.tutorial ? "T" : String(level.n));
     this.setText(this.levelName, level.name);
     this.syncScore(game.score, level.stars);
     this.setText(this.time, clock(game.timeLeft));
@@ -152,7 +164,16 @@ export class Hud {
     const tagText = target ? `${stationName(target)}${contents}` : (mate?.name ?? "");
     if (showTag && this.targetTag.dataset.text !== tagText) {
       this.targetTag.dataset.text = tagText;
-      this.targetTag.replaceChildren(target ? stationIconNode(target) : glyph("chef"), tagText);
+      const label = document.createElement("span");
+      label.textContent = tagText;
+      this.tagBar.replaceChildren(this.tagFill);
+      this.targetTag.replaceChildren(target ? stationIconNode(target) : glyph("chef"), label, this.tagBar);
+    }
+    // chopping / cooking progress for what you're facing, right under the crosshair
+    this.tagBar.hidden = !bar;
+    if (bar) {
+      this.tagFill.style.width = `${(bar.progress * 100).toFixed(1)}%`;
+      this.tagFill.style.background = bar.color;
     }
 
     // contextual key prompts
@@ -178,6 +199,37 @@ export class Hud {
     this.syncPicker(target?.stock?.length && game.phase === "playing" ? target : null, me);
 
     this.syncOrders(game, me.role, sees);
+  }
+
+  /**
+   * The checklist for the dish in hand (or, in the guided shift, the order being made), and the
+   * coach line with the next step.
+   */
+  syncGuide(game: Game, guide: Guide | null, coach: boolean) {
+    const seat = guide ? game.diners.find((d) => d.orderId === guide.order.id)?.seat : undefined;
+    const key = guide ? `${guide.order.id}|${seat}|${guide.next}|${guide.steps.map((s) => `${s.text}${s.done}${s.wrong}${s.current}`).join()}` : "";
+    if (key === this.lastGuide) return;
+    this.lastGuide = key;
+    this.checklist.hidden = !guide;
+    this.coach.hidden = !(coach && guide?.next);
+    if (!guide) return;
+    $("checklist-title").textContent = guide.order.recipe.name;
+    $("checklist-table").textContent = seat === undefined ? "" : `Table ${tableNumber(seat)}`;
+    this.checklistSteps.replaceChildren(
+      ...guide.steps.map((step) => {
+        const li = document.createElement("li");
+        li.className = step.done ? "done" : step.wrong ? "wrong" : step.current ? "current" : "";
+        const mark = document.createElement("span");
+        mark.className = "mark";
+        mark.textContent = step.done ? "✓" : step.wrong ? "✗" : step.current ? "▸" : "";
+        li.append(mark, step.text);
+        return li;
+      }),
+    );
+    $("coach-text").textContent = guide.next ?? "";
+    this.coach.classList.remove("changed");
+    void this.coach.offsetWidth; // replay the little bounce for each new step
+    this.coach.classList.add("changed");
   }
 
   /** Facing a fridge or spice rack: what's in it, with number keys, and what you've chosen. */
@@ -276,6 +328,7 @@ export class Hud {
     if (key !== this.orderKey) {
       this.orderKey = key;
       this.bars.clear();
+      this.ingChips.clear();
       this.orders.replaceChildren(
         ...known.map((order) => {
           const li = document.createElement("li");
@@ -312,6 +365,8 @@ export class Hud {
           for (const item of order.recipe.items) {
             const chip = document.createElement("span");
             chip.className = "ing";
+            if (!this.ingChips.has(order.id)) this.ingChips.set(order.id, []);
+            this.ingChips.get(order.id)!.push(chip);
             // read left to right like the procedure: food, seasoning that goes on first, how it's
             // cooked, then seasoning that goes on straight after
             const spices = (item.season ?? []).map((sp) => {
@@ -357,6 +412,16 @@ export class Hud {
           return li;
         }),
       );
+    }
+    // the head chef sees how each dish is coming along: a dot on every ingredient
+    for (const order of known) {
+      const chips = this.ingChips.get(order.id);
+      if (!chips) continue;
+      const progress = role === "head" ? orderProgress(game, order) : null;
+      chips.forEach((chip, i) => {
+        const state = progress?.[i] ?? "";
+        if (chip.dataset.progress !== state) chip.dataset.progress = state;
+      });
     }
     for (const order of known) {
       const fill = this.bars.get(order.id);

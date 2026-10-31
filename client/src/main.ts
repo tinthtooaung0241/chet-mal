@@ -5,6 +5,9 @@ import {
   ROLES,
   createGame,
   describeSurroundings,
+  guideFor,
+  levelByNumber,
+  TUTORIAL,
   targetStation,
   type Action,
   type Chef,
@@ -240,7 +243,102 @@ function beginRound() {
   $("role-picker").hidden = session?.online ?? false;
   setFirstPerson(true);
   canvas.focus();
+  lastCoach = null;
+  showBriefing();
 }
+
+// --- shift briefing: what's new on this level, and how your chef plays ---------------------
+
+const briefing = $<HTMLDialogElement>("briefing");
+const ROLE_TIPS: Record<Role, string> = {
+  full: "Practising alone: you see and hear everything. Switch chef with keys 0–4 to try each role.",
+  head: "You run the pass. You see every ticket, hear every phone order, and your tickets show how each dish is coming along. You don't cook: tell your cooks what to make, then plate, finish and serve.",
+  blind: "You can't see. Follow sounds: each station has its own, Q describes what's around you and what's next, R reads the recipes aloud.",
+  deaf: "You can't hear. Watch tickets, bars, smoke and your teammates' signs. Phone orders only reach the others.",
+  mute: "You can't talk. Point with G, ring the bell with B, and hold T for signs. You see and hear everything.",
+};
+
+const BRIEFED_KEY = "kitchen.briefed";
+
+/** Levels whose briefing this browser has already shown (it only pops up the first time). */
+function briefed(): number[] {
+  try {
+    return JSON.parse(localStorage.getItem(BRIEFED_KEY) ?? "[]") as number[];
+  } catch {
+    return [];
+  }
+}
+
+/** @param force from the pause menu's "Level tips": show it again */
+function showBriefing(force = false) {
+  const game = session?.game;
+  const me = meNow();
+  if (!game || !me) return;
+  const level = levelByNumber(game.level);
+  const seen = briefed();
+  if (!force && !level.tutorial && seen.includes(level.n)) return;
+  if (!seen.includes(level.n)) {
+    try {
+      localStorage.setItem(BRIEFED_KEY, JSON.stringify([...seen, level.n]));
+    } catch {
+      // no storage: it'll just show again next time
+    }
+  }
+  $("briefing-level").textContent = level.tutorial ? "Tutorial" : `Level ${level.n} · ${level.name}`;
+  $("briefing-title").textContent = level.teach.title;
+  $("briefing-lines").replaceChildren(
+    ...level.teach.lines.map((line) => {
+      const li = document.createElement("li");
+      li.textContent = line;
+      return li;
+    }),
+  );
+  $("briefing-role").textContent = `${ROLES[me.role].name}: ${ROLE_TIPS[me.role]}`;
+  if (document.pointerLockElement) document.exitPointerLock();
+  // solo waits while you read; online the kitchen keeps going
+  if (!session?.online) {
+    paused = true;
+    feedback.setPaused(true);
+  }
+  if (!briefing.open) briefing.showModal();
+  $("briefing-go").focus();
+  if (me.role === "blind" || feedback.speak) {
+    if ("speechSynthesis" in window) {
+      speechSynthesis.cancel();
+      speechSynthesis.speak(new SpeechSynthesisUtterance(`${level.name}. ${level.teach.title}. ${level.teach.lines.join(" ")} ${ROLE_TIPS[me.role]}`));
+    }
+  }
+}
+
+$("briefing-go").addEventListener("click", () => briefing.close());
+$("open-briefing").addEventListener("click", () => {
+  closeMenu();
+  showBriefing(true);
+});
+
+// --- learning: the How to play guide and the tutorial kitchen (both from the title screen) ---
+
+const howToPlay = $<HTMLDialogElement>("how-to-play");
+
+function startTutorial() {
+  if (howToPlay.open) howToPlay.close();
+  feedback.unlock();
+  session = new LocalSession(soloRole, TUTORIAL.n);
+  beginRound();
+}
+
+$("open-how").addEventListener("click", () => howToPlay.showModal());
+$("how-close").addEventListener("click", () => howToPlay.close());
+$("how-tutorial").addEventListener("click", startTutorial);
+$("play-tutorial").addEventListener("click", startTutorial);
+briefing.addEventListener("close", () => {
+  if (paused && !pauseMenu.open && !book.open) {
+    paused = false;
+    feedback.setPaused(false);
+  }
+  if ("speechSynthesis" in window && meNow()?.role !== "blind") speechSynthesis.cancel();
+  canvas.focus();
+});
 
 const lobby = new Lobby({
   solo() {
@@ -373,7 +471,10 @@ window.addEventListener("keydown", (e) => {
       act("bell");
       break;
     case "KeyQ":
-      if (me) feedback.say(describeSurroundings(session.game, me));
+      if (me) {
+        const next = guideFor(session.game, me)?.next;
+        feedback.say(`${describeSurroundings(session.game, me)}${next ? ` Next: ${next}.` : ""}`);
+      }
       break;
     case "KeyP":
     case "Escape":
@@ -449,10 +550,13 @@ function resetPickOnNewStation() {
   const id = st?.id ?? null;
   if (id === lastStock) return;
   lastStock = id;
-  if (st) {
-    session?.setPick(0);
-    const me = meNow();
-    if (me) feedback.pickCue(0, stockName(st, st.stock![0]), me);
+  const me = meNow();
+  if (st && me && session?.game) {
+    // start on what the coach says you need here, else the first item
+    const guide = guideFor(session.game, me);
+    const pick = guide?.target?.id === st.id && guide.pick !== null ? guide.pick : 0;
+    session.setPick(pick);
+    feedback.pickCue(pick, stockName(st, st.stock![pick]), me);
   }
 }
 
@@ -537,8 +641,21 @@ scene.onBeforeRenderObservable.add(() => {
   view.sync(game, me, paused ? 0 : dt, pov.active ? pov.handPosition() : null);
   if (!paused) feedback.update(game, me, dt);
   voice.update(game, me);
-  hud.update(game, me, pov.active);
+  const faced = game.phase === "playing" ? targetStation(game, me) : null;
+  hud.update(game, me, pov.active, faced ? view.barState(faced.id) : null);
+
+  // the coach: a checklist for what's in hand; in the guided first shift, the next step with an arrow
+  const guide = guideFor(game, me);
+  const tutorial = !!levelByNumber(game.level).tutorial;
+  hud.syncGuide(game, guide, tutorial);
+  view.setGuideTarget(tutorial ? (guide?.target ?? null) : null);
+  if (tutorial && guide?.next && guide.next !== lastCoach && !briefing.open) {
+    lastCoach = guide.next;
+    feedback.coach(guide.next);
+  }
 });
+
+let lastCoach: string | null = null;
 
 if (import.meta.env.DEV) Object.assign(window, { getSession: () => session, scene, pov, voice }); // console debugging
 

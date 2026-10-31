@@ -2127,3 +2127,341 @@ i[data-img] {
   background: rgba(253, 241, 212, 0.95);
   box-shadow: 0 3px 0 #e2c477, 0 6px 14px rgba(45, 28, 12, 0.28);
 }
+
+/* ====================================================================== coach + checklist + briefing */
+
+/* the next step, big and friendly, under the top bar */
+#coach {
+  position: absolute;
+  left: 50%;
+  top: 112px; /* under the top bar, clear of the tickets and the score */
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(560px, calc(100vw - 680px));
+  padding: 8px 18px 8px 8px;
+  border-radius: var(--pill);
+  color: var(--ink);
+  background: #fde7b4;
+  box-shadow:
+    0 3px 0 var(--honey-edge),
+    0 8px 18px rgba(45, 28, 12, 0.3);
+  font-size: 0.98rem;
+  line-height: 1.25;
+}
+
+#coach[hidden] {
+  display: none;
+}
+
+#coach.changed {
+  animation: coach-in 0.45s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+
+.coach-step {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: var(--pill);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4a2d07;
+  background: var(--honey);
+}
+
+@keyframes coach-in {
+  from {
+    transform: translateX(-50%) translateY(-8px) scale(0.94);
+  }
+}
+
+/* what the dish in hand still needs: a little order slip, bottom left */
+#checklist {
+  position: absolute;
+  left: var(--edge);
+  bottom: var(--edge);
+  width: 230px;
+  padding: 10px 12px 10px;
+  border-radius: var(--r-md);
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: var(--lift);
+  animation: toast-in 0.25s ease-out both;
+}
+
+#checklist[hidden] {
+  display: none;
+}
+
+#checklist header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+
+#checklist header .muted {
+  font-family: "Nunito", sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#checklist-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  font-size: 0.8rem;
+}
+
+#checklist-steps li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 8px 3px 4px;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+}
+
+#checklist-steps .mark {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  background: var(--oat);
+}
+
+#checklist-steps li.done {
+  color: var(--mint-ink);
+  text-decoration: line-through;
+  text-decoration-color: rgba(47, 106, 58, 0.4);
+}
+
+#checklist-steps li.done .mark {
+  color: #fff;
+  background: #7fc98a;
+}
+
+#checklist-steps li.wrong {
+  color: var(--peach-ink);
+}
+
+#checklist-steps li.wrong .mark {
+  color: #fff;
+  background: var(--peach-edge);
+}
+
+#checklist-steps li.current {
+  color: var(--ink);
+  background: #fde7b4;
+  font-weight: 800;
+}
+
+#checklist-steps li.current .mark {
+  color: #4a2d07;
+  background: var(--honey);
+}
+
+/* briefing card before a shift */
+.briefing-level {
+  margin: 4px 0 2px;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--peach-edge);
+}
+
+.briefing-lines {
+  margin: 10px 0 12px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.briefing-lines li {
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--oat);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.briefing-role {
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--sky-soft);
+  color: var(--sky-ink);
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+@media (max-width: 1100px) {
+  #coach {
+    top: auto;
+    bottom: 150px;
+    max-width: calc(100vw - 24px);
+  }
+}
+
+@media (max-width: 760px) {
+  #checklist {
+    bottom: auto;
+    top: 260px;
+    width: 180px;
+  }
+}
+
+/* title screen: learning buttons side by side */
+.learn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+
+/* How to play: four cards */
+.how-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--gap);
+  margin: 12px 0;
+  text-align: left;
+}
+
+.how-grid section {
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--oat);
+}
+
+.how-grid section:nth-child(2) {
+  background: var(--sky-soft);
+}
+
+.how-grid section:nth-child(3) {
+  background: var(--mint-soft);
+}
+
+.how-grid section:nth-child(4) {
+  background: var(--lilac-soft);
+}
+
+.how-grid h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.how-grid h3 .icon-svg {
+  width: 22px;
+  height: 22px;
+}
+
+.how-grid p {
+  margin: 5px 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* progress of the station you're facing, inside the tag under the crosshair */
+#target-tag .tag-bar {
+  display: block;
+  width: 64px;
+  height: 8px;
+  margin-left: 4px;
+  overflow: hidden;
+  border-radius: var(--pill);
+  background: var(--oat);
+  box-shadow: inset 0 0 0 1.5px rgba(59, 47, 39, 0.35);
+}
+
+#target-tag .tag-bar[hidden] {
+  display: none;
+}
+
+#target-tag .tag-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: var(--pill);
+  transition: width 0.1s linear;
+}
+
+/* head chef: a progress dot on each ingredient of each ticket */
+.order .ing[data-progress] {
+  position: relative;
+}
+
+.order .ing[data-progress="ready"]::after,
+.order .ing[data-progress="working"]::after,
+.order .ing[data-progress="todo"]::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--paper);
+}
+
+.order .ing[data-progress="ready"]::after {
+  background: #7fc98a;
+}
+
+.order .ing[data-progress="working"]::after {
+  background: var(--honey);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.order .ing[data-progress="todo"]::after {
+  background: var(--oat);
+  box-shadow:
+    0 0 0 2px var(--paper),
+    inset 0 0 0 1.5px var(--ink-faint);
+}
+
+/* lobby: the accessibility option sits under the three chefs */
+.chef-card.head {
+  background: #fdf1d4;
+}
+
+.chef-card.blind-option {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--oat);
+}
+
+.chef-card.blind-option .chef-emoji .icon-img,
+.chef-card.blind-option .chef-emoji .icon-svg {
+  width: 36px;
+  height: 36px;
+}
+
+.chef-card .chef-emoji .icon-svg {
+  width: 60px;
+  height: 60px;
+  padding: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+}

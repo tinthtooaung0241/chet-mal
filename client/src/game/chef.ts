@@ -21,6 +21,7 @@ import type { AssetLibrary } from "../assets";
 // Which Blender character plays each role ("all senses" practice uses the mute chef's model).
 const CHEF_MODELS: Record<Role, string> = {
   full: "Chef_Mute",
+  head: "Chef_Head",
   blind: "Chef_Blind",
   deaf: "Chef_Deaf",
   mute: "Chef_Mute",

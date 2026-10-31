@@ -142,53 +142,59 @@ const BAR = {
   safe: Color3.FromHexString("#f6c35b"),
   burn: Color3.FromHexString("#e4553f"),
 };
-const BAR_HEIGHT = 1.42; // every bar floats at the same height, whatever it sits over
-
-/** A billboarded progress bar floating above a station: dark outline, cream track, coloured fill. */
+/**
+ * A small billboarded progress bar just above a station: dark outline, cream track, coloured fill.
+ * Each layer draws in its own rendering group (depth cleared in between), so the fill always sits
+ * cleanly on the track instead of flickering through it.
+ */
 class ProgressBar {
   private readonly root: TransformNode;
   private readonly fill: Mesh;
   private readonly fillMat: StandardMaterial;
-  private static readonly WIDTH = 0.44;
+  private static readonly WIDTH = 0.3;
+  /** what it shows right now (the HUD reuses it for the station you're facing) */
+  state: { progress: number; color: string } | null = null;
 
-  constructor(scene: Scene, x: number, z: number) {
+  constructor(scene: Scene, x: number, y: number, z: number) {
     this.root = new TransformNode("bar", scene);
-    this.root.position.set(x, BAR_HEIGHT, z);
+    this.root.position.set(x, y, z);
     this.root.billboardMode = TransformNode.BILLBOARDMODE_ALL;
-    const layer = (name: string, width: number, height: number, color: Color3, zOffset: number) => {
+    const layer = (name: string, width: number, height: number, color: Color3, group: number) => {
       const mesh = MeshBuilder.CreatePlane(name, { width, height }, scene);
       const mat = unlitMaterial(scene, `${name}Mat`, color);
-      mat.zOffset = zOffset; // stack the layers without z-fighting
       mesh.material = mat;
       mesh.parent = this.root;
       mesh.isPickable = false;
-      mesh.renderingGroupId = 1; // never hidden behind a pot or its steam
+      mesh.renderingGroupId = group;
       return { mesh, mat };
     };
-    layer("barFrame", ProgressBar.WIDTH + 0.05, 0.1, BAR.frame, 0);
-    layer("barTrack", ProgressBar.WIDTH + 0.01, 0.06, BAR.track, -1);
-    const fill = layer("barFill", ProgressBar.WIDTH, 0.045, BAR.work, -2);
+    layer("barFrame", ProgressBar.WIDTH + 0.03, 0.07, BAR.frame, 1);
+    layer("barTrack", ProgressBar.WIDTH + 0.006, 0.042, BAR.track, 2);
+    const fill = layer("barFill", ProgressBar.WIDTH, 0.03, BAR.work, 3);
     this.fill = fill.mesh;
     this.fillMat = fill.mat;
     this.hide();
   }
 
-  show(progress: number, color: Color3) {
+  show(progress: number, color: Color3, visible = true) {
     const p = Scalar.Clamp(progress, 0.02, 1);
     this.fill.scaling.x = p;
     this.fill.position.x = (-(1 - p) * ProgressBar.WIDTH) / 2;
     this.fillMat.emissiveColor = color;
-    this.root.setEnabled(true);
+    this.root.setEnabled(visible);
+    this.state = { progress: p, color: color.toHexString() };
   }
 
   hide() {
     this.root.setEnabled(false);
+    this.state = null;
   }
 }
 
 // Apron colours tell the chefs apart at a glance.
 const APRON: Record<Role, Color3> = {
   full: Color3.FromHexString("#3a6ea5"),
+  head: Color3.FromHexString("#c98a2e"),
   blind: Color3.FromHexString("#2a9d8f"),
   deaf: Color3.FromHexString("#e07a3f"),
   mute: Color3.FromHexString("#8e6bbf"),
@@ -325,7 +331,7 @@ export class GameView {
         knife.position.set(0.3, COUNTER_TOP + 0.002, -0.22);
         knife.rotation.y = 1.4;
         surface = COUNTER_TOP + 0.021 * ITEM_SCALE;
-        this.bars.set(s.id, new ProgressBar(this.scene, s.x, s.z));
+        this.bars.set(s.id, new ProgressBar(this.scene, s.x, 1.22, s.z));
         break;
       }
       case "pot": {
@@ -343,7 +349,7 @@ export class GameView {
         surfaceMesh.material = mat;
         surfaceMesh.isPickable = false;
         this.potSoup.set(s.id, { mesh: surfaceMesh, mat });
-        this.bars.set(s.id, new ProgressBar(this.scene, s.x, s.z));
+        this.bars.set(s.id, new ProgressBar(this.scene, s.x, 1.45, s.z));
         break;
       }
       case "bowls":
@@ -355,7 +361,7 @@ export class GameView {
         const pan = this.spawnInto(root, "FryingPan", 0.926, 1.6); // resting on the grates
         pan.rotation.y = Math.PI / 2; // handle points sideways, not at the chef
         surface = 0.926 + 0.008 * 1.6;
-        this.bars.set(s.id, new ProgressBar(this.scene, s.x, s.z));
+        this.bars.set(s.id, new ProgressBar(this.scene, s.x, 1.22, s.z));
         break;
       }
       case "fridge":
@@ -672,7 +678,8 @@ export class GameView {
 
     this.syncHighlight(game.phase === "playing" ? targetStation(game, me) : null);
     this.syncRacks(game, me);
-    this.syncBars(game);
+    const faced = !this.selfVisible && game.phase === "playing" ? (targetStation(game, me)?.id ?? null) : null;
+    this.syncBars(game, faced);
     this.syncPots(game);
     this.syncSignals(game);
   }
@@ -790,6 +797,61 @@ export class GameView {
     }
   }
 
+  // --- the coach's arrow ------------------------------------------------------------
+
+  private guideArrow: TransformNode | null = null;
+  private guided: Station | null = null;
+
+  /** Point at the station the coach wants next: a bobbing arrow above it and a soft honey glow. */
+  setGuideTarget(st: Station | null) {
+    if (st?.id !== this.guided?.id) {
+      this.glowStation(this.guided, false);
+      this.guided = st;
+    }
+    if (!st) {
+      this.guideArrow?.setEnabled(false);
+      return;
+    }
+    if (!this.guideArrow) {
+      const root = new TransformNode("guideArrow", this.scene);
+      const mat = unlitMaterial(this.scene, "guideArrowMat", Color3.FromHexString("#f6c35b"));
+      const head = MeshBuilder.CreateCylinder("guideArrowHead", { diameterTop: 0, diameterBottom: 0.26, height: 0.24, tessellation: 4 }, this.scene);
+      head.rotation.x = Math.PI; // point down
+      const shaft = MeshBuilder.CreateBox("guideArrowShaft", { width: 0.09, depth: 0.09, height: 0.2 }, this.scene);
+      shaft.position.y = 0.22;
+      for (const m of [head, shaft]) {
+        m.material = mat;
+        m.parent = root;
+        m.isPickable = false;
+        m.renderingGroupId = 1;
+      }
+      this.guideArrow = root;
+    }
+    const bob = Math.sin(this.time * 4) * 0.06;
+    this.guideArrow.setEnabled(true);
+    this.guideArrow.position.set(st.x, 1.95 + bob, st.z);
+    this.guideArrow.rotation.y = this.time * 1.5;
+    this.glowStation(st, true);
+  }
+
+  private glowStation(st: Station | null, on: boolean) {
+    const node = st && this.stationNodes.get(st.id);
+    if (!node) return;
+    const pulse = 0.18 + 0.14 * (0.5 + 0.5 * Math.sin(this.time * 5));
+    for (const mesh of meshesOf(node)) {
+      if (on) {
+        mesh.renderOverlay = true;
+        mesh.overlayColor = Color3.FromHexString("#f6c35b");
+        mesh.overlayAlpha = pulse;
+      } else {
+        // back to the normal "you're facing it" highlight, or nothing
+        mesh.renderOverlay = st?.id === this.highlighted?.id;
+        mesh.overlayColor = Color3.White();
+        mesh.overlayAlpha = 0.22;
+      }
+    }
+  }
+
   private syncHighlight(target: Station | null) {
     if (target?.id === this.highlighted?.id) return;
     const set = (s: Station | null, on: boolean) => {
@@ -806,35 +868,42 @@ export class GameView {
     this.highlighted = target;
   }
 
-  private syncBars(game: Game) {
+  /** The bar shown over a station right now, if any (for the HUD's target tag). */
+  barState(stationId: number): { progress: number; color: string } | null {
+    return this.bars.get(stationId)?.state ?? null;
+  }
+
+  /** @param faced in first person, the station you're facing: its bar moves into the HUD so it's not in your face */
+  private syncBars(game: Game, faced: number | null) {
     for (const s of game.stations) {
       const bar = this.bars.get(s.id);
       if (!bar) continue;
+      const visible = s.id !== faced;
       const food = s.item?.type === "food" ? s.item : null;
       const rule = food && FOOD_RULES[food.kind];
       if (s.kind === "board" && food && rule?.chop && food.state === "raw" && food.chop > 0) {
-        bar.show(food.chop, BAR.work);
+        bar.show(food.chop, BAR.work, visible);
       } else if (s.kind === "stove" && food && rule?.cookFrom && food.state === rule.cookFrom) {
-        bar.show(food.cook / (rule.cookTime ?? 6), BAR.cook);
+        bar.show(food.cook / (rule.cookTime ?? 6), BAR.cook, visible);
       } else if (s.kind === "stove" && food && rule?.cookFrom && food.state === "cooked") {
         // counts down to burning; flashes red once the warning has been given
         const left = 1 - (food.cook - (rule.cookTime ?? 6)) / (rule.burnTime ?? 6);
-        this.showBurnCountdown(bar, left, food.warned);
+        this.showBurnCountdown(bar, left, food.warned, visible);
       } else if (s.pot && s.pot.state === "filling" && s.pot.contents.length) {
-        bar.show(s.pot.contents.length / SOUP_SIZE, BAR.work);
+        bar.show(s.pot.contents.length / SOUP_SIZE, BAR.work, visible);
       } else if (s.pot && s.pot.state === "cooking") {
-        bar.show(s.pot.cook / SOUP_TIME, BAR.cook);
+        bar.show(s.pot.cook / SOUP_TIME, BAR.cook, visible);
       } else if (s.pot && s.pot.state === "done") {
-        this.showBurnCountdown(bar, 1 - (s.pot.cook - SOUP_TIME) / SOUP_BURN, s.pot.warned);
+        this.showBurnCountdown(bar, 1 - (s.pot.cook - SOUP_TIME) / SOUP_BURN, s.pot.warned, visible);
       } else {
         bar.hide();
       }
     }
   }
 
-  private showBurnCountdown(bar: ProgressBar, left: number, warned: boolean) {
+  private showBurnCountdown(bar: ProgressBar, left: number, warned: boolean, visible: boolean) {
     const flash = warned && Math.floor(this.time * 6) % 2 === 0;
-    bar.show(left, flash ? BAR.frame : Color3.Lerp(BAR.burn, BAR.safe, left));
+    bar.show(left, flash ? BAR.frame : Color3.Lerp(BAR.burn, BAR.safe, left), visible);
   }
 
   /** Soup level and colour in each pot. */

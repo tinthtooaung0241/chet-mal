@@ -60,14 +60,15 @@ const LEGEND: Record<string, LegendEntry> = {
 };
 
 // Row 0 is the back wall (far from the camera). "." is walkable floor.
-// Restaurant layout: one storage corner at the back right where everything is kept (two pantry
-// shelves on the back wall, two reach-in fridges round the corner, decoration in the corner itself),
-// stoves and the soup pot under the hood, the sink under the window with a spice rack beside it,
-// prep counters down the left, chopping on the right, a second spice rack by the plates, and the
-// pass facing the terrace.
-// Must match the room built in Blender (assets/kitchen/environment/Kitchen_Room.glb).
+// Restaurant layout, laid out along the way a dish travels:
+//   storage (back right: two pantry shelves, two fridges round the corner)
+//   -> chopping boards right beside the fridges
+//   -> a spice rack next to the stoves (season before cooking), stoves and the soup pot under the hood
+//   -> plates and bowls by the pass, with the second spice rack beside them for finishing touches
+//   -> the pass, facing the terrace.
+// Prep counters line the left wall and sit beside the sink; the corners hold decoration only.
 export const KITCHEN = [
-  "ZCOOOPKSAHZ",
+  "ZSOOOPKCAHZ",
   "C.........F",
   "C.........G",
   "C.........B",
