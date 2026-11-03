@@ -26,6 +26,7 @@ import {
   type Role,
   type ServerMessage,
 } from "@kitchen/shared";
+import { loadBusiness } from "./business";
 
 export interface Session {
   readonly online: boolean;
@@ -33,7 +34,8 @@ export interface Session {
   readonly game: Game | null;
   readonly me: Chef | null;
   step(dt: number, input: Input): void;
-  act(action: Action): void;
+  /** @param aim for a ping: the spot under the crosshair */
+  act(action: Action, aim?: { x: number; z: number }): void;
   /** choose an item at a fridge or spice rack (index into its stock) */
   setPick(index: number): void;
   emote(word: Emote): void;
@@ -50,7 +52,7 @@ export class LocalSession implements Session {
   me: Chef;
 
   constructor(role: Role, level = 1) {
-    this.game = createGame(level);
+    this.game = createGame(level, loadBusiness().upgrades);
     this.me = addChef(this.game, "solo", role, "You");
   }
 
@@ -62,7 +64,8 @@ export class LocalSession implements Session {
     update(this.game, this.me, dt, input);
   }
 
-  act(action: Action) {
+  act(action: Action, aim?: { x: number; z: number }) {
+    if (action === "ping") return ping(this.game, this.me, aim);
     ({ interact, chopHint, ping, bell: ringBell, hand: toggleHand, sniff } as const)[action](this.game, this.me);
   }
 
@@ -80,7 +83,7 @@ export class LocalSession implements Session {
 
   restart(level = this.game.level) {
     const role = this.me.role;
-    this.game = createGame(level);
+    this.game = createGame(level, loadBusiness().upgrades); // anything bought since is in place now
     this.me = addChef(this.game, "solo", role, "You");
   }
 }
@@ -202,7 +205,7 @@ export class NetSession implements Session {
   }
 
   start() {
-    this.send({ t: "start" });
+    this.send({ t: "start", upgrades: loadBusiness().upgrades });
   }
 
   step(dt: number, input: Input) {
@@ -220,8 +223,8 @@ export class NetSession implements Session {
     }
   }
 
-  act(action: Action) {
-    this.send({ t: "act", action, pick: this.pick });
+  act(action: Action, aim?: { x: number; z: number }) {
+    this.send({ t: "act", action, pick: this.pick, aim });
   }
 
   setPick(index: number) {
@@ -238,7 +241,7 @@ export class NetSession implements Session {
   }
 
   restart(level?: number) {
-    this.send({ t: "restart", level });
+    this.send({ t: "restart", level, upgrades: loadBusiness().upgrades });
   }
 
   close() {

@@ -20,13 +20,14 @@ export type ClientMessage =
   | { t: "hello"; name: string; room: string; id?: string }
   | { t: "role"; role: Role }
   | { t: "level"; level: number }
-  | { t: "start" }
+  /** upgrades: the host's restaurant equipment, used for this shift */
+  | { t: "start"; upgrades?: string[] }
   /** play again, optionally on another level */
-  | { t: "restart"; level?: number }
+  | { t: "restart"; level?: number; upgrades?: string[] }
   /** own chef's movement: clients move their chef locally and report where it is */
   | { t: "move"; x: number; z: number; facing: number; pitch: number; chop: boolean; guidedBy: string | null }
   /** pick: the item chosen at a fridge or spice rack, so the server uses the same one */
-  | { t: "act"; action: Action; pick?: number }
+  | { t: "act"; action: Action; pick?: number; aim?: { x: number; z: number } }
   | { t: "emote"; word: Emote }
   /** WebRTC signalling relayed to one other player */
   | { t: "rtc"; to: string; data: unknown };

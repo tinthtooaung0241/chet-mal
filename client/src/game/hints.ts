@@ -5,8 +5,9 @@ import {
   MAX_PLATE_ITEMS,
   SPICE_NAMES,
   pickedItem,
+  payingDiners,
   type Spice,
-  SOUP_INGREDIENTS,
+  potState,
   SOUP_SIZE,
   SOUP_TIME,
   chefInFront,
@@ -19,6 +20,7 @@ import {
   type Item,
   type FoodState,
   type Station,
+  ROLES,
 } from "@kitchen/shared";
 import { glyph, img, renderedIcon } from "../ui/icons";
 
@@ -36,6 +38,7 @@ export function foodIcon(kind: string, state: FoodState): string {
 }
 
 export function soupIcon(kinds: string[]): string {
+  if (kinds.includes("Noodles")) return "Soup_Mohinga";
   if (kinds.every((k) => k === "Tomato")) return "Soup_Tomato";
   if (kinds.filter((k) => k === "Mushroom").length >= 2) return "Soup_Mushroom";
   return "Soup_Veg";
@@ -78,10 +81,18 @@ export const SPICE_GLYPHS: Record<string, string> = {
   Herbs: "herbs",
   Soy: "soy",
   Vinegar: "vinegar",
+  Lime: "lime",
+  Peanuts: "peanuts",
+  Coriander: "coriander",
+  Chili: "chili",
+  GarlicOil: "garlicoil",
+  FishSauce: "fishsauce",
+  Turmeric: "turmeric",
 };
 
 /** Icon for one thing in a fridge or spice rack. */
 export function stockIconNode(st: Station, item: string): Element {
+  if (st.kind === "register") return glyph(item === "Card" ? "card" : "cash");
   return st.kind === "spice" ? glyph(SPICE_GLYPHS[item] ?? "salt") : img(foodIcon(item, "raw"));
 }
 
@@ -96,6 +107,7 @@ export function stationIconNode(s: Station): Element {
   if (s.kind === "crate") return img(s.crate!);
   if (s.kind === "spice") return glyph("salt");
   if (s.kind === "fridge") return glyph("fridge");
+  if (s.kind === "register") return glyph("coin");
   if (s.kind === "pantry") return glyph("crate");
   const name = STATION_IMG[s.kind];
   return name ? img(name) : glyph(STATION_GLYPH[s.kind] ?? "counter");
@@ -143,9 +155,18 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
     case "serve":
       if (held?.type === "plate" && held.contents.length) return [use("Serve!")];
       if (held?.type === "bowl" && held.soup) return [use("Serve!")];
+      if (ROLES[me.role].charms && g.orders.length) {
+        return [{ text: held?.type === "food" ? "Plate it first" : "Bring a finished dish" }, g.charmWait > 0 ? { text: `Wave again in ${Math.ceil(g.charmWait)}s` } : { key: "B", text: "Wave: tables wait longer" }];
+      }
       return [{ text: held?.type === "food" ? "Plate it first" : "Bring a finished dish" }];
     case "sink":
       return [];
+    case "register": {
+      const payer = payingDiners(g)[0];
+      if (!payer) return [{ key: "Space", text: "Upgrades shop" }];
+      const choice = pickedItem(st, me);
+      return [use(`Take ${payer.bill} coins by ${choice?.toLowerCase()}`), { key: "1–2", text: "cash / card" }];
+    }
     case "spice": {
       const spice = pickedItem(st, me) as Spice;
       const name = SPICE_NAMES[spice];
@@ -172,8 +193,9 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
       const pot = st.pot!;
       if (pot.state === "burnt") return held ? [{ text: "Burnt! Empty hands to scrape" }] : [use("Scrape out the burnt soup")];
       if (held?.type === "food" && pot.state === "filling") {
-        if (!SOUP_INGREDIENTS.includes(held.kind)) return [{ text: "Not a soup vegetable" }];
-        if (held.state !== "chopped") return [{ text: "Chop it first" }];
+        const needs = potState(held.kind);
+        if (!needs) return [{ text: "Doesn't go in soup" }];
+        if (held.state !== needs) return [{ text: held.state === "raw" ? "Chop it first" : "Not like that" }];
         return [use(`Add to pot (${pot.contents.length + 1}/${SOUP_SIZE})`)];
       }
       if (held?.type === "bowl" && !held.soup && pot.state === "done") return [use(`Ladle ${soupName(pot.contents.map((f) => f.kind))}`)];

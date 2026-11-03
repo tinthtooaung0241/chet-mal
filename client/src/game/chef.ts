@@ -1,8 +1,10 @@
-// A chef on screen, animated procedurally from game state so teammates can read each other:
-// a real walk cycle (feet planted to the distance travelled), the head following where the
-// player looks and glancing at what they work on, elbows that bend for carrying, chopping,
-// stirring and every emote, a knife in hand while chopping, and blinking eyes.
-// Built from the Blender characters, split into pieces that pivot at their joints.
+// A chef on screen. Idle, walking, jogging and sitting play real animation clips (Quaternius'
+// CC0 Universal Animation Library, baked to these joints in clips.json), blended by speed with
+// the feet planted to the distance travelled. On top, driven from game state so teammates can
+// read each other: the head following where the player looks and glancing at what they work on,
+// arms for carrying, chopping, stirring and every emote, a knife while chopping, blinking eyes.
+// Works on any skeleton with the game's joint names (Kenney's Animated Characters, renamed in
+// Blender): poses are given in the character's own frame and carried into each bone's frame.
 import {
   Axis,
   Color3,
@@ -17,17 +19,18 @@ import {
 } from "@babylonjs/core";
 import { CHEF_SPEED, type Chef, type Role } from "@kitchen/shared";
 import type { AssetLibrary } from "../assets";
+import clipData from "./clips.json";
 
 // Which Blender character plays each role ("all senses" practice uses the mute chef's model).
 const CHEF_MODELS: Record<Role, string> = {
   full: "Chef_Mute",
   head: "Chef_Head",
-  blind: "Chef_Blind",
   deaf: "Chef_Deaf",
   mute: "Chef_Mute",
 };
 const CHEF_SCALE = 0.95;
-const STRIDE = 1.1; // metres travelled per full walk cycle (two steps)
+const WALK_STRIDE = 0.5; // metres travelled per full cycle (two steps), at this model's scale
+const JOG_STRIDE = 1.9;
 const FOREARM = 0.275; // elbow to palm, in model units
 
 // Rotation signs for the converted glTF joints (checked in the browser): a negative X turn
@@ -35,11 +38,39 @@ const FOREARM = 0.275; // elbow to palm, in model units
 const FWD = -1;
 const TILT = 1;
 
-type JointName = "torso" | "head" | "eyes" | "armL" | "armR" | "foreL" | "foreR" | "legL" | "legR";
+type JointName = "torso" | "head" | "eyes" | "armL" | "armR" | "foreL" | "foreR" | "legL" | "legR" | "shinL" | "shinR" | "footL" | "footR" | "hips" | "spine" | "handL" | "handR";
+
+interface Clip {
+  fps: number;
+  frames: number;
+  /** hip height against the T-pose's, as a fraction of it */
+  hip: number[];
+  /** per joint: x, y, z, w for each frame */
+  bones: Partial<Record<JointName, number[]>>;
+}
+const CLIPS = clipData as unknown as Record<"Idle_Loop" | "Walk_Loop" | "Jog_Fwd_Loop" | "Sitting_Idle_Loop", Clip>;
+
+const lerpLoop = (values: number[], t: number) => {
+  const a = Math.floor(t) % values.length;
+  return Scalar.Lerp(values[a], values[(a + 1) % values.length], t - Math.floor(t));
+};
+
+/** One joint's turn from a clip, at a position measured in frames. */
+function clipTurn(clip: Clip, joint: JointName, t: number): Quaternion {
+  const v = clip.bones[joint];
+  if (!v) return Quaternion.Identity();
+  const a = Math.floor(t) % clip.frames;
+  const b = (a + 1) % clip.frames;
+  const q = (i: number) => new Quaternion(v[i * 4], v[i * 4 + 1], v[i * 4 + 2], v[i * 4 + 3]);
+  return Quaternion.Slerp(q(a), q(b), t - Math.floor(t));
+}
 
 interface Joint {
   node: TransformNode;
   rest: Quaternion;
+  /** the joint's resting orientation in the character's frame (poses are given in that frame) */
+  frame: Quaternion;
+  frameInv: Quaternion;
 }
 
 /** Target rotation for one joint this frame (radians around its own axes). */
@@ -77,12 +108,19 @@ export class ChefModel {
   private readonly bob: TransformNode;
   private readonly joints: Partial<Record<JointName, Joint>> = {};
   private knife: TransformNode | null = null;
+  /** hand bones, on armatures that have them (where carried things and the knife go) */
+  private hands: { l: TransformNode; r: TransformNode } | null = null;
   private phase = 0;
   private speed = 0;
   private turnRate = 0;
   private lastStep = 0;
   private nextBlink = 2 + Math.random() * 3;
   private sit = 0;
+  /** 0 = the clip plays the arms, 1 = the game's own arm poses (carrying, chopping, emotes) */
+  private armsBusy = 0;
+  private hipHeight = 0.6;
+  /** how far the body drops onto a chair: from this character's own hip height */
+  private sitDrop = SIT_DROP;
   private blink = 0;
   /** called on each footfall with the foot's world position */
   onStep: ((x: number, z: number) => void) | null = null;
@@ -111,21 +149,56 @@ export class ChefModel {
       ForearmR: "foreR",
       LegL: "legL",
       LegR: "legR",
+      // the kit's own names for the lower legs (its right side is the game's "L")
+      RightLeg: "shinL",
+      LeftLeg: "shinR",
+      RightFoot: "footL",
+      LeftFoot: "footR",
+      Hips: "hips",
+      Spine: "spine",
+      HandL: "handL",
+      HandR: "handR",
     };
     for (const child of node.getDescendants(false)) {
       if (!(child instanceof TransformNode)) continue;
       const suffix = Object.keys(parts).find((s) => child.name.endsWith(`_${s}`));
       if (!suffix) continue;
       child.rotationQuaternion ??= Quaternion.FromEulerVector(child.rotation);
-      this.joints[parts[suffix]] = { node: child, rest: child.rotationQuaternion.clone() };
+      this.joints[parts[suffix]] = { node: child, rest: child.rotationQuaternion.clone(), frame: Quaternion.Identity(), frameInv: Quaternion.Identity() };
+    }
+    // Each joint's orientation relative to the character, so a pose like "swing the arm forward"
+    // means the same on every skeleton, whichever way its bones happen to be rolled. Worked out
+    // from the bones' own (glTF) rotations: the loader's root above them mirrors the model.
+    for (const joint of Object.values(this.joints)) {
+      let frame = Quaternion.Identity();
+      for (let n: TransformNode | null = joint!.node; n && n.name !== "__root__" && !n.name.endsWith("/__root__"); n = n.parent as TransformNode | null) {
+        frame = (n.rotationQuaternion ?? Quaternion.FromEulerVector(n.rotation)).multiply(frame);
+      }
+      joint!.frame = frame;
+      joint!.frameInv = Quaternion.Inverse(frame);
     }
 
+    // short-legged characters (the chibi cast) already sit at chair height
+    const hip = this.joints.legL?.node;
+    if (hip) {
+      node.computeWorldMatrix(true);
+      hip.computeWorldMatrix(true);
+      this.hipHeight = hip.getAbsolutePosition().y;
+      this.sitDrop = Math.max(0, Math.min(SIT_DROP, this.hipHeight - 0.48));
+    }
+
+    const handNodes = node.getDescendants(false).filter((n): n is TransformNode => n instanceof TransformNode);
+    const handL = handNodes.find((n) => n.name.endsWith("_HandL"));
+    const handR = handNodes.find((n) => n.name.endsWith("_HandR"));
+    if (handL && handR) this.hands = { l: handL, r: handR };
+
     // a knife that appears in the right hand while chopping
-    const hand = this.joints.foreR?.node;
+    const hand = this.hands?.r ?? this.joints.foreR?.node;
     if (hand && lib.has("Knife")) {
       const knife = lib.spawn("Knife");
       knife.parent = hand;
-      knife.position.set(0, -FOREARM + 0.01, 0.02);
+      if (this.hands) knife.position.set(0, 0.04, 0.02);
+      else knife.position.set(0, -FOREARM + 0.01, 0.02);
       knife.rotation.set(Math.PI / 2, -Math.PI / 2, 0); // blade forward out of the fist
       knife.scaling.setAll(1.15);
       knife.setEnabled(false);
@@ -146,9 +219,21 @@ export class ChefModel {
 
   /** Where carried food should sit: between the palms (null without a character model). */
   carryPoint(): Vector3 | null {
+    if (this.hands) {
+      // between the palms
+      return this.hands.l.getAbsolutePosition().add(this.hands.r.getAbsolutePosition()).scaleInPlace(0.5);
+    }
     const l = this.joints.foreL?.node;
     const r = this.joints.foreR?.node;
-    if (!l || !r) return null;
+    if (!l || !r) {
+      // no forearms (the chibi cast): just below and in front of the shoulders
+      const al = this.joints.armL?.node;
+      const ar = this.joints.armR?.node;
+      if (!al || !ar) return null;
+      const mid = al.getAbsolutePosition().add(ar.getAbsolutePosition()).scaleInPlace(0.5);
+      const yaw = this.root.rotation.y;
+      return new Vector3(mid.x + Math.sin(yaw) * 0.32, mid.y - 0.12, mid.z + Math.cos(yaw) * 0.32);
+    }
     const palm = new Vector3(0, -FOREARM, 0.02);
     const pl = Vector3.TransformCoordinates(palm, l.getWorldMatrix());
     const pr = Vector3.TransformCoordinates(palm, r.getWorldMatrix());
@@ -176,7 +261,8 @@ export class ChefModel {
     // walk cycle advances with distance, so feet don't slide; turning on the spot shuffles
     this.speed = Scalar.Lerp(this.speed, moved / dt, Math.min(1, dt * 10));
     const shuffle = this.speed < 0.3 && this.turnRate > 1.5 ? 0.35 : 0;
-    this.phase += (moved / STRIDE) * Math.PI * 2 + shuffle * dt * 9;
+    const jog = Scalar.Clamp((this.speed - 1.2) / 1.2, 0, 1);
+    this.phase += (moved / Scalar.Lerp(WALK_STRIDE, JOG_STRIDE, jog)) * Math.PI * 2 + shuffle * dt * 9;
     const walk = Math.max(Math.min(1, this.speed / CHEF_SPEED), shuffle);
     const step = Math.floor(this.phase / Math.PI);
     if (step !== this.lastStep) {
@@ -195,34 +281,15 @@ export class ChefModel {
     const armR = zero();
     const foreL = zero();
     const foreR = zero();
-    const legL = zero();
-    const legR = zero();
 
-    // --- base: walk / idle ---
-    legL.x = FWD * sin * 0.55 * walk;
-    legR.x = -FWD * sin * 0.55 * walk;
+    // --- arm base while busy with one hand: an easy swing with the walk ---
     armL.x = -FWD * sin * 0.45 * walk;
     armR.x = FWD * sin * 0.45 * walk;
     armL.z = 0.06;
     armR.z = -0.06;
-    // relaxed elbows, bending a bit more on the forward swing
     foreL.x = FWD * (0.15 + 0.25 * walk + Math.max(0, -sin) * 0.3 * walk);
     foreR.x = FWD * (0.15 + 0.25 * walk + Math.max(0, sin) * 0.3 * walk);
-    torso.x = TILT * 0.1 * walk;
-    torso.y = sin * 0.08 * walk;
-    torso.z = Math.sin(this.phase * 2) * 0.02 * walk;
-    const breathe = Math.sin(time * 2.1) * (1 - walk);
-    torso.x += TILT * breathe * 0.012;
-    this.bob.position.y = Math.abs(Math.cos(this.phase)) * 0.035 * walk;
     this.sit = Scalar.Lerp(this.sit, s.sitting ? 1 : 0, Math.min(1, dt * 6));
-    if (this.sit > 0.01) {
-      this.bob.position.y -= SIT_DROP * this.sit;
-      legL.x = legR.x = FWD * 1.45 * this.sit;
-      torso.x -= TILT * 0.05 * this.sit;
-      // hands rest on the table edge
-      armL.x = armR.x = FWD * 0.35 * this.sit;
-      foreL.x = foreR.x = FWD * 0.9 * this.sit;
-    }
     if (s.eating) {
       // fork up to the mouth, chew, back down to the plate
       const bite = Math.max(0, Math.sin(time * 2.4));
@@ -293,6 +360,13 @@ export class ChefModel {
         foreL.x = foreR.x = FWD * fore;
       };
       switch (g.kind) {
+        case "wave":
+          armR.x = FWD * 2.5 * env; // a big wave over the head
+          armR.z = -0.35 * env;
+          foreR.x = FWD * 0.25 * env;
+          foreR.z = wave(4) * 0.45 * env;
+          torso.z = wave(2) * 0.05 * env;
+          break;
         case "pickup":
         case "place":
           torso.x += TILT * 0.35 * env;
@@ -384,24 +458,49 @@ export class ChefModel {
     const eyes = this.joints.eyes?.node;
     if (eyes) eyes.scaling.y = this.blink > 0 ? 0.12 : 1;
 
+    // --- the clips underneath: idle / walk / jog by speed, sitting over them all ---
+    const gaitT = (clip: Clip) => ((this.phase / (Math.PI * 2)) % 1 + 1) % 1 * clip.frames;
+    const idleT = time * CLIPS.Idle_Loop.fps;
+    const sitT = time * CLIPS.Sitting_Idle_Loop.fps;
+    const clipFor = (joint: JointName) => {
+      const gait = Quaternion.Slerp(clipTurn(CLIPS.Walk_Loop, joint, gaitT(CLIPS.Walk_Loop)), clipTurn(CLIPS.Jog_Fwd_Loop, joint, gaitT(CLIPS.Jog_Fwd_Loop)), jog);
+      const standing = Quaternion.Slerp(clipTurn(CLIPS.Idle_Loop, joint, idleT), gait, walk);
+      return Quaternion.Slerp(standing, clipTurn(CLIPS.Sitting_Idle_Loop, joint, sitT), this.sit);
+    };
+    const gaitHip = Scalar.Lerp(lerpLoop(CLIPS.Walk_Loop.hip, gaitT(CLIPS.Walk_Loop)), lerpLoop(CLIPS.Jog_Fwd_Loop.hip, gaitT(CLIPS.Jog_Fwd_Loop)), jog);
+    const hip = Scalar.Lerp(lerpLoop(CLIPS.Idle_Loop.hip, idleT), gaitHip, walk);
+    this.bob.position.y = hip * this.hipHeight * (1 - this.sit) - this.sitDrop * this.sit;
+
+    const nod = g?.kind === "yes" || g?.kind === "no";
+    const busy = s.holding || s.chopping || s.stirring || s.eating || s.guided || s.guiding || (!!g && !nod);
+    this.armsBusy = Scalar.Lerp(this.armsBusy, busy ? 1 : 0, Math.min(1, dt * 12));
+
+    // clips are already smooth, so legs and body follow them exactly; game poses ease in
     const rate = Math.min(1, dt * 16);
-    this.apply("torso", torso, rate);
-    this.apply("head", head, rate);
-    this.apply("armL", armL, rate);
-    this.apply("armR", armR, rate);
-    this.apply("foreL", foreL, rate);
-    this.apply("foreR", foreR, rate);
-    this.apply("legL", legL, rate);
-    this.apply("legR", legR, rate);
+    const free = 1 - this.armsBusy;
+    for (const j of ["hips", "spine", "legL", "legR", "shinL", "shinR", "footL", "footR"] as const) this.apply(j, zero(), 1, clipFor(j), 1);
+    this.apply("torso", torso, rate, clipFor("torso"), 1, true);
+    this.apply("head", head, rate, clipFor("head"), 1, true);
+    this.apply("armL", armL, rate, clipFor("armL"), free);
+    this.apply("armR", armR, rate, clipFor("armR"), free);
+    this.apply("foreL", foreL, rate, clipFor("foreL"), free);
+    this.apply("foreR", foreR, rate, clipFor("foreR"), free);
+    this.apply("handL", zero(), rate, clipFor("handL"), free);
+    this.apply("handR", zero(), rate, clipFor("handR"), free);
   }
 
-  private apply(name: JointName, pose: Pose, rate: number) {
+  /**
+   * Pose a joint: the game's pose, mixed with the clip's turn by clipWeight (or on top of it, when
+   * additive). Turns are in the character's frame and carried into the bone's own frame.
+   */
+  private apply(name: JointName, pose: Pose, rate: number, clip: Quaternion, clipWeight: number, additive = false) {
     const joint = this.joints[name];
     if (!joint) return;
-    const target = joint.rest
-      .multiply(Quaternion.RotationAxis(Axis.Y, pose.y))
-      .multiply(Quaternion.RotationAxis(Axis.X, pose.x))
-      .multiply(Quaternion.RotationAxis(Axis.Z, pose.z));
+    // game poses read in Babylon's axes; carried into the bones' mirrored (glTF) ones
+    const y = Quaternion.RotationAxis(Axis.Y, pose.y).multiply(Quaternion.RotationAxis(Axis.X, pose.x)).multiply(Quaternion.RotationAxis(Axis.Z, pose.z));
+    const game = new Quaternion(y.x, -y.y, -y.z, y.w);
+    const turn = additive ? clip.multiply(game) : Quaternion.Slerp(game, clip, clipWeight);
+    const target = joint.rest.multiply(joint.frameInv.multiply(turn).multiply(joint.frame));
     joint.node.rotationQuaternion = Quaternion.Slerp(joint.node.rotationQuaternion!, target, rate);
   }
 }

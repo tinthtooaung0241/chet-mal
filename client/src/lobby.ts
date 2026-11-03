@@ -1,5 +1,6 @@
 // The start screen: practice solo, or create/join a kitchen and pick a chef.
-import { LEVELS, ROLES, levelByNumber, type Role } from "@kitchen/shared";
+import { ROLES, VENUES, levelByNumber, levelsAt, type Role, type VenueId } from "@kitchen/shared";
+import { loadBusiness, venueLock } from "./business";
 import { bestStars, starText } from "./progress";
 import type { LobbyState } from "./session";
 
@@ -25,6 +26,8 @@ export class Lobby {
   private readonly startButton = $<HTMLButtonElement>("start-game");
   private readonly levelSelect = $<HTMLSelectElement>("level-select");
   private roomCode = "";
+  private venue: VenueId = "street";
+  private onLevel: (level: number) => void = () => {};
 
   constructor(handlers: LobbyHandlers) {
     try {
@@ -35,6 +38,7 @@ export class Lobby {
     const invited = new URLSearchParams(location.search).get("room");
     if (invited) this.codeInput.value = invited.toUpperCase();
 
+    this.onLevel = (level) => handlers.chooseLevel(level);
     this.refreshLevels();
     this.levelSelect.addEventListener("change", () => {
       this.showBlurb();
@@ -78,20 +82,60 @@ export class Lobby {
     return Number(this.levelSelect.value) || 1;
   }
 
-  /** Level list with your best stars; call again after a round to update them. */
+  /** Restaurants and their shifts with your best stars; call again after a round to update them. */
   refreshLevels(selected = this.level) {
+    this.venue = levelByNumber(selected).venue;
+    this.renderVenues();
     this.levelSelect.replaceChildren(
-      ...LEVELS.map((l) => {
+      ...levelsAt(this.venue).map((l, i) => {
         const option = document.createElement("option");
         option.value = String(l.n);
         const best = bestStars(l.n);
-        option.textContent = `${l.n}. ${l.name}  ${starText(best)}`;
-        option.setAttribute("aria-label", `Level ${l.n}, ${l.name}, best ${best} of 3 stars`);
+        option.textContent = `${i + 1}. ${l.name}  ${starText(best)}`;
+        option.setAttribute("aria-label", `Shift ${i + 1}, ${l.name}, best ${best} of 3 stars`);
         return option;
       }),
     );
-    this.levelSelect.value = String(selected);
+    this.levelSelect.value = String(levelByNumber(selected).venue === this.venue ? selected : levelsAt(this.venue)[0].n);
     this.showBlurb();
+  }
+
+  /** A card per restaurant: open ones can be picked, locked ones say what's still needed. */
+  private renderVenues() {
+    const sales = loadBusiness().totalSales;
+    $("venue-picker").replaceChildren(
+      ...VENUES.map((v) => {
+        const lock = venueLock(v);
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = `venue-card ${v.id}`;
+        card.setAttribute("role", "radio");
+        card.setAttribute("aria-checked", String(v.id === this.venue));
+        card.disabled = !!lock;
+        const name = document.createElement("strong");
+        name.textContent = v.name;
+        const sub = document.createElement("small");
+        if (!lock) {
+          const shifts = levelsAt(v.id);
+          const stars = shifts.reduce((n, l) => n + bestStars(l.n), 0);
+          sub.textContent = `${stars} of ${shifts.length * 3} stars`;
+        } else {
+          const needs = [lock.sales ? `sell ${lock.sales} more coins` : "", lock.bigNight ? `clear ${lock.bigNight}` : ""].filter(Boolean);
+          sub.textContent = `Locked: ${needs.join(" and ")}`;
+          const bar = document.createElement("span");
+          bar.className = "venue-progress";
+          bar.style.setProperty("--done", `${Math.min(100, (sales / v.unlockSales) * 100)}%`);
+          card.append(bar);
+        }
+        card.prepend(name, sub);
+        card.addEventListener("click", () => {
+          if (lock || v.id === this.venue) return;
+          this.refreshLevels(levelsAt(v.id)[0].n);
+          this.onLevel(this.level);
+        });
+        return card;
+      }),
+    );
   }
 
   private showBlurb() {

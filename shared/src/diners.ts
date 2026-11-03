@@ -2,6 +2,7 @@
 // waits. When their dish is served at the pass they walk over, collect it, carry it back and
 // eat; if their order runs out they storm off. Pure state, stepped with the world, so every
 // player sees the same diners. Seats and walking lanes match the terrace in Kitchen_Room.glb.
+import { PAY_WAIT, type Payment } from "./rules";
 import type { Bowl, Game, Plate } from "./state";
 
 type Point = [number, number];
@@ -49,7 +50,7 @@ const SPEED = 1.3;
 const STORM_OFF_SPEED = 1.9;
 const EAT_TIME = 9;
 
-export type DinerState = "arriving" | "waiting" | "fetching" | "returning" | "eating" | "leaving";
+export type DinerState = "arriving" | "waiting" | "fetching" | "returning" | "eating" | "checkout" | "paying" | "leaving";
 
 export interface Diner {
   id: number;
@@ -69,7 +70,19 @@ export interface Diner {
   mood: "happy" | "angry" | "sick" | null;
   /** where they collect from at the pass */
   pickup: Point;
+  /** how they'll pay at the till, and how much (set when their dish is served) */
+  pay: Payment;
+  bill: number;
+  /** their place in the queue at the till */
+  slot: number;
 }
+
+/** Tables on the terrace, numbered left to right (as on the tickets). */
+const TABLES = [...new Set(SEATS.map((s) => s.table.join()))].sort((a, b) => Number(a.split(",")[0]) - Number(b.split(",")[0]));
+export const tableNumber = (seat: number) => TABLES.indexOf(SEATS[seat].table.join()) + 1;
+
+/** Places to stand in line at the till, along the front aisle. */
+const TILL_SLOTS = [0, 0.6, -0.6, 1.2];
 
 const seatOf = (d: Diner) => SEATS[d.seat];
 
@@ -121,13 +134,18 @@ export function addDiner(g: Game, orderId: number) {
     dish: null,
     mood: null,
     pickup: [counter.x, FRONT],
+    pay: Math.random() < 0.5 ? "Cash" : "Card",
+    bill: 0,
+    slot: 0,
   });
 }
 
 /** Their dish went out: they come to the pass for it (a spoiled dish still gets eaten...). */
-export function dinerServed(g: Game, orderId: number, dish: Plate | Bowl, sick: boolean) {
+/** @param bill what they'll pay at the till (nothing if it made them sick) */
+export function dinerServed(g: Game, orderId: number, dish: Plate | Bowl, sick: boolean, bill = 0) {
   const d = g.diners.find((x) => x.orderId === orderId);
   if (!d) return;
+  d.bill = sick ? 0 : bill;
   d.dish = structuredClone(dish);
   d.mood = sick ? "sick" : "happy";
   if (d.state === "waiting") startFetching(d);
@@ -157,7 +175,36 @@ function sitDown(d: Diner) {
   d.facing = facingTo(s.x, s.z, s.table);
 }
 
-export function stepDiners(g: Game, dt: number) {
+/** Something a diner did that the kitchen should hear about. */
+export type DinerNews = "at-till" | "left-unpaid";
+
+/** The customers waiting at the till, first in line first. */
+export function payingDiners(g: Game): Diner[] {
+  return g.diners.filter((d) => d.state === "paying").sort((a, b) => b.timer - a.timer);
+}
+
+/** They've paid: off they go, happy. */
+export function dinerPaid(d: Diner) {
+  d.state = "leaving";
+  d.mood = "happy";
+  d.path = [[0, FRONT], HUB, ENTRANCE];
+}
+
+function goToTill(g: Game, d: Diner) {
+  const till = g.stations.find((s) => s.kind === "register");
+  if (!till || d.bill <= 0) {
+    d.state = "leaving";
+    d.path = seatToExit(seatOf(d));
+    return;
+  }
+  const taken = new Set(g.diners.filter((x) => x !== d && (x.state === "checkout" || x.state === "paying")).map((x) => x.slot));
+  d.slot = TILL_SLOTS.findIndex((_, i) => !taken.has(i));
+  if (d.slot < 0) d.slot = 0;
+  d.state = "checkout";
+  d.path = seatToPass(seatOf(d), [till.x + TILL_SLOTS[d.slot], FRONT]);
+}
+
+export function stepDiners(g: Game, dt: number, news?: (d: Diner, what: DinerNews) => void) {
   for (const d of [...g.diners]) {
     // walk the path
     if (d.path.length) {
@@ -195,17 +242,29 @@ export function stepDiners(g: Game, dt: number) {
           d.state = "eating";
           d.timer = EAT_TIME;
           break;
+        case "checkout":
+          d.facing = 0; // facing the till
+          d.state = "paying";
+          d.timer = PAY_WAIT;
+          news?.(d, "at-till");
+          break;
         case "leaving":
           g.diners.splice(g.diners.indexOf(d), 1);
           break;
       }
       continue;
     }
+    if (d.state === "paying" && (d.timer -= dt) <= 0) {
+      d.mood = "angry";
+      d.state = "leaving";
+      d.path = [[0, FRONT], HUB, ENTRANCE];
+      news?.(d, "left-unpaid");
+      continue;
+    }
     if (d.state === "returning" && d.timer > 0 && (d.timer -= dt) <= 0) {
       d.path = passToSeat(seatOf(d), d.pickup);
     } else if (d.state === "eating" && (d.timer -= dt) <= 0) {
-      d.state = "leaving";
-      d.path = seatToExit(seatOf(d));
+      goToTill(g, d); // happy customers pay on the way out; a sick one just leaves
     }
   }
 }

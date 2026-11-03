@@ -80,8 +80,11 @@ class Room {
     this.broadcast({ t: "lobby", players, host: this.host, playing: !!this.game, level: this.level });
   }
 
+  /** the host's restaurant equipment (sent with start / restart) */
+  upgrades: string[] = [];
+
   start() {
-    const g = createGame(this.level);
+    const g = createGame(this.level, this.upgrades);
     for (const p of this.players.values()) addChef(g, p.id, p.role!, `${p.name} (${ROLES[p.role!].name.toLowerCase()})`);
     this.game = g;
     this.lastTick = performance.now();
@@ -182,11 +185,13 @@ function handle(ws: WebSocket) {
       case "start":
         if (player.id !== room.host || room.game) return;
         if ([...room.players.values()].some((p) => !p.role)) return fail("Everyone needs to pick a chef first.");
+        if (Array.isArray(msg.upgrades)) room.upgrades = msg.upgrades.filter((u): u is string => typeof u === "string").slice(0, 16);
         room.start();
         return;
       case "restart":
         if (room.game?.phase !== "over") return;
         if (msg.level) room.level = levelByNumber(msg.level).n;
+        if (player.id === room.host && Array.isArray(msg.upgrades)) room.upgrades = msg.upgrades.filter((u): u is string => typeof u === "string").slice(0, 16);
         room.start();
         return;
       case "move":
@@ -202,6 +207,10 @@ function handle(ws: WebSocket) {
         if (!g || !chef) return;
         if ((msg.action === "ping" || msg.action === "bell") && !ROLES[chef.role].signals) return;
         if (typeof msg.pick === "number" && Number.isFinite(msg.pick)) chef.pick = Math.max(0, Math.min(15, Math.floor(msg.pick)));
+        if (msg.action === "ping" && msg.aim && Number.isFinite(msg.aim.x) && Number.isFinite(msg.aim.z)) {
+          ping(g, chef, { x: msg.aim.x, z: msg.aim.z });
+          return;
+        }
         ({ interact, chopHint, ping, bell: ringBell, hand: toggleHand, sniff } as const)[msg.action](g, chef);
         return;
       case "emote":

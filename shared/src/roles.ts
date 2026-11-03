@@ -8,7 +8,7 @@
  */
 export type Sense = "sight" | "sound" | "touch";
 
-export type Role = "full" | "head" | "deaf" | "mute" | "blind";
+export type Role = "full" | "head" | "deaf" | "mute";
 
 export interface RoleInfo {
   name: string;
@@ -19,6 +19,8 @@ export interface RoleInfo {
   signals: boolean;
   /** handles raw food: fetches, chops, cooks and seasons ingredients (the head chef only plates and serves) */
   cooks: boolean;
+  /** can wave to the tables from the pass to buy every waiting customer time (the mute chef's gift) */
+  charms: boolean;
 }
 
 export const ROLES: Record<Role, RoleInfo> = {
@@ -29,6 +31,7 @@ export const ROLES: Record<Role, RoleInfo> = {
     hears: true,
     signals: true,
     cooks: true,
+    charms: true,
   },
   head: {
     name: "Head chef",
@@ -38,6 +41,7 @@ export const ROLES: Record<Role, RoleInfo> = {
     hears: true,
     signals: true,
     cooks: false,
+    charms: false,
   },
   deaf: {
     name: "Deaf chef",
@@ -46,27 +50,20 @@ export const ROLES: Record<Role, RoleInfo> = {
     hears: false,
     signals: false,
     cooks: true,
+    charms: false,
   },
   mute: {
     name: "Mute chef",
-    summary: "You see and hear everything but can't talk. Signal with G (ping), T + 1–6 (emotes) and B (bell).",
+    summary: "You see and hear everything but can't talk. Signal with G (ping), T + 1–6 (emotes) and B (bell). Only you can charm the customers: press B at the pass to wave, and every table waits longer.",
     sees: true,
     hears: true,
     signals: true,
     cooks: true,
-  },
-  // accessibility option for players who are blind: the whole game by sound
-  blind: {
-    name: "Blind cook (audio)",
-    summary: "You play by sound: phone orders, sizzles, beacons. Only you can hear the perfect sizzle best. Q to feel around.",
-    sees: false,
-    hears: true,
-    signals: false,
-    cooks: true,
+    charms: true,
   },
 };
 
-export const ROLE_KEYS: Record<string, Role> = { Digit0: "full", Digit1: "head", Digit2: "deaf", Digit3: "mute", Digit4: "blind" };
+export const ROLE_KEYS: Record<string, Role> = { Digit0: "full", Digit1: "head", Digit2: "deaf", Digit3: "mute" };
 
 /** @param isActor whether this chef caused the event (only then does "touch" reach it) */
 export function perceives(role: Role, senses: readonly Sense[], isActor = true): boolean {

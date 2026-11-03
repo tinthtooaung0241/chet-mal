@@ -13,6 +13,8 @@ import {
   describeItem,
   describePot,
   levelByNumber,
+  levelsAt,
+  venueById,
   starsFor,
   stationName,
   targetStation,
@@ -24,7 +26,7 @@ import {
   type Guide,
   orderProgress,
 } from "@kitchen/shared";
-import { glyph, img } from "../ui/icons";
+import { glyph, img, renderedIcon } from "../ui/icons";
 import { SPICE_GLYPHS, actionHints, foodIcon, itemIconNode, soupIcon, stationIconNode, stockIconNode, stockName } from "./hints";
 
 /** Tables on the terrace, numbered left to right. */
@@ -38,12 +40,19 @@ function clock(seconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-const ROLE_LOOK: Record<Role, { avatar: string | null; color: string }> = {
-  full: { avatar: null, color: "#3a6ea5" },
-  head: { avatar: null, color: "#c98a2e" },
-  blind: { avatar: "Avatar_Blind", color: "#2a9d8f" },
-  deaf: { avatar: "Avatar_Deaf", color: "#e07a3f" },
-  mute: { avatar: "Avatar_Mute", color: "#8e6bbf" },
+const ROLE_LOOK: Record<Role, { icon: string; color: string }> = {
+  full: { icon: "star", color: "#dce8f7" },
+  head: { icon: "chef", color: "#fbe9b7" },
+  deaf: { icon: "ear", color: "#fbdfd6" },
+  mute: { icon: "voice", color: "#e7dcf6" },
+};
+
+/** Each role's one limit (icon, words) and a short hint on working around it. */
+const ROLE_LIMITS: Record<Role, [string, string, string]> = {
+  full: ["star", "No limits", "Practice every job"],
+  head: ["cross", "Can't cook", "Guide your team"],
+  deaf: ["ear", "Can't hear", "Watch for pings and signs"],
+  mute: ["voice", "Can't speak", "Point and sign. Only you can charm customers"],
 };
 
 export class Hud {
@@ -51,6 +60,7 @@ export class Hud {
   private readonly score = $("score");
   private readonly scorePops = $("score-pops");
   private readonly starFill = $("star-fill");
+  private readonly starGoal = $("star-goal");
   private readonly starMarks = [...document.querySelectorAll<HTMLElement>(".star-mark")];
   private readonly clockChip = $("clock");
   private readonly clockRing = $("clock-ring");
@@ -59,9 +69,26 @@ export class Hud {
   private readonly levelName = $("level-name");
   private readonly handSlot = $("hand-slot");
   private readonly heldIcon = $("held-icon");
+  /** phones: what you hold, as an icon bubble on the Use button */
+  private readonly touchHeld = document.getElementById("touch-held");
   private readonly held = $("held");
   private readonly facing = $("facing");
   private readonly prompts = $("prompts");
+  /** tickets tapped open on a phone (folded into small chips otherwise) */
+  private readonly openOrders = new Set<number>();
+  /** told whenever the action hints change (the touch buttons follow them) */
+  onHints?: (hints: { key?: string; text: string }[]) => void;
+
+  constructor() {
+    // on a phone, tap a ticket chip to open the full ticket, tap again to fold it
+    this.orders.addEventListener("click", (e) => {
+      const li = (e.target as Element).closest<HTMLElement>(".order");
+      if (!li?.dataset.id) return;
+      const id = Number(li.dataset.id);
+      if (!this.openOrders.delete(id)) this.openOrders.add(id);
+      li.classList.toggle("open", this.openOrders.has(id));
+    });
+  }
   private readonly targetTag = $("target-tag");
   private readonly crosshair = $("crosshair");
   private readonly gameOver = $<HTMLDialogElement>("game-over");
@@ -69,9 +96,9 @@ export class Hud {
   private readonly finalStars = $("final-stars");
   private readonly finalStats = $("final-stats");
   private readonly nextLevel = $<HTMLButtonElement>("next-level");
-  private readonly blindfold = $("blindfold");
   private readonly signals = $("signals");
   private readonly picker = $("picker");
+  private readonly tillCoins = $("till-coins");
   private readonly tagBar = Object.assign(document.createElement("span"), { className: "tag-bar", hidden: true });
   private readonly tagFill = document.createElement("i");
   private readonly checklist = $("checklist");
@@ -92,22 +119,15 @@ export class Hud {
     const look = ROLE_LOOK[role];
     $("role-name").textContent = info.name;
     $("role-summary").textContent = info.summary;
-    $("role-avatar").replaceChildren(look.avatar ? img(look.avatar) : glyph("chef"));
+    $("role-avatar").replaceChildren(glyph(look.icon));
     $("role-badge").style.setProperty("--role-color", look.color);
-    const senses: [string, string, boolean][] = [
-      ["eye", "Sight", info.sees],
-      ["ear", "Hearing", info.hears],
-      role === "mute" ? ["signs", "Signs", true] : ["voice", "Voice", true],
-    ];
-    $("senses").replaceChildren(
-      ...senses.map(([icon, label, on]) => {
-        const li = document.createElement("li");
-        li.append(glyph(icon), label);
-        if (!on) li.classList.add("off");
-        return li;
-      }),
-    );
-    this.blindfold.hidden = info.sees;
+    // what matters is your limit (it's why you need your friends), and what to do about it
+    const [limitIcon, limit, tip] = ROLE_LIMITS[role];
+    const limitEl = $("role-limit");
+    limitEl.replaceChildren(glyph(limitIcon), limit);
+    limitEl.classList.toggle("none", role === "full");
+    $("role-tip").textContent = tip;
+    $("role-badge").title = `${info.name}: ${limit.toLowerCase()}. ${tip}.`;
     this.signals.hidden = !info.signals;
     document.body.dataset.role = role;
     for (const input of document.querySelectorAll<HTMLInputElement>("input[name=role]")) input.checked = input.value === role;
@@ -125,9 +145,21 @@ export class Hud {
   /** @param bar the progress bar of the station you're facing (shown in the target tag in first person) */
   update(game: Game, me: Chef, firstPerson: boolean, bar: { progress: number; color: string } | null = null) {
     const level = levelByNumber(game.level);
-    this.setText(this.levelNumber, level.tutorial ? "T" : String(level.n));
+    // shifts count within each restaurant; the pill's tooltip says which restaurant it is
+    const shift = levelsAt(level.venue).indexOf(level) + 1;
+    this.setText(this.levelNumber, level.tutorial ? "T" : String(shift || level.n));
     this.setText(this.levelName, level.name);
+    this.setText($("venue-short"), level.tutorial ? "Tutorial" : venueById(level.venue).short);
+    // the restaurant's logo stands in for its name; the shift number sits on it
+    const logo = $("venue-logo");
+    if (logo.dataset.venue !== level.venue) {
+      logo.dataset.venue = level.venue;
+      logo.replaceChildren(glyph(`logo-${level.venue}`));
+    }
+    this.levelNumber.closest<HTMLElement>("#level-chip")!.title = `${venueById(level.venue).name}: ${level.name}`;
     this.syncScore(game.score, level.stars);
+    this.setText(this.tillCoins, `Till ${game.coins ?? 0}`);
+    this.tillCoins.hidden = !game.coins; // nothing to show until someone has paid
     this.setText(this.time, clock(game.timeLeft));
     this.clockRing.style.setProperty("--left", String(Math.max(0, game.timeLeft / level.time)));
     this.clockChip.classList.toggle("urgent", game.timeLeft < 30);
@@ -152,6 +184,17 @@ export class Hud {
       this.handSlot.classList.remove("changed");
       void this.handSlot.offsetWidth; // restart the little bump animation
       this.handSlot.classList.add("changed");
+      if (this.touchHeld) {
+        this.touchHeld.hidden = !held;
+        this.touchHeld.replaceChildren(itemIconNode(held));
+        this.touchHeld.title = heldText;
+        this.touchHeld.classList.toggle("mouldy", mouldy);
+        this.touchHeld.classList.toggle("cold", !!coldFood && !coldFood.warm);
+        this.touchHeld.classList.toggle("warm", !!coldFood?.warm);
+        this.touchHeld.classList.remove("changed");
+        void this.touchHeld.offsetWidth;
+        this.touchHeld.classList.add("changed");
+      }
     }
 
     // what you're facing (text for screen readers; a tag under the crosshair for sighted players)
@@ -181,10 +224,12 @@ export class Hud {
     const key = hints.map((h) => `${h.key}:${h.text}`).join("|");
     if (key !== this.lastPrompts) {
       this.lastPrompts = key;
+      this.onHints?.(hints);
       this.prompts.replaceChildren(
         ...hints.map((h) => {
           const el = document.createElement("span");
           el.className = h.key ? "prompt" : "prompt info";
+          el.dataset.key = h.key ?? "";
           if (h.key) {
             const k = document.createElement("kbd");
             k.textContent = h.key;
@@ -246,6 +291,7 @@ export class Hud {
       ...st.stock!.map((item, i) => {
         const chip = document.createElement("span");
         chip.className = "pick";
+        chip.dataset.index = String(i); // tappable on touch screens
         if (i === pick) chip.classList.add("on");
         if (st.kind === "spice" && dish?.season.includes(item as Spice)) chip.classList.add("done");
         const k = document.createElement("kbd");
@@ -272,6 +318,8 @@ export class Hud {
     }
     this.lastScore = score;
     this.setText(this.score, String(score));
+    const next = stars.find((s) => score < s);
+    this.setText(this.starGoal, next === undefined ? "★★★" : `/ ${next}`);
     const top = stars[2];
     this.starFill.style.width = `${Math.min(100, (score / top) * 100)}%`;
     this.starMarks.forEach((mark, i) => {
@@ -305,7 +353,7 @@ export class Hud {
       div.append(dt, dd);
       return div;
     };
-    this.finalStats.replaceChildren(stat("Score", game.score), stat("Dishes", game.served), stat("Perfect", game.perfects));
+    this.finalStats.replaceChildren(stat("Score", game.score), stat("Dishes", game.served), stat("Perfect", game.perfects), stat("Takings", game.coins ?? 0));
     this.nextLevel.hidden = stars === 0 || level.n >= LEVELS.length;
     if (!this.gameOver.open) this.gameOver.showModal();
     return stars;
@@ -333,12 +381,15 @@ export class Hud {
         ...known.map((order) => {
           const li = document.createElement("li");
           li.className = `order ${order.channel}`;
+          li.dataset.id = String(order.id);
+          if (this.openOrders.has(order.id)) li.classList.add("open");
           li.style.setProperty("--tilt", `${((order.id * 37) % 5) - 2}deg`);
           const tag = document.createElement("span");
           tag.className = "tag";
           const seat = seated.get(order.id);
-          const table = seat === undefined ? "" : ` · Table ${tableNumber(seat)}`;
-          tag.textContent = order.channel === "ticket" ? `#${order.id}${table}` : `Phone${table}`;
+          // what a player needs: which table it's for (the order number is just noise)
+          const table = seat === undefined ? "" : `Table ${tableNumber(seat)}`;
+          tag.textContent = order.channel === "ticket" ? table || "Walk-in" : `Phone${table ? ` · ${table}` : ""}`;
           const name = document.createElement("strong");
           name.textContent = order.recipe.name;
           if (order.channel === "phone") {
@@ -350,7 +401,8 @@ export class Hud {
           // the finished dish, then exactly what goes into it (pictured in the right state)
           const dish = document.createElement("div");
           dish.className = "dish";
-          if (order.recipe.vessel === "bowl") dish.append(img(soupIcon(order.recipe.items.map((i) => i.kind))));
+          if (renderedIcon(`Dish_${order.recipe.id}`)) dish.append(img(`Dish_${order.recipe.id}`));
+          else if (order.recipe.vessel === "bowl") dish.append(img(soupIcon(order.recipe.items.map((i) => i.kind))));
           else {
             dish.append(img("Plate"));
             for (const item of order.recipe.items) {
@@ -398,7 +450,15 @@ export class Hud {
             chip.append(label);
             icons.append(chip);
           }
-          li.append(tag, name, dish, icons);
+          // cooks look the method up in the recipe book; the head chef keeps the ingredient row,
+          // because its progress dots are how they see each dish coming along
+          if (role === "head") li.append(tag, name, dish, icons);
+          else {
+            const hint = document.createElement("span");
+            hint.className = "book-hint";
+            hint.append(glyph("book"), "Recipe ", Object.assign(document.createElement("kbd"), { textContent: "R" }));
+            li.append(tag, name, dish, hint);
+          }
           // a printed ticket shows its timer; a phone order is only what you remember hearing
           if (order.channel === "ticket") {
             const bar = document.createElement("div");

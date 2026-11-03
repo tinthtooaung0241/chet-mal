@@ -1,4 +1,4 @@
-import { SPICES } from "./rules";
+import { BURMESE_SPICES, PAYMENTS, SPICES, type VenueId } from "./rules";
 
 export type StationKind =
   | "counter"
@@ -14,6 +14,8 @@ export type StationKind =
   | "fridge"
   | "pantry"
   | "spice"
+  /** the till on the pass: customers pay here, cooks ring them up (and buy upgrades between payers) */
+  | "register"
   /** scenery: takes up its tile but is never used (a corner nobody can reach comfortably) */
   | "decor";
 
@@ -55,7 +57,9 @@ const LEGEND: Record<string, LegendEntry> = {
   // two pantry shelves for what's kept at room temperature (one ingredient per shelf, top down)
   A: { kind: "pantry", stock: ["Potato", "Onion", "Carrot"], label: "root vegetable shelf" },
   H: { kind: "pantry", stock: ["Bread", "Tomato"], label: "bread and tomato shelf" },
-  // spice racks: one by the stoves, one by the pass for finishing
+  // the till on the pass counter: 1 cash, 2 card
+  R: { kind: "register", stock: [...PAYMENTS], label: "till" },
+  // the spice rack, by the stoves
   S: { kind: "spice", stock: [...SPICES], label: "spice rack" },
 };
 
@@ -64,22 +68,48 @@ const LEGEND: Record<string, LegendEntry> = {
 //   storage (back right: two pantry shelves, two fridges round the corner)
 //   -> chopping boards right beside the fridges
 //   -> a spice rack next to the stoves (season before cooking), stoves and the soup pot under the hood
-//   -> plates and bowls by the pass, with the second spice rack beside them for finishing touches
+//   -> plating counters along the pass, plates and bowls on rolling dish carts down the left wall
+//   -> the till beside the pass, where customers pay on their way out.
+// A double sink sits under the window, away from the customers.
 //   -> the pass, facing the terrace.
-// Prep counters line the left wall and sit beside the sink; the corners hold decoration only.
+// Prep counters sit at the back of the left wall; the corners hold decoration only.
 export const KITCHEN = [
-  "ZSOOOPKCAHZ",
+  "ZSOOOPKKAHZ",
   "C.........F",
   "C.........G",
-  "C.........B",
-  "C.........B",
+  "D.........B",
+  "U.........B",
   "..........B",
-  ".XCWWWCUDSC",
+  ".XCWWWCRCCC",
 ];
 
-export function legend(char: string): LegendEntry | null {
+/**
+ * The Burmese kitchen in Yangon: the same footprint (so the room, terrace and customers' paths
+ * fit), stocked for Burmese cooking. Storage holds noodles, rice, tea leaves and cabbage; the
+ * fridges hold chicken, fish and eggs; the rack holds the toppings.
+ */
+const BURMESE_LEGEND: Record<string, LegendEntry> = {
+  F: { kind: "fridge", stock: ["Chicken", "Fish", "Egg"], label: "meat and fish fridge" },
+  G: { kind: "fridge", stock: ["Cabbage", "TeaLeaf"], label: "greens and tea leaf fridge" },
+  A: { kind: "pantry", stock: ["Noodles", "Rice"], label: "noodle and rice shelf" },
+  H: { kind: "pantry", stock: ["Tomato", "Onion"], label: "tomato and onion shelf" },
+  S: { kind: "spice", stock: [...BURMESE_SPICES], label: "topping rack" },
+};
+
+/** Each restaurant's kitchen grid (row 0 is the back wall). */
+export const KITCHENS: Record<VenueId, string[]> = {
+  street: KITCHEN,
+  burmese: KITCHEN,
+};
+
+const LEGENDS: Record<VenueId, Record<string, LegendEntry>> = {
+  street: LEGEND,
+  burmese: { ...LEGEND, ...BURMESE_LEGEND },
+};
+
+export function legend(char: string, venue: VenueId = "street"): LegendEntry | null {
   if (char === ".") return null;
-  const entry = LEGEND[char];
+  const entry = LEGENDS[venue][char];
   if (!entry) throw new Error(`Unknown kitchen tile "${char}"`);
   return entry;
 }

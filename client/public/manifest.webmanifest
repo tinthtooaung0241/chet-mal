@@ -1,0 +1,9 @@
+{
+  "name": "Kitchen Co-op",
+  "short_name": "Kitchen Co-op",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#2a2420",
+  "theme_color": "#2a2420"
+}

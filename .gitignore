@@ -3,3 +3,9 @@ node_modules/
 dist/
 *.blend1
 .DS_Store
+
+# downloaded asset packs: keep the unpacked kits, not the zips
+assets/vendor/**/*.zip
+
+# the animation library is only needed to re-bake clips.json: unzip it here when you do
+assets/vendor/quaternius-ual/x/

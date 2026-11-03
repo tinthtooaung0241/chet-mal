@@ -1,7 +1,7 @@
 // The kitchen coach: for one chef, which order they're working towards, a checklist of every step
 // of that dish (done, still to do, or done wrong), the very next step in words, and the station to
 // go to. Read-only. The HUD shows it as a checklist and, in the guided first shift, as a coach with
-// a glowing station; the blind chef hears the next step with Q.
+// a glowing station.
 import { ROLES } from "./roles";
 import { FOOD_RULES, levelByNumber, spiceList, type RecipeItem, type Spice } from "./rules";
 import { describeItem, stationName, type Bowl, type Chef, type Food, type Game, type Order, type Plate, type Station } from "./state";
@@ -182,7 +182,8 @@ export function guideFor(g: Game, chef: Chef): Guide | null {
             if (i >= 0) want.splice(i, 1);
           }
           const nextVeg = want[0];
-          if (nextVeg) go(`Take a ${lower(nextVeg.kind)} to chop for the pot (${have.length} of ${recipe.items.length} in)`, storeFor(g, chef, nextVeg.kind), nextVeg.kind);
+          const verb = nextVeg?.state === "chopped" ? "to chop for the pot" : "for the pot";
+          if (nextVeg) go(`Take a ${lower(nextVeg.kind)} ${verb} (${have.length} of ${recipe.items.length} in)`, storeFor(g, chef, nextVeg.kind), nextVeg.kind);
         }
       }
     } else {

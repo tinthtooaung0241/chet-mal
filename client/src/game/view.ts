@@ -16,6 +16,7 @@ import { ChefModel } from "./chef";
 import {
   FOOD_RULES,
   dinerDishSpot,
+  burnTimeFor,
   pickedItem,
   dinerTable,
   SOUP_BURN,
@@ -43,6 +44,8 @@ const SOUP_COLORS: Record<string, string> = {
   Onion: "#d6bd86",
   Potato: "#e6d6a2",
   Mushroom: "#8a6a4a",
+  Fish: "#d9902f",
+  Noodles: "#e8c27a",
 };
 
 function soupColor(kinds: string[]): Color3 {
@@ -64,7 +67,11 @@ const FRIDGE_SPOTS: [number, number, number][] = [
   [-0.07, -0.04, 0.3],
   [0.08, 0.05, 1.7],
 ];
-const DINER_MODELS = ["Diner_A", "Diner_B", "Diner_C", "Diner_D"];
+/** Each restaurant's customers: everyday clothes at the street stand, longyi and htamein in Yangon. */
+const DINER_MODELS: Record<string, string[]> = {
+  street: ["Diner_A", "Diner_B", "Diner_C", "Diner_D"],
+  burmese: ["Diner_MM_A", "Diner_MM_B", "Diner_MM_C", "Diner_MM_D"],
+};
 const TABLE_TOP = 0.78;
 
 const MODEL_SUFFIXES: Record<FoodState, string[]> = {
@@ -185,6 +192,10 @@ class ProgressBar {
     this.state = { progress: p, color: color.toHexString() };
   }
 
+  dispose() {
+    this.root.dispose(false, true);
+  }
+
   hide() {
     this.root.setEnabled(false);
     this.state = null;
@@ -195,7 +206,6 @@ class ProgressBar {
 const APRON: Record<Role, Color3> = {
   full: Color3.FromHexString("#3a6ea5"),
   head: Color3.FromHexString("#c98a2e"),
-  blind: Color3.FromHexString("#2a9d8f"),
   deaf: Color3.FromHexString("#e07a3f"),
   mute: Color3.FromHexString("#8e6bbf"),
 };
@@ -339,7 +349,7 @@ export class GameView {
         this.spawnInto(root, "Pot", STOVE_TOP, POT_SCALE);
         const ladle = this.spawnInto(root, "Ladle", STOVE_TOP + 0.12, 1.5);
         ladle.position.set(0.05, STOVE_TOP + 0.13, 0.04);
-        ladle.rotation.set(0, 0.6, -0.9);
+        ladle.rotation.set(0, 0.6, 0.9); // bowl down in the pot, handle up over the rim
         // the soup surface rises as vegetables go in, and takes their colour
         const surfaceMesh = MeshBuilder.CreateDisc(`potSoup-${s.id}`, { radius: 0.15, tessellation: 20 }, this.scene);
         surfaceMesh.rotation.x = Math.PI / 2;
@@ -353,8 +363,7 @@ export class GameView {
         break;
       }
       case "bowls":
-        this.spawnInto(root, "Counter");
-        for (let i = 0; i < 3; i++) this.spawnInto(root, "Bowl", COUNTER_TOP + i * 0.045, BOWL_SCALE);
+        this.buildDishCart(root, s, "Bowl", 0.045, BOWL_SCALE);
         break;
       case "stove": {
         this.spawnInto(root, "Stove");
@@ -393,8 +402,7 @@ export class GameView {
         break;
       }
       case "plates":
-        this.spawnInto(root, "Counter");
-        for (let i = 0; i < 3; i++) this.spawnInto(root, "Plate", COUNTER_TOP + i * 0.035, PLATE_SCALE);
+        this.buildDishCart(root, s, "Plate", 0.035, PLATE_SCALE);
         break;
       case "serve":
         // the pass: steel counter under heat lamps, facing the dining terrace
@@ -406,12 +414,24 @@ export class GameView {
       case "sink":
         this.spawnInto(root, "Sink");
         break;
+      case "register": {
+        // the till sits on the pass counter, its screen and card reader facing both sides
+        this.spawnInto(root, "Counter");
+        if (this.lib.has("CashRegister")) {
+          const till = this.spawnInto(root, "CashRegister", COUNTER_TOP, 1.4);
+          till.position.z = 0.05;
+        }
+        this.label(s, "Till", 1.45);
+        break;
+      }
       case "spice": {
         // a counter with the spice rack pushed to the back, leaving room to put a dish down
         this.spawnInto(root, "Counter");
-        if (this.lib.has("SpiceRack")) {
+        // the Burmese kitchen has its own topping rack, laid out the same way
+        const model = s.stock?.includes("Lime") && this.lib.has("BurmeseSpiceRack") ? "BurmeseSpiceRack" : "SpiceRack";
+        if (this.lib.has(model)) {
           // big enough to fill the whole counter, so every bottle reads from across the kitchen
-          const rack = this.spawnInto(root, "SpiceRack", COUNTER_TOP, 2.4);
+          const rack = this.spawnInto(root, model, COUNTER_TOP, 2.4);
           rack.position.z = 0.02;
           // each seasoning is its own part, so the chosen one can light up
           const parts = new Map<string, { node: TransformNode; restY: number }>();
@@ -421,11 +441,40 @@ export class GameView {
           }
           this.racks.set(s.id, { parts, lit: null });
         }
-        this.label(s, "Spices", 1.4);
+        this.label(s, model === "BurmeseSpiceRack" ? "Toppings" : "Spices", 1.4);
         break;
       }
     }
     this.surfaceY.set(s.id, surface);
+  }
+
+  /** A rolling steel dish cart: tall stacks of clean plates (or bowls) on top, spares below. */
+  private buildDishCart(root: TransformNode, s: Station, dish: string, step: number, scale: number) {
+    const cart = this.lib.has("DishCart");
+    this.spawnInto(root, cart ? "DishCart" : "Counter");
+    const top = cart ? 0.885 : COUNTER_TOP;
+    const stacks: [number, number, number][] = cart
+      ? [
+          [-0.18, -0.08, 6], // [x, z, how many]
+          [0.18, -0.08, 5],
+        ]
+      : [[0, 0, 3]];
+    for (const [x, z, n] of stacks) {
+      for (let i = 0; i < n; i++) {
+        const d = this.spawnInto(root, dish, top + i * step, scale);
+        d.position.x = x;
+        d.position.z = z;
+      }
+    }
+    if (cart) {
+      for (const x of [-0.18, 0.18]) {
+        for (let i = 0; i < 3; i++) {
+          const d = this.spawnInto(root, dish, 0.345 + i * step, scale);
+          d.position.x = x;
+        }
+      }
+    }
+    this.label(s, dish === "Plate" ? "Plates" : "Bowls", 1.4);
   }
 
   /** The pantry shelf: a woven basket of each room-temperature ingredient, in picking order. */
@@ -618,6 +667,24 @@ export class GameView {
     }
   }
 
+  /** Remove everything this view built (switching to another restaurant's kitchen). */
+  dispose() {
+    this.clearItems();
+    for (const [id, entry] of [...this.chefs]) this.disposeChef(id, entry);
+    for (const node of this.stationNodes.values()) node.dispose(false, false);
+    for (const bar of this.bars.values()) bar.dispose();
+    for (const { mesh } of this.potSoup.values()) mesh.dispose(false, true);
+    for (const { root } of this.pings.values()) root.dispose(false, true);
+    for (const tag of this.labels) tag.dispose(false, true);
+    this.guideArrow?.dispose(false, true);
+    this.stationNodes.clear();
+    this.bars.clear();
+    this.potSoup.clear();
+    this.pings.clear();
+    this.racks.clear();
+    this.labels.length = 0;
+  }
+
   clearItems() {
     for (const { node } of this.items.values()) node.dispose();
     this.items.clear();
@@ -693,7 +760,8 @@ export class GameView {
       live.add(d.id);
       let entry = this.diners.get(d.id);
       if (!entry) {
-        const model = new ChefModel(this.scene, this.shadows, this.lib, "full", APRON.full, DINER_MODELS[d.look % DINER_MODELS.length]);
+        const looks = DINER_MODELS[game.venue] ?? DINER_MODELS.street;
+        const model = new ChefModel(this.scene, this.shadows, this.lib, "full", APRON.full, looks[d.look % looks.length]);
         model.root.position.set(d.x, 0, d.z);
         model.root.rotation.y = d.facing;
         entry = { model, bubble: null, fade: 0 };
@@ -743,7 +811,9 @@ export class GameView {
       // a little speech bubble for how they feel
       const order = orders.get(d.orderId);
       const text =
-        d.mood === "angry"
+        d.state === "paying"
+          ? `${d.pay}, please!`
+          : d.mood === "angry"
           ? "Hmph!"
           : d.mood === "sick" && d.state === "leaving"
             ? "Ugh…"
@@ -887,7 +957,7 @@ export class GameView {
         bar.show(food.cook / (rule.cookTime ?? 6), BAR.cook, visible);
       } else if (s.kind === "stove" && food && rule?.cookFrom && food.state === "cooked") {
         // counts down to burning; flashes red once the warning has been given
-        const left = 1 - (food.cook - (rule.cookTime ?? 6)) / (rule.burnTime ?? 6);
+        const left = 1 - (food.cook - (rule.cookTime ?? 6)) / burnTimeFor(game, food.kind);
         this.showBurnCountdown(bar, left, food.warned, visible);
       } else if (s.pot && s.pot.state === "filling" && s.pot.contents.length) {
         bar.show(s.pot.contents.length / SOUP_SIZE, BAR.work, visible);

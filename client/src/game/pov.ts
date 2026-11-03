@@ -23,11 +23,14 @@ export class PovController {
     this.camera.fov = 1.1;
 
     document.addEventListener("mousemove", (e) => {
-      if (document.pointerLockElement !== canvas) return;
+      if (document.pointerLockElement !== canvas || this.frozen) return;
       this.yaw += e.movementX * MOUSE_SENSITIVITY;
       this.pitch = Scalar.Clamp(this.pitch + e.movementY * MOUSE_SENSITIVITY, MIN_PITCH, MAX_PITCH);
     });
   }
+
+  /** the mouse is busy elsewhere (choosing a sign): don't turn the view */
+  frozen = false;
 
   get active(): boolean {
     return this.camera.getScene().activeCamera === this.camera;

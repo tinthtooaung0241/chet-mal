@@ -2,7 +2,6 @@
 // it; this class only delivers what the local role could perceive, in the forms that role uses:
 //   - hearing roles: 3D sound placed around the chef, live stove sizzles, spoken phone orders
 //   - everyone: text in the log and screen-reader announcements for perceived events
-// A blind chef also hears each station's "signature" when facing it.
 import {
   EMOTES,
   FOOD_RULES,
@@ -10,16 +9,13 @@ import {
   ROLES,
   currentSenses,
   perceivesEvent,
-  stationName,
   potPhase,
   stovePhase,
-  targetStation,
   type Chef,
   type EventKind,
   type Game,
   type GameEvent,
   type Role,
-  type StationKind,
 } from "@kitchen/shared";
 import { glyph } from "../ui/icons";
 
@@ -68,6 +64,10 @@ const SOUNDS: Partial<Record<EventKind, Note[]>> = {
   season: [n(3200, 0, 0.03, "square", 0.05), n(2800, 0.07, 0.03, "square", 0.05), n(3400, 0.14, 0.03, "square", 0.05)],
   // a soft, falling "uh-oh" as cold food warms up
   warm: [n(660, 0, 0.12, "triangle", 0.12), n(494, 0.13, 0.22, "triangle", 0.12)],
+  // a customer at the till: a polite "excuse me" ding
+  checkout: [n(988, 0, 0.12, "sine", 0.14), n(1319, 0.14, 0.18, "sine", 0.12)],
+  // ka-ching!
+  paid: [n(2637, 0, 0.06, "square", 0.08), n(3136, 0.07, 0.06, "square", 0.08), n(2093, 0.16, 0.3, "triangle", 0.15)],
   // the terrace door chime: a customer walks in
   arrive: [n(1319, 0, 0.35, "sine", 0.1), n(1047, 0.22, 0.5, "sine", 0.1)],
 };
@@ -84,26 +84,6 @@ const EMOTE_SOUNDS: Record<string, Note[]> = {
   Done: [n(659, 0, 0.1), n(784, 0.1, 0.1), n(1047, 0.2, 0.25)],
 };
 if (Object.keys(EMOTE_SOUNDS).length !== EMOTES.length) throw new Error("every emote needs a sound");
-
-// What a station sounds like when a blind chef turns to face it.
-const STATION_SIGNATURES: Record<StationKind, Note[]> = {
-  counter: [n(330, 0, 0.05, "sine", 0.18)],
-  crate: [n(220, 0, 0.05, "square", 0.12), n(196, 0.07, 0.05, "square", 0.12)],
-  board: [n(160, 0, 0.06, "triangle", 0.25), n(160, 0.1, 0.06, "triangle", 0.25)],
-  stove: [n(110, 0, 0.18, "sawtooth", 0.08)],
-  plates: [n(2400, 0, 0.05, "sine", 0.12), n(2900, 0.06, 0.06, "sine", 0.1)],
-  bowls: [n(1900, 0, 0.06, "sine", 0.12), n(2300, 0.07, 0.07, "sine", 0.1)],
-  pot: [n(140, 0, 0.12, "sine", 0.18), n(210, 0.1, 0.12, "sine", 0.14), n(170, 0.2, 0.12, "sine", 0.12)],
-  serve: [n(1568, 0, 0.25, "sine", 0.15)],
-  trash: [n(100, 0, 0.12, "square", 0.12)],
-  sink: [n(900, 0, 0.12, "sine", 0.12, 500)],
-  // a rattle of jars, and the low hum of a fridge
-  spice: [n(3000, 0, 0.03, "square", 0.06), n(3300, 0.06, 0.03, "square", 0.06), n(2700, 0.12, 0.03, "square", 0.06)],
-  fridge: [n(118, 0, 0.35, "sine", 0.16), n(236, 0, 0.35, "sine", 0.05)],
-  decor: [],
-  // a hollow wooden knock-knock on the pantry shelf
-  pantry: [n(260, 0, 0.06, "triangle", 0.2), n(220, 0.1, 0.06, "triangle", 0.2)],
-};
 
 const ROUTINE = new Set<EventKind>(["pickup", "place", "trash"]);
 
@@ -139,10 +119,67 @@ const TOAST_ICONS: Partial<Record<EventKind | "info", string>> = {
   storm: "storm",
   over: "flag",
   season: "salt",
+  checkout: "coin",
+  paid: "coin",
   warm: "snow",
   info: "chef",
 };
-const GOOD = new Set<EventKind | "info">(["served", "cooked", "chopped", "perfect", "order", "phone", "season"]);
+/** What a toast shows: a few words beside its icon. The log and screen readers keep the full text. */
+const TOAST_WORDS: [RegExp, string][] = [
+  [/^You are now the (.+?)\. .*/, "You're the $1"],
+  [/^Kitchen open! You are the (.+?)\. .*/, "Kitchen open: $1"],
+  [/^Practice kitchen open!.*/, "Kitchen open!"],
+  [/^You can talk, so.*/, "Only the mute chef signals"],
+  [/^New ticket: (.+)\.$/, "$1"],
+  [/^Phone order: "Hi! One (.+?) please\..*/, "$1 by phone"],
+  [/^Served (.+?)!.*Plus (\d+) points\.$/, "$1 +$2"],
+  [/^The (.+?) is cooked\..*/, "$1 is cooked"],
+  [/^The (.+?) is ready\..*/, "$1 is ready"],
+  [/^The (.+?)'s sizzle peaks\..*/, "$1 is perfect now!"],
+  [/^The (.+?) bubbles just right\..*/, "$1 is perfect now!"],
+  [/^The (.+?) is smoking\..*/, "$1 is burning!"],
+  [/^The (.+?) burnt.*/, "$1 burnt"],
+  [/^The (.+?) sat out of the fridge.*/, "$1 went off. Bin it!"],
+  [/^The (.+?) has been out of the fridge.*/, "$1 is getting warm"],
+  [/^A customer gave up on their (.+?)\. Minus (\d+) points\.$/, "$1 lost -$2"],
+  [/^A customer got sick.* Minus (\d+) points\.$/, "Customer sick! -$1"],
+  [/^Nobody ordered .*/, "Nobody ordered that"],
+  [/^The power cuts out!.*/, "Power cut!"],
+  [/^A storm hits!.*/, "Storm! No sound"],
+  [/^The lights flicker back on\.$/, "Lights back on"],
+  [/^The storm passes\..*/, "Storm over"],
+  [/^(.+?) is at the till to pay by (.+)\.$/, "$1 pays by $2"],
+  [/^(.+?) got tired of waiting at the till.*/, "$1 left unpaid"],
+  [/^(.+?) paid (\d+) coins by .*/, "$1 paid $2 coins"],
+  [/^.+ waves to the tables\..*/, "Tables wait longer"],
+  [/^.+ pings: (.+?)( at the (.+))?\.$/, "Look: $3"],
+  [/^.+ signals: (.+)!$/, "$1!"],
+  [/^Time's up!.*/, "Time's up!"],
+  [/^Bought (.+?)\..*/, "Bought $1"],
+  [/^Lost connection.*/, "Connection lost. Refresh"],
+  [/^(.+?) wants to pay by (.+?), not .*/, "$1 pays by $2"],
+  [/^(.+?) doesn't handle raw food\..*/, "Hand it over on a plate"],
+  [/^(.+?) is in front of you\..*/, "Nothing to give"],
+  [/^The head chef doesn't cook\..*/, "Ask a cook to do that"],
+  [/^The .+?\. Bring an ingredient or a plated dish.*/, "Bring food to season"],
+  [/^No amount of .+ will save a burnt (.+)\.$/, "Burnt $1 can't be saved"],
+  [/^Put the food in first, then add .*/, "Add the food first"],
+  [/^The soup burnt\. Empty-handed.*/, "Empty hands to scrape it out"],
+  [/^Chop the (.+?) before it goes in.*/, "Chop the $1 first"],
+  [/^Soup goes in a bowl, not on a plate\.$/, "Soup needs a bowl"],
+  [/^Took (?:a |the )?(.+?) from .*/, "Took $1"],
+  [/^Put the (.+?) back in .*/, "Put back $1"],
+];
+
+function toastWords(text: string): string {
+  for (const [pattern, words] of TOAST_WORDS) {
+    if (pattern.test(text)) return text.replace(pattern, words).replace(/^Look: $/, "Look here").replace(/^./, (c) => c.toUpperCase());
+  }
+  // anything else: its first sentence
+  return text.match(/^.*?[.!?](?=\s|$)/)?.[0].replace(/\.$/, "") ?? text;
+}
+
+const GOOD = new Set<EventKind | "info">(["served", "cooked", "chopped", "perfect", "order", "phone", "season", "paid"]);
 const SMOKE_BEEP_INTERVAL = 0.6;
 
 interface Sizzle {
@@ -160,7 +197,6 @@ export class Feedback {
   private sizzles = new Map<number, Sizzle>();
   private storm: { source: AudioBufferSourceNode; gain: GainNode } | null = null;
   private smokeTimer = 0;
-  private lastTarget: number | null = null;
   private flip = false;
   private time = 0;
   speak = false;
@@ -190,7 +226,6 @@ export class Feedback {
   setRole(role: Role) {
     this.role = role;
     if (!this.hears) this.stopSizzles();
-    this.lastTarget = null;
   }
 
   setPaused(paused: boolean) {
@@ -213,6 +248,14 @@ export class Feedback {
     if (!isActor && ROUTINE.has(event.kind)) return;
     // the caller's voice: phone orders are spoken aloud to anyone who can hear
     if (event.kind === "phone" && hearsNow) this.speakAloud(event.text.replace(/^Phone order: /, ""), true);
+    // your own pick-ups and put-downs: the hand slot already shows (and bumps) what you hold, so
+    // no toast on top of it; screen readers and speech still hear it
+    if (isActor && (event.kind === "pickup" || event.kind === "place")) {
+      this.announce(event.text, false);
+      this.addLog(event.text, false);
+      if (this.speak) this.speakAloud(event.text, false);
+      return;
+    }
     this.say(event.text, event.urgent ?? false, event.kind !== "phone", event.kind);
   }
 
@@ -232,7 +275,7 @@ export class Feedback {
    */
   coach(text: string) {
     this.announce(`Next: ${text}`, false);
-    if (this.speak || this.role === "blind") this.speakAloud(text, true);
+    if (this.speak) this.speakAloud(text, true);
   }
 
   /** Text message: toast + screen reader (+ speech if enabled). */
@@ -260,19 +303,6 @@ export class Feedback {
       if (smoking) {
         this.play(SOUNDS.smoking!, smoking.x, smoking.z, me);
         this.smokeTimer = SMOKE_BEEP_INTERVAL;
-      }
-    }
-
-    // a blind chef hears what it turns to face; the name goes to the screen reader only
-    if (this.role === "blind") {
-      const target = targetStation(game, me);
-      const id = target?.id ?? null;
-      if (id !== this.lastTarget) {
-        this.lastTarget = id;
-        if (target) {
-          this.play(STATION_SIGNATURES[target.kind], target.x, target.z, me);
-          this.announce(stationName(target), false);
-        }
       }
     }
   }
@@ -483,7 +513,7 @@ export class Feedback {
     icon.append(glyph(TOAST_ICONS[kind] ?? "signs"));
     const body = document.createElement("span");
     body.className = "text";
-    body.textContent = text;
+    body.textContent = toastWords(text);
     el.title = text;
     el.append(icon, body);
     box.prepend(el);

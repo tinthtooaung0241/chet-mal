@@ -17,6 +17,8 @@ export default defineConfig({
     // 5173 is often taken by other Vite projects on this machine
     port: 5180,
     strictPort: true,
+    // reachable from phones on the same Wi-Fi
+    host: true,
     // GLBs live in ../assets (shared with Blender), outside the client root
     fs: { allow: [".."] },
     // the game server (npm run dev:server); in production it serves the client itself

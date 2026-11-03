@@ -264,13 +264,16 @@ select:focus-visible {
 /* a paper ticket pinned to the rail */
 .order {
   position: relative;
-  width: 138px;
+  width: 150px;
   padding: 10px 10px 9px;
   color: var(--ink);
   background: var(--paper);
   border-radius: 6px 6px var(--r-md) var(--r-md);
   box-shadow: var(--lift);
-  transform: rotate(var(--tilt, -1deg));
+  /* every ticket the same height, so the timer bars line up */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
   animation: ticket-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 
@@ -320,7 +323,8 @@ select:focus-visible {
 
 .order .tag {
   display: block;
-  font-size: 0.62rem;
+  font-size: 0.66rem;
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-soft);
@@ -332,7 +336,7 @@ select:focus-visible {
 
 .order strong {
   display: block;
-  font-size: 1rem;
+  font-size: 1.08rem;
   font-weight: 600;
   line-height: 1.1;
   margin: 1px 0 2px;
@@ -343,16 +347,16 @@ select:focus-visible {
 
 .order .dish {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 54px;
+  height: 54px;
   margin: 0 auto 4px;
   display: grid;
   place-items: center;
 }
 
 .order .dish > .icon-img:first-child {
-  width: 48px;
-  height: 48px;
+  width: 54px;
+  height: 54px;
 }
 
 .order .dish-icons {
@@ -377,8 +381,8 @@ select:focus-visible {
 }
 
 .order .ing .icon-img {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }
 
 .order .ing .icon-svg {
@@ -387,7 +391,8 @@ select:focus-visible {
 }
 
 .order .order-bar {
-  height: 6px;
+  margin-top: auto;
+  height: 8px;
   border-radius: var(--pill);
   background: var(--oat);
   overflow: hidden;
@@ -450,7 +455,7 @@ select:focus-visible {
 
 .toast .text {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -534,6 +539,10 @@ select:focus-visible {
   gap: var(--gap);
 }
 
+#score-chip {
+  box-sizing: border-box;
+}
+
 .chip {
   position: relative;
   border-radius: var(--r-md);
@@ -565,26 +574,51 @@ select:focus-visible {
   text-overflow: ellipsis;
 }
 
-/* level: a card with a gingham ribbon along the top */
+/* level: a small pill, read once per shift */
 #level-chip {
-  min-width: 100px;
-  padding: 14px 12px 7px;
-  overflow: hidden;
-  transform: rotate(-1.5deg);
+  align-self: flex-start;
+  height: auto !important;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  column-gap: 6px;
+  padding: 6px 12px 6px 9px;
+  border-radius: var(--pill);
+  text-align: left;
+  justify-items: start;
 }
 
-#level-chip::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 8px;
-  background: var(--gingham);
+#level-chip > i {
+  grid-row: 1 / 3;
+}
+
+#level-chip .icon-svg {
+  width: 22px;
+  height: 22px;
+}
+
+.level-line {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  line-height: 1;
+}
+
+#level-chip strong {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+#level-chip .chip-sub {
+  font-size: 0.66rem;
+  line-height: 1.1;
 }
 
 /* score: a coin, the points and a ribbon of stars */
 #score-chip {
-  min-width: 140px;
-  padding: 8px 14px 7px;
+  min-width: 150px;
+  padding: 10px 14px 8px;
+  align-content: center;
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
@@ -598,6 +632,20 @@ select:focus-visible {
 
 #score {
   text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+/* the points needed for the next star */
+.star-goal {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
 }
 
@@ -633,8 +681,8 @@ select:focus-visible {
 .star-mark {
   position: absolute;
   top: 50%;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   transform: translate(-50%, -50%);
   filter: grayscale(1) brightness(1.15);
   opacity: 0.6;
@@ -644,8 +692,8 @@ select:focus-visible {
 }
 
 .star-mark .icon-svg {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }
 
 .star-mark.earned {
@@ -795,8 +843,8 @@ select:focus-visible {
 }
 
 #role-avatar {
-  width: 56px;
-  min-height: 56px;
+  width: 50px;
+  min-height: 50px;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -850,39 +898,34 @@ select:focus-visible {
   color: var(--ink-soft);
 }
 
-#senses {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  gap: 4px;
-}
-
-#senses li {
+/* your limit, front and centre, and how to work around it */
+.role-limit {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 1px 7px 1px 5px;
+  gap: 4px;
+  margin: 0;
+  padding: 1px 9px 1px 6px;
   border-radius: var(--pill);
-  font-size: 0.68rem;
-  color: var(--mint-ink);
-  background: var(--mint-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--peach-ink);
+  background: var(--peach-soft);
 }
 
-#senses li .icon-svg {
+.role-limit .icon-svg {
   width: 14px;
   height: 14px;
 }
 
-#senses li.off {
-  color: var(--ink-faint);
-  background: var(--oat);
-  text-decoration: line-through;
+.role-limit.none {
+  color: var(--mint-ink);
+  background: var(--mint-soft);
 }
 
-#senses li.off .icon-svg {
-  filter: grayscale(1);
-  opacity: 0.6;
+.role-tip {
+  margin: 3px 0 0;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
 }
 
 /* ====================================================================== bottom: hand slot + key prompts */
@@ -1190,25 +1233,38 @@ select:focus-visible {
 dialog {
   position: fixed;
   border: none;
-  border-radius: var(--r-lg);
-  padding: 26px 24px 20px;
+  /* a little book: square spine on the left, softly rounded page corners on the right */
+  border-radius: 6px var(--r-md) var(--r-md) 6px;
+  padding: 26px 24px 20px 30px;
   color: var(--ink);
-  background: var(--paper);
+  background:
+    linear-gradient(90deg, rgba(120, 80, 40, 0.16), rgba(120, 80, 40, 0) 18px) left / 18px 100% no-repeat,
+    var(--paper);
   box-shadow:
-    0 5px 0 var(--paper-shadow),
+    /* page edges stacked under the top page */
+    2px 3px 0 -1px var(--cream),
+    3px 4px 0 -1px var(--paper-shadow),
+    5px 6px 0 -1px var(--cream),
+    6px 7px 0 -1px var(--paper-shadow),
+    /* the leather cover peeking out around the pages */
+    0 0 0 5px #9a5b3a,
+    7px 9px 0 4px #7c4429,
     0 24px 60px rgba(30, 18, 8, 0.55);
   overflow: hidden auto;
-  max-height: calc(100vh - 32px);
+  max-height: calc(100vh - 40px);
   animation: dialog-in 0.3s cubic-bezier(0.2, 1.3, 0.4, 1) both;
 }
 
 dialog::before {
-  /* gingham trim across the top */
+  /* a ribbon bookmark hanging from the top edge */
   content: "";
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 10px;
-  background: var(--gingham);
+  top: 0;
+  right: 28px;
+  width: 16px;
+  height: 34px;
+  background: var(--tomato);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
 }
 
 dialog::backdrop {
@@ -1658,93 +1714,428 @@ button .icon-img {
   height: 24px;
 }
 
-#book-title .icon-svg {
-  width: 30px;
-  height: 30px;
-  vertical-align: -5px;
-}
-
-#book-note {
-  margin: 0 0 10px;
-}
-
-#book-pages {
-  list-style: none;
-  margin: 0 0 14px;
-  padding: 10px 4px 6px; /* room for the "On order" badges */
-  max-height: min(60vh, 520px);
-  overflow-y: auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
-  gap: var(--gap);
-  text-align: left;
-}
-
-.book-page {
-  position: relative;
-  padding: 10px 10px 8px;
+/* an open book: the menu spread first, then each recipe across two pages */
+#recipe-book {
+  overflow: visible; /* a page turning in 3D may poke out; never show a scrollbar for it */
+  width: min(860px, calc(100vw - 32px));
+  padding: 14px;
+  background: #9a5b3a; /* the cover, all round the pages */
   border-radius: var(--r-md);
-  background: var(--paper);
-  box-shadow:
-    0 0 0 2px var(--oat),
-    0 3px 0 2px var(--oat);
-  outline: none;
-  transition: box-shadow 0.15s;
 }
 
-.book-page.bowl {
-  background: #fdf6ea;
+#recipe-book::before {
+  /* no ribbon here: it would hang in front of the pages as they turn */
+  display: none;
 }
 
-.book-page.ordered {
-  box-shadow:
-    0 0 0 2px var(--honey),
-    0 3px 0 2px var(--honey-edge);
-}
-
-/* the page being read aloud (or reached with the keyboard) */
-.book-page.current:focus-visible,
-.read-aloud .book-page.current {
-  box-shadow:
-    0 0 0 3px var(--focus),
-    0 3px 0 3px #3f86c2;
-}
-
-.book-head {
-  display: grid;
-  grid-template-columns: 48px 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 8px;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.book-head .dish {
+.book-spread {
+  --page: #fffaf0;
+  --rule: rgba(176, 140, 96, 0.13);
   position: relative;
-  grid-row: 1 / 3;
-  width: 48px;
-  height: 48px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  text-align: left;
+  height: min(82vh, 600px);
+  border-radius: 6px;
+  perspective: 2000px;
+  box-shadow:
+    0 3px 0 #efe2c8,
+    0 5px 0 #d9c39c,
+    0 7px 0 #efe2c8,
+    0 9px 0 #c9ad82;
+}
+
+.book-pg {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 26px 12px;
+  overflow-y: auto;
+  outline: none;
+  /* paper, not a screen: no scrollbar, and the ruled lines move with the writing */
+  scrollbar-width: none;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 27px, var(--rule) 27px 28px) local,
+    var(--page);
+}
+
+.book-pg::-webkit-scrollbar {
+  display: none;
+}
+
+.book-pg.left {
+  border-radius: 6px 0 0 6px;
+  box-shadow: inset -24px 0 26px -18px rgba(110, 70, 30, 0.35);
+}
+
+.book-pg.right {
+  border-radius: 0 6px 6px 0;
+  box-shadow: inset 24px 0 26px -18px rgba(110, 70, 30, 0.35);
+}
+
+/* turning a page: a leaf lifts from one side, swings over the spine and lands on the other */
+.leaf,
+.under {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  pointer-events: none;
+}
+
+.under {
+  z-index: 3;
+}
+
+.under.left,
+.leaf.back {
+  left: 0;
+}
+
+.under.right,
+.leaf.next {
+  left: 50%;
+}
+
+.leaf {
+  z-index: 4;
+  transform-style: preserve-3d;
+  animation-duration: 0.75s;
+  animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1);
+  animation-fill-mode: forwards;
+}
+
+.leaf.next {
+  transform-origin: left center;
+  animation-name: leaf-turn-next;
+}
+
+.leaf.back {
+  transform-origin: right center;
+  animation-name: leaf-turn-back;
+}
+
+@keyframes leaf-turn-next {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(-180deg);
+  }
+}
+
+@keyframes leaf-turn-back {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(180deg);
+  }
+}
+
+.book-pg.leaf-face,
+.under .book-pg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.leaf-face {
+  backface-visibility: hidden;
+}
+
+.leaf-face.back {
+  transform-origin: center;
+  transform: rotateY(180deg);
+}
+
+/* the page darkens as it stands up off the paper, then lightens as it settles */
+.leaf-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(60, 35, 15, 0.28), rgba(60, 35, 15, 0) 60%);
+  opacity: 0;
+  animation: leaf-shade 0.75s ease-in-out;
+}
+
+.leaf.next .leaf-face:not(.back)::after,
+.leaf.back .leaf-face.back::after {
+  background: linear-gradient(90deg, rgba(60, 35, 15, 0) 40%, rgba(60, 35, 15, 0.28));
+}
+
+@keyframes leaf-shade {
+  50% {
+    opacity: 1;
+  }
+}
+
+/* the shadow the turning page throws on the page beneath it */
+.leaf::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateZ(-1px);
+  box-shadow: 0 0 30px rgba(40, 20, 5, 0.35);
+}
+
+.book-pg h4,
+.menu-head,
+.cover-eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--peach-ink);
+}
+
+/* close: a plain round ✕ on the cover's top-right corner, the same place on every spread */
+.book-x {
+  position: absolute;
+  top: -16px;
+  right: -16px;
+  z-index: 5;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 3px solid #fbe9d0;
+  border-radius: 50%;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #fbe9d0;
+  background: #7c4429;
+  box-shadow: 0 3px 0 #5a2f1b, 0 6px 12px rgba(40, 20, 5, 0.35);
+  transition: transform 0.15s, background 0.15s;
+}
+
+.book-x:hover {
+  background: var(--tomato);
+  transform: scale(1.08);
+}
+
+.book-x kbd {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+}
+
+.folio {
+  position: absolute;
+  bottom: 10px;
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
+/* page numbers close each page at its bottom middle: after the writing (so a long, scrolling
+   page never has its number floating over a line), clear of the turn-page corners */
+.folio.left,
+.folio.right {
+  position: static;
+  align-self: center;
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+/* ---- the cover page */
+.cover {
+  text-align: center;
+  padding-top: 18px;
+}
+
+.cover-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 2rem;
+}
+
+.cover-title .icon-svg {
+  width: 36px;
+  height: 36px;
+}
+
+.cover-sub {
+  margin: 6px 0 0;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.cover-hint {
+  margin: 20px auto 22px;
+  max-width: 260px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.cover .book-key {
+  text-align: left;
+  max-width: 270px;
+  margin: 0 auto;
+}
+
+/* ---- the menu */
+.menu-head {
+  text-align: center;
+  font-size: 0.9rem;
+  margin: 6px 0 12px;
+}
+
+.menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.menu-entry {
+  all: unset;
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 6px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+/* hover only tints the row; it never shifts, so the menu stays still under the pointer */
+#recipe-book .menu-entry:hover,
+#recipe-book .menu-entry:focus-visible,
+#recipe-book .menu-entry:active {
+  background: var(--oat);
+  transform: none;
+  translate: none;
+  box-shadow: none;
+}
+
+.menu-entry:focus-visible {
+  outline: 2px solid var(--focus);
+}
+
+.menu-entry .dish {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
 }
 
-.book-head .dish > .icon-img:first-child {
-  width: 48px;
-  height: 48px;
+.menu-entry .dish > .icon-img:first-child {
+  width: 44px;
+  height: 44px;
 }
 
-.book-head h3 {
-  margin: 0;
-  font-size: 1.05rem;
+.menu-words {
+  display: grid;
+  min-width: 0;
+}
+
+.menu-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 600;
-  line-height: 1.1;
+  font-size: 1rem;
+}
+
+.menu-what {
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+}
+
+.menu-price .icon-svg {
+  width: 15px;
+  height: 15px;
+}
+
+.toc-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tomato);
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.toc-dots {
+  flex: 1;
+  min-width: 14px;
+  align-self: center;
+  border-bottom: 2px dotted #d9c6a5;
+  transform: translateY(4px);
+}
+
+/* ---- a recipe: the dish on the left page */
+.book-back {
+  align-self: flex-start;
+  padding: 3px 12px;
+  font-size: 0.8rem;
+}
+
+.hero {
+  position: relative;
+  align-self: center;
+  margin: 6px 0 4px;
+  width: 104px;
+  height: 104px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 56%, var(--oat) 57%);
+  box-shadow: 0 4px 0 var(--paper-shadow);
+}
+
+.hero .dish {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.hero .dish > .icon-img:first-child {
+  width: 92px;
+  height: 92px;
+}
+
+.hero-name {
+  margin: 6px 0 0;
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 600;
 }
 
 .book-meta {
-  display: inline-flex;
+  margin: 2px 0 6px;
+  display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 3px;
-  font-size: 0.75rem;
+  gap: 4px;
+  font-size: 0.8rem;
   color: var(--ink-soft);
 }
 
@@ -1753,56 +2144,313 @@ button .icon-img {
   height: 15px;
 }
 
+.book-pg section {
+  margin-top: 10px;
+}
+
 .book-badge {
   position: absolute;
-  top: -8px;
-  right: 8px;
-  padding: 1px 8px;
+  top: -4px;
+  right: -46px;
+  padding: 2px 9px;
   border-radius: var(--pill);
   font-size: 0.62rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #4a2d07;
-  background: var(--honey);
-  box-shadow: 0 2px 0 var(--honey-edge);
+  white-space: nowrap;
+  color: #fff;
+  background: var(--tomato);
+  box-shadow: 0 2px 0 #b53a28;
+  transform: rotate(8deg);
 }
 
-.book-steps {
+.book-key {
+  margin: 0;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  border: 2px dashed #ead9bb;
+  border-radius: var(--r-sm);
+}
+
+.book-key div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.book-key dt {
+  width: 18px;
+  display: grid;
+  place-items: center;
+}
+
+.book-key dd {
+  margin: 0;
+}
+
+.book-key .icon-svg {
+  width: 16px;
+  height: 16px;
+}
+
+.book-ingredients {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 3px;
-  font-size: 0.76rem;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+  font-size: 0.85rem;
 }
 
-.book-steps li {
+.book-ingredients li {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  gap: 4px 6px;
+  padding: 5px 8px;
+  border-radius: var(--r-sm);
+  background: #fff;
+  box-shadow: 0 0 0 1px #efe2c8, 0 2px 0 #efe2c8;
+}
+
+.book-ingredients .icon-img {
+  width: 28px;
+  height: 28px;
+}
+
+.book-ingredients b {
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.book-ingredients .where,
+.book-ingredients .time {
+  display: inline-flex;
+  align-items: center;
   gap: 3px;
-  padding: 2px 8px 2px 3px;
+  padding: 0 7px;
   border-radius: var(--pill);
+  font-size: 0.68rem;
+  color: var(--ink-soft);
   background: var(--oat);
 }
 
-.book-steps li.book-item {
-  background: var(--mint-soft);
+.book-ingredients .where.cold {
+  color: var(--sky-ink);
+  background: var(--sky-soft);
 }
 
-.book-steps li:last-child {
+.book-ingredients .time {
+  color: var(--peach-ink);
   background: var(--peach-soft);
 }
 
-.book-steps .icon-img,
-.book-steps .icon-svg {
+.book-ingredients .where .icon-svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* the method: plain numbered sentences, verb first, with where it happens on the right */
+.book-method {
+  list-style: none;
+  counter-reset: step;
+  margin: 0;
+  padding: 0;
+}
+
+.book-method li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 20px 30px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.book-method li::before {
+  content: counter(step);
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--peach-edge);
+}
+
+.step-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+}
+
+.step-icon .icon-img,
+.step-icon .icon-svg,
+.step-icon .dish > .icon-img:first-child {
+  width: 28px;
+  height: 28px;
+}
+
+.step-icon .dish {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+}
+
+.step-icon .spice-icons {
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 30px;
+}
+
+.step-icon .spice-icons .icon-svg {
+  width: 14px;
+  height: 14px;
+}
+
+.step-text b {
+  font-weight: 700;
+}
+
+.step-where {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px 2px 4px;
+  border-radius: var(--pill);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  background: var(--oat);
+}
+
+.step-where .icon-img,
+.step-where .icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
+.book-method li.season .step-text b {
+  color: #9a6400;
+}
+
+.book-method li.serve .step-text b {
+  color: var(--peach-ink);
+}
+
+.book-tip {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 12px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  border-radius: 4px;
+  background: #fff6c9;
+  box-shadow: 0 2px 6px rgba(80, 60, 20, 0.15);
+  transform: rotate(-0.6deg);
+}
+
+.book-tip .icon-svg {
+  flex: none;
   width: 22px;
   height: 22px;
 }
 
-.book-steps .arrow {
-  color: var(--ink-faint);
-  margin: 0 1px;
+/* page-turn buttons: dog-eared corners of the pages, lifting a little on hover */
+.page-corner {
+  position: absolute;
+  bottom: 0;
+  z-index: 2;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--peach-ink);
+  background: none;
+  box-shadow: none;
+  transition: width 0.15s, height 0.15s;
+}
+
+.page-corner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  filter: drop-shadow(0 -2px 3px rgba(80, 50, 20, 0.25));
+}
+
+.page-corner.next {
+  right: 0;
+  text-align: left;
+  padding: 0 0 12px 10px;
+}
+
+.page-corner.next::before {
+  background: linear-gradient(315deg, transparent 50%, #f1e3c8 50%, #fdf3df 75%);
+  border-radius: 0 0 6px 0;
+}
+
+.page-corner.prev {
+  left: 0;
+  text-align: right;
+  padding: 0 10px 12px 0;
+}
+
+.page-corner.prev::before {
+  background: linear-gradient(45deg, transparent 50%, #f1e3c8 50%, #fdf3df 75%);
+  border-radius: 0 0 0 6px;
+}
+
+.page-corner:hover {
+  width: 56px;
+  height: 56px;
+  background: none;
+  transform: none;
+}
+
+.read-aloud .book-pg.right {
+  box-shadow: inset 0 0 0 3px var(--focus);
+}
+
+@media (max-width: 640px) {
+  .book-spread {
+    grid-template-columns: 1fr;
+    height: auto;
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+  }
+  .book-pg {
+    overflow: visible;
+  }
+  .book-pg.left {
+    border-radius: 6px 6px 0 0;
+    box-shadow: inset 0 -12px 16px -12px rgba(110, 70, 30, 0.3);
+  }
+  .book-pg.right {
+    border-radius: 0 0 6px 6px;
+    box-shadow: none;
+  }
+  .on-menu .cover-hint,
+  .on-menu .book-key {
+    display: none;
+  }
 }
 
 /* ====================================================================== icons */
@@ -1895,7 +2543,7 @@ i[data-img] {
   .order {
     width: 126px;
   }
-  #senses {
+  .role-tip {
     display: none;
   }
 }
@@ -1993,10 +2641,6 @@ i[data-img] {
 .order .ing.spice .icon-svg {
   width: 18px;
   height: 18px;
-}
-
-.book-steps li.book-season {
-  background: #fdf1d4;
 }
 
 /* fridge food in hand: a cool tint, turning peach as it warms up */
@@ -2116,11 +2760,6 @@ i[data-img] {
 .spice-icons {
   display: inline-flex;
   gap: 1px;
-}
-
-.book-steps .spice-icons .icon-svg {
-  width: 18px;
-  height: 18px;
 }
 
 #picker.pantry {
@@ -2464,4 +3103,4650 @@ i[data-img] {
   padding: 10px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.7);
+}
+
+/* the till's takings, under the score */
+.till-coins {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 2px;
+  padding: 1px 8px;
+  border-radius: var(--pill);
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--mint-ink);
+  background: var(--mint-soft);
+}
+
+/* upgrades shop */
+.shop-coins {
+  margin: 4px 0 10px;
+}
+
+.shop-coins strong {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--honey-edge);
+}
+
+.shop-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.shop-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--oat);
+}
+
+.shop-list li.owned {
+  background: var(--mint-soft);
+}
+
+.shop-list li div {
+  display: grid;
+  gap: 2px;
+}
+
+.shop-list li strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.shop-list li span {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.shop-list button {
+  flex: none;
+  min-width: 96px;
+}
+
+/* a single seasoning gets a full-size icon in the recipe method */
+.step-icon .spice-icons .icon-svg:only-child {
+  width: 26px;
+  height: 26px;
+}
+
+.till-coins[hidden] {
+  display: none;
+}
+
+/* tickets point cooks to the recipe book instead of listing the steps */
+.order .book-hint {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 2px 6px 2px 4px;
+  border-radius: var(--pill);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--oat);
+}
+
+.order .book-hint .icon-svg {
+  width: 16px;
+  height: 16px;
+}
+
+.order .book-hint kbd {
+  font-size: 0.6rem;
+}
+
+/* ====================================================================== top-right: compact pills */
+/* one tidy row (level · score · timer · book · menu) and a one-line chef tag under it */
+#scoreboard {
+  gap: 8px;
+}
+
+#level-chip,
+#score-chip {
+  height: 44px;
+  padding: 0 14px 0 10px;
+  border-radius: var(--pill);
+  transform: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+#level-chip::before {
+  display: none;
+}
+
+#level-chip .level-line {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+#level-chip .chip-sub {
+  max-width: 96px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+#score-chip {
+  min-width: 0;
+  padding-right: 12px;
+}
+
+#score-chip .coin .icon-svg {
+  width: 24px;
+  height: 24px;
+}
+
+#score-chip strong {
+  font-size: 1.25rem;
+}
+
+.star-goal {
+  font-size: 0.78rem;
+}
+
+/* the star meter sits inline in the pill */
+#star-meter {
+  grid-column: auto;
+  width: 78px;
+  height: 8px;
+  margin: 0 4px 0 6px;
+}
+
+.star-mark,
+.star-mark .icon-svg {
+  width: 20px;
+  height: 20px;
+}
+
+#clock {
+  margin: 0 2px;
+}
+
+#clock-ring {
+  width: 54px;
+  height: 54px;
+}
+
+#time {
+  font-size: 0.9rem;
+}
+
+#clock::before {
+  top: -7px;
+  width: 16px;
+  height: 9px;
+  margin-left: -8px;
+}
+
+#menu-button,
+#book-button {
+  width: 42px;
+  height: 42px;
+}
+
+/* the chef tag: avatar, name and your limit, all on one line */
+#role-badge {
+  top: 76px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 4px;
+  border-radius: var(--pill);
+  overflow: visible;
+}
+
+#role-avatar {
+  width: 36px;
+  min-height: 36px;
+  height: 36px;
+  border-radius: 50%;
+  box-shadow: none;
+}
+
+#role-badge > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+}
+
+#role-badge > div:last-child::before,
+.role-name::before {
+  display: none;
+}
+
+#role-badge .role-name {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+#role-badge .role-tip {
+  display: none;
+}
+
+/* level + score: one cute pill — a peach level sticker, then coins and stars */
+#status-pill {
+  display: flex;
+  align-items: center;
+  height: 50px;
+  padding: 0 14px 0 5px;
+  border-radius: var(--pill);
+  background: var(--paper);
+  box-shadow: var(--lift);
+}
+
+#status-pill #level-chip,
+#status-pill #score-chip {
+  height: auto;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+
+#status-pill #level-chip {
+  gap: 7px;
+  padding-right: 4px;
+}
+
+/* the level, as a round sticker with a little wobble when it appears */
+.level-badge {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-content: center;
+  border-radius: 50%;
+  line-height: 0.95;
+  text-align: center;
+  color: #fff;
+  background: radial-gradient(circle at 35% 30%, #ffb9a6, var(--peach) 55%, var(--peach-edge));
+  box-shadow:
+    0 0 0 3px #fff,
+    0 2px 0 3px var(--peach-edge);
+  transform: rotate(-8deg);
+}
+
+.level-badge small {
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+#status-pill .level-badge strong {
+  font-size: 1.1rem;
+  color: #fff;
+}
+
+#status-pill #level-chip .chip-sub {
+  max-width: 64px;
+  white-space: normal;
+  line-height: 1.05;
+  font-size: 0.7rem;
+}
+
+.status-divider {
+  width: 0;
+  height: 26px;
+  margin: 0 12px 0 8px;
+  border-left: 2px dotted #e3cfae;
+}
+
+/* earned stars glow gold */
+.star-mark.earned .icon-svg {
+  filter: drop-shadow(0 0 4px rgba(246, 195, 91, 0.9));
+}
+
+/* the chef tag, in the same style as the level/score pill: a sticker, a dotted divider, the limit */
+#role-badge {
+  height: 50px;
+  box-sizing: border-box;
+  padding: 0 12px 0 5px;
+}
+
+#role-avatar {
+  width: 40px;
+  min-height: 40px;
+  height: 40px;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 3px #fff,
+    0 2px 0 3px color-mix(in srgb, var(--role-color, var(--ink-soft)) 70%, #000);
+  transform: rotate(-8deg);
+}
+
+#role-avatar .icon-svg {
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) invert(1);
+}
+
+#role-badge > div:last-child {
+  gap: 0;
+}
+
+#role-badge .role-name {
+  padding-left: 4px;
+}
+
+#role-badge .role-limit {
+  position: relative;
+  margin-left: 20px;
+}
+
+#role-badge .role-limit::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  height: 26px;
+  margin-top: -13px;
+  border-left: 2px dotted #e3cfae;
+}
+
+/* flat, tidy badges inside the pills (no sticker rim, no tilt) */
+.level-badge {
+  width: auto;
+  height: 30px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  place-content: initial;
+  align-self: center;
+  border-radius: var(--pill);
+  line-height: 30px;
+  color: var(--peach-ink);
+  background: var(--peach-soft);
+  box-shadow: none;
+  transform: none;
+}
+
+.level-badge small {
+  font-size: 0.7rem;
+  opacity: 1;
+}
+
+#status-pill .level-badge strong {
+  font-size: 1rem;
+  color: var(--peach-ink);
+}
+
+#status-pill {
+  height: 46px;
+  padding-left: 8px;
+}
+
+#role-badge {
+  height: 46px;
+  padding-left: 7px;
+}
+
+#role-avatar {
+  width: 32px;
+  min-height: 32px;
+  height: 32px;
+  box-shadow: none;
+  transform: none;
+}
+
+#role-avatar .icon-svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* the restaurant picker on the title screen */
+.venue-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+
+.venue-card {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px 12px;
+  border-radius: var(--r-md);
+  text-align: left;
+  overflow: hidden;
+}
+
+.venue-card strong {
+  font-size: 0.95rem;
+}
+
+.venue-card small {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.venue-card[aria-checked="true"] {
+  background: var(--honey);
+  box-shadow: 0 3px 0 var(--honey-edge);
+}
+
+.venue-card:disabled {
+  opacity: 1;
+  color: var(--ink-faint);
+  background: var(--oat);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.venue-card:disabled strong::after {
+  content: " 🔒";
+}
+
+/* how close your total sales are to opening it */
+.venue-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--mint) var(--done, 0%), transparent 0);
+}
+
+/* a finished-dish picture fills its spot (no plate drawn underneath) */
+.dish.finished > .icon-img:first-child {
+  transform: scale(1.12);
+}
+
+/* the shift label: restaurant and shift number small on top, the shift's name below */
+#status-pill #level-chip {
+  display: grid;
+  grid-template-columns: auto;
+  gap: 1px;
+  padding-left: 10px;
+  align-content: center;
+}
+
+.level-eyebrow {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-faint);
+}
+
+#status-pill .level-eyebrow strong {
+  font-size: inherit;
+  color: var(--peach-ink);
+}
+
+.level-title {
+  max-width: 150px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+/* the rest of the restaurant's menu, served on later shifts: readable, but quieter */
+.menu-later-head {
+  margin: 16px 0 6px;
+  text-align: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.menu-list.later .menu-entry {
+  opacity: 0.6;
+}
+
+.menu-list.later .menu-entry:hover {
+  opacity: 1;
+}
+
+/* level: the restaurant's round logo with the shift number on a little badge */
+#status-pill #level-chip {
+  position: relative;
+  display: block;
+  width: 40px;
+  height: 40px !important; /* an older level-pill rule forces auto height */
+  padding: 0;
+  align-self: center; /* an older rule pinned it to the top of the pill */
+}
+
+#status-pill #venue-logo {
+  display: block;
+}
+
+#status-pill #venue-logo .icon-svg {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.shift-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--pill);
+  font-size: 0.7rem !important;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff !important;
+  background: var(--peach-edge);
+  box-shadow: 0 0 0 2px var(--paper);
+}
+
+#status-pill {
+  padding-left: 4px;
+}
+
+#status-pill .status-divider {
+  margin: 0 10px 0 10px;
+}
+
+/* a shorter star bar keeps the pill compact */
+#status-pill #star-meter {
+  width: 64px;
+}
+
+/* a smaller shift number, and a little air between the top row and the chef tag */
+.shift-badge {
+  right: -3px;
+  bottom: -2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  font-size: 0.56rem !important;
+}
+
+#role-badge {
+  top: 86px;
+}
+
+/* a taller pill, so the shift number sits inside it below the logo */
+#status-pill {
+  height: 54px;
+}
+
+/* both pills share one height; the logo fills it, the shift number tags its corner */
+#status-pill,
+#role-badge {
+  height: 52px;
+}
+
+#status-pill #level-chip {
+  width: 42px;
+  height: 42px !important;
+}
+
+#status-pill #venue-logo .icon-svg {
+  width: 42px;
+  height: 42px;
+}
+
+.shift-badge {
+  right: -4px;
+  bottom: -1px;
+  min-width: 15px;
+  height: 15px;
+  font-size: 0.58rem !important;
+  box-shadow: 0 0 0 2px var(--paper);
+}
+
+#role-avatar {
+  width: 38px;
+  min-height: 38px;
+  height: 38px;
+}
+
+.shift-badge {
+  bottom: 1px;
+}
+
+#status-pill {
+  padding-left: 6px;
+}
+
+/* ====================================================================== touch controls */
+#touch {
+  --safe-l: max(14px, env(safe-area-inset-left));
+  --safe-r: max(14px, env(safe-area-inset-right));
+  --safe-b: max(12px, env(safe-area-inset-bottom));
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#touch[hidden],
+body:has(#hud[hidden]) #touch,
+.touch-only {
+  display: none;
+}
+
+body.touch .touch-only {
+  display: grid;
+}
+
+#touch button {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto;
+  transition: transform 0.08s, opacity 0.15s, box-shadow 0.15s;
+}
+
+/* --- left thumb: the stick rests in the corner, and jumps to wherever the thumb lands */
+#touch-joy {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 40%;
+  height: 62%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#touch-joy-base {
+  position: absolute;
+  left: calc(var(--safe-l) + 62px);
+  top: calc(100% - var(--safe-b) - 62px);
+  width: 124px;
+  height: 124px;
+  margin: -62px 0 0 -62px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(42, 36, 32, 0.08) 40%, rgba(42, 36, 32, 0.22));
+  box-shadow: inset 0 0 0 3px rgba(255, 250, 240, 0.75), 0 2px 10px rgba(42, 36, 32, 0.18);
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+#touch-joy-base.on {
+  opacity: 1;
+}
+
+#touch-joy-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 3px 0 var(--oat), 0 6px 14px rgba(42, 36, 32, 0.3);
+}
+
+/* --- right thumb: Use in the middle, the other actions in an arc around it */
+#touch-pad {
+  --r: 96px;
+  position: absolute;
+  right: calc(var(--safe-r) + 50px);
+  bottom: calc(var(--safe-b) + 50px);
+  width: 0;
+  height: 0;
+}
+
+.touch-use,
+.touch-sat {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+  padding: 0;
+  border-radius: 50%;
+  font-weight: 700;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.touch-use {
+  left: -50px;
+  top: -50px;
+  width: 100px;
+  height: 100px;
+  font-size: 0.68rem;
+  background: var(--paper);
+  color: var(--ink-soft);
+  box-shadow: 0 4px 0 var(--oat), 0 8px 18px rgba(45, 28, 12, 0.28);
+}
+
+.touch-use .icon-svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* the words of the action, kept to two short lines */
+#touch-use-label {
+  max-width: 80px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.touch-use.ready {
+  background: var(--honey);
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--honey-edge), 0 8px 20px rgba(196, 128, 30, 0.45);
+}
+
+.touch-sat {
+  --size: 50px;
+  left: calc(cos(var(--a)) * var(--r) - var(--size) / 2);
+  top: calc(sin(var(--a)) * var(--r) * -1 - var(--size) / 2);
+  width: var(--size);
+  height: var(--size);
+  font-size: 0.6rem;
+  background: var(--paper);
+  box-shadow: 0 3px 0 var(--oat), 0 5px 12px rgba(45, 28, 12, 0.25);
+  opacity: 0.82;
+}
+
+.touch-sat .icon-svg {
+  width: 24px;
+  height: 24px;
+}
+
+.touch-chop {
+  --size: 62px;
+}
+
+.touch-chop .icon-svg {
+  width: 26px;
+  height: 26px;
+}
+
+.touch-sat.ready {
+  opacity: 1;
+  background: #fff6dc;
+  box-shadow: 0 3px 0 var(--honey-edge), 0 0 0 3px var(--honey), 0 6px 14px rgba(196, 128, 30, 0.4);
+}
+
+#touch button.down {
+  transform: translateY(3px) scale(0.94);
+}
+
+/* the head chef doesn't cook: no chopping */
+body[data-role="head"] .touch-chop {
+  display: none;
+}
+
+/* ====================================================================== the HUD on touch screens */
+/* no keyboard letters anywhere, and no prompts the buttons already show */
+body.touch kbd,
+body.touch .keys-only,
+body.touch .corner-hint,
+body.touch #prompts .prompt[data-key="Space"],
+body.touch #prompts .prompt[data-key="F"],
+body.touch #prompts .prompt[data-key="H"],
+body.touch #prompts .prompt[data-key^="1"] {
+  display: none;
+}
+
+body.touch {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* signals (the mute chef's voice) on an outer arc around Use, still in reach of the thumb */
+body.touch #signals {
+  --r: 152px;
+  right: calc(max(14px, env(safe-area-inset-right)) + 50px);
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 50px);
+  left: auto;
+  top: auto;
+  width: 0;
+  height: 0;
+}
+
+body.touch #signals .round-btn {
+  position: absolute;
+  --size: 46px;
+  left: calc(cos(var(--a)) * var(--r) - var(--size) / 2);
+  top: calc(sin(var(--a)) * var(--r) * -1 - var(--size) / 2);
+  width: var(--size);
+  height: var(--size);
+  background: #fdeee6;
+}
+
+/* one Talk button: ping and bell live in its wheel with the signs */
+body.touch #signals [data-signal] {
+  display: none;
+}
+
+body.touch #wheel-button {
+  --a: 104deg;
+}
+
+body.touch #emote-wheel button {
+  --a: calc(var(--i) * 45deg - 90deg);
+}
+
+/* a slimmer chef tag, so the right side stays clear for the thumb */
+body.touch #role-badge {
+  top: 72px;
+  height: 40px;
+}
+
+body.touch #role-avatar {
+  transform: scale(0.8);
+}
+
+/* the hand slot in the middle, between the thumbs */
+body.touch #hand-bar {
+  bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+body.touch #picker .pick {
+  cursor: pointer;
+  min-height: 44px;
+}
+
+body.touch #scene {
+  touch-action: none;
+}
+
+/* touch screens held upright get a gentle "turn sideways" card instead of a cramped kitchen */
+#rotate-hint {
+  display: none;
+}
+
+@media (orientation: portrait) {
+  body.touch #rotate-hint {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 18px;
+    padding: 24px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--ink);
+    background: var(--cream);
+  }
+}
+
+.rotate-phone {
+  width: 54px;
+  height: 92px;
+  border: 5px solid var(--ink);
+  border-radius: 12px;
+  animation: rotate-phone 2.4s ease-in-out infinite;
+}
+
+@keyframes rotate-phone {
+  0%, 25% {
+    transform: rotate(0deg);
+  }
+  55%, 100% {
+    transform: rotate(-90deg);
+  }
+}
+
+/* ====================================================================== phones held sideways */
+/* the title screen goes two columns: who and where on the left, how to play on the right */
+@media (orientation: landscape) and (max-height: 520px) {
+  .title-screen {
+    width: min(760px, calc(100vw - 24px));
+    max-height: calc(100dvh - 16px);
+    padding: 12px 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 18px;
+    align-content: start;
+  }
+  .title-screen:not([open]) {
+    display: none;
+  }
+  .title-screen > * {
+    grid-column: 1;
+  }
+  .title-screen > #lobby-start,
+  .title-screen > #lobby-room,
+  .title-screen > #lobby-error {
+    grid-column: 2;
+    grid-row: 1 / span 8;
+    align-self: center;
+  }
+  .title-logo .icon-img {
+    width: 44px;
+    height: 44px;
+  }
+  .title-logo .logo-soup .icon-img {
+    width: 36px;
+    height: 36px;
+  }
+  .title-screen h1 {
+    font-size: 1.7rem;
+  }
+  .tagline {
+    display: none;
+  }
+  .title-screen .field {
+    margin: 6px 0;
+  }
+  #lobby-start .field {
+    margin-top: 0;
+  }
+  .title-screen input,
+  .title-screen select {
+    padding: 7px 10px;
+  }
+  .lobby-actions {
+    gap: 7px;
+  }
+  .lobby-actions button {
+    padding-block: 7px;
+  }
+  #lobby-roles {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  #lobby-roles .chef-card span {
+    display: none;
+  }
+  /* compact: a smaller logo row, slim venue chips, and the side buttons two to a row */
+  .title-screen {
+    width: min(860px, calc(100vw - 32px));
+    padding: 10px 14px;
+    column-gap: 14px;
+  }
+  .title-logo {
+    margin: 0;
+  }
+  .title-logo .icon-img {
+    width: 34px;
+    height: 34px;
+  }
+  .title-logo .logo-soup .icon-img {
+    width: 26px;
+    height: 26px;
+  }
+  .title-screen h1 {
+    font-size: 1.35rem;
+    margin: 2px 0 6px;
+  }
+  .venue-picker {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin: 0 0 4px;
+  }
+  .venue-card {
+    padding: 6px 9px 8px;
+    gap: 0;
+  }
+  .venue-card strong {
+    font-size: 0.8rem;
+    line-height: 1.15;
+  }
+  .venue-card small {
+    font-size: 0.66rem;
+  }
+  .title-screen .field {
+    font-size: 0.82rem;
+    margin: 4px 0;
+  }
+  .title-screen input,
+  .title-screen select {
+    padding: 5px 9px;
+    font-size: 0.85rem;
+  }
+  #level-blurb {
+    font-size: 0.74rem;
+    line-height: 1.3;
+    margin: 2px 0 0;
+  }
+  /* a game menu: the two ways to play up top, joining under them, then a row of tiles */
+  .lobby-actions {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .lobby-actions .learn-row {
+    display: contents;
+  }
+  .lobby-actions > #create-room,
+  .lobby-actions > #play-solo {
+    grid-column: span 2;
+    padding: 9px 6px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+  /* Play is the main thing on a phone: solo practice is the big gold button */
+  .lobby-actions > #play-solo {
+    order: -1;
+    background: var(--honey);
+    box-shadow: 0 3px 0 var(--honey-edge);
+  }
+  .lobby-actions > #join-form {
+    grid-column: 1 / -1;
+  }
+  #join-form button {
+    padding: 5px 14px;
+    font-size: 0.85rem;
+  }
+  /* How to play, Tutorial, Upgrades, Settings: square tiles, icon over a short label */
+  .lobby-actions #open-how,
+  .lobby-actions #play-tutorial,
+  .lobby-actions #open-shop,
+  .lobby-actions #lobby-settings {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 7px 2px 6px;
+    font-size: 0.66rem;
+    line-height: 1.1;
+    white-space: normal;
+    min-height: 0;
+  }
+  .lobby-actions #open-how .icon,
+  .lobby-actions #play-tutorial .icon,
+  .lobby-actions #open-shop .icon,
+  .lobby-actions #lobby-settings .icon-svg,
+  .lobby-actions #open-how > i,
+  .lobby-actions #play-tutorial > i,
+  .lobby-actions #open-shop > i,
+  .lobby-actions #lobby-settings > i {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 22px;
+  }
+  .lobby-actions #open-how > i > *,
+  .lobby-actions #play-tutorial > i > *,
+  .lobby-actions #open-shop > i > *,
+  .lobby-actions #lobby-settings > i > * {
+    width: 100%;
+    height: 100%;
+  }
+  /* phones show a short word under or beside the icon; the full words stay for screen readers */
+  .lobby-actions [data-short] {
+    font-size: 0 !important;
+    overflow: hidden;
+  }
+  .lobby-actions [data-short]::after {
+    content: attr(data-short);
+    font-size: 0.86rem;
+    white-space: nowrap;
+  }
+  .lobby-actions #open-how::after,
+  .lobby-actions #play-tutorial::after,
+  .lobby-actions #open-shop::after,
+  .lobby-actions #lobby-settings::after {
+    font-size: 0.7rem;
+  }
+  .lobby-actions > #create-room,
+  .lobby-actions > #play-solo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .lobby-actions > #create-room > i,
+  .lobby-actions > #play-solo > i {
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
+  .lobby-actions > #create-room > i > *,
+  .lobby-actions > #play-solo > i > * {
+    width: 100%;
+    height: 100%;
+  }
+  /* creating a room is the second choice: a plain button beside Play */
+  .lobby-actions > #create-room {
+    background: var(--paper);
+    box-shadow: var(--lift-sm);
+  }
+}
+
+/* ====================================================================== the phone HUD: only what matters now */
+/* top bar: score and clock; the book, view and pause are all in the ☰ menu */
+body.touch #book-button {
+  display: none;
+}
+
+/* the chef tag says who you are at the start, then gets out of the way */
+body.touch #role-badge {
+  animation: tag-away 0.5s ease-in 4s both;
+}
+
+@keyframes tag-away {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+    visibility: hidden;
+  }
+}
+
+/* tickets fold into small chips (table, dish, timer); tap one to open it */
+body.touch:not([data-role="head"]) #orders .order:not(.open) {
+  width: 92px;
+  padding: 8px 8px 7px;
+  gap: 2px;
+}
+
+body.touch:not([data-role="head"]) #orders .order:not(.open) :is(.dish, .dish-icons, .book-hint) {
+  display: none;
+}
+
+body.touch:not([data-role="head"]) #orders .order:not(.open) strong {
+  font-size: 0.78rem;
+  line-height: 1.1;
+}
+
+body.touch #orders .order {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* kitchen news: one short line under the top bar that fades away */
+body.touch #toasts {
+  position: fixed;
+  top: 68px;
+  left: 50%;
+  width: auto;
+  max-width: 52vw;
+  transform: translateX(-50%);
+}
+
+body.touch #toasts .toast:nth-child(n + 2) {
+  display: none;
+}
+
+body.touch #toasts .toast {
+  animation:
+    toast-in 0.3s cubic-bezier(0.2, 1.3, 0.4, 1) both,
+    tag-away 0.4s ease-in 2.4s both;
+}
+
+/* the hand slot only shows while you're holding something */
+body.touch #hand-slot.empty {
+  display: none;
+}
+
+/* the stick fades back when no thumb is on it */
+body.touch #touch-joy-base:not(.on) {
+  opacity: 0.35;
+}
+
+#touch-joy-hint {
+  position: absolute;
+  left: calc(var(--safe-l) + 62px);
+  bottom: calc(var(--safe-b) + 132px);
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: var(--pill);
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--paper);
+  box-shadow: var(--lift-sm);
+  animation: hint-bob 1.4s ease-in-out infinite;
+}
+
+@keyframes hint-bob {
+  50% {
+    translate: 0 -4px;
+  }
+}
+
+/* Chop and Hand only show up when they'd do something */
+body.touch .touch-sat {
+  transition: opacity 0.15s, scale 0.15s;
+}
+
+body.touch .touch-sat:not(.ready):not(.down) {
+  opacity: 0;
+  scale: 0.6;
+  pointer-events: none;
+}
+
+/* ====================================================================== HUD size follows the screen */
+/* the HUD is drawn for a ~700px-tall window; shorter screens get it scaled down to match, so
+   phones, small laptops and tablets keep the same layout with room for the kitchen. The thumb
+   controls keep their size: they have to fit a thumb, whatever the screen. */
+@media (max-height: 700px) {
+  #scoreboard,
+  #left-stack,
+  #role-badge,
+  #hand-bar {
+    zoom: 0.92;
+  }
+}
+
+@media (max-height: 520px) {
+  #scoreboard,
+  #left-stack,
+  #role-badge,
+  #hand-bar {
+    zoom: 0.84;
+  }
+}
+
+@media (max-height: 380px) {
+  #scoreboard,
+  #left-stack,
+  #role-badge,
+  #hand-bar {
+    zoom: 0.78;
+  }
+}
+
+/* phones: tighter tickets for the head chef too (the ingredient dots stay, smaller) */
+body.touch #orders .order {
+  width: 128px;
+  padding: 8px 8px 7px;
+}
+
+body.touch #orders .order .ing {
+  zoom: 0.85;
+}
+
+/* the score pill drops its star row on phones: the number and goal say enough */
+body.touch #star-meter {
+  display: none;
+}
+
+/* sideways phones: the score bar sits top-right, so tickets can start at the very top */
+@media (orientation: landscape) {
+  body.touch #left-stack {
+    top: max(var(--edge), env(safe-area-inset-top));
+    left: max(var(--edge), env(safe-area-inset-left));
+    right: min(330px, 46vw);
+  }
+  /* one row of tickets, swiped sideways when there are more than fit */
+  body.touch #orders {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-top: 8px; /* room for the pins */
+  }
+  body.touch #orders .order {
+    flex: none;
+  }
+}
+
+/* the logo's box is exactly the logo, so the shift number tucks onto its corner */
+#status-pill #level-chip {
+  flex: none;
+  width: 42px !important;
+  min-width: 0 !important;
+  margin: 0;
+  padding: 0 !important;
+}
+
+#status-pill .shift-badge {
+  right: -3px;
+  bottom: -2px;
+}
+
+/* phones: the pill hugs the logo and the score, evenly spaced */
+body.touch #status-pill .status-divider {
+  margin: 0 8px;
+}
+
+body.touch #status-pill #score-chip {
+  padding: 0 12px 0 0;
+}
+
+/* phones: the sign wheel opens by the Talk button, under the right thumb, a little smaller */
+body.touch #emote-wheel {
+  left: auto;
+  top: auto;
+  right: calc(max(14px, env(safe-area-inset-right)) + 70px);
+  bottom: max(12px, env(safe-area-inset-bottom));
+  margin: 0;
+  zoom: 0.8;
+}
+
+body.touch #emote-wheel .wheel-center {
+  display: none;
+}
+
+body.touch:has(#emote-wheel:not([hidden])) #crosshair {
+  display: none;
+}
+
+/* text written for touch screens, swapped in for the keyboard wording */
+.touch-text {
+  display: none;
+}
+
+body.touch .touch-text {
+  display: revert;
+}
+
+body.touch .help-grid.touch-text {
+  display: grid;
+}
+
+/* the pause menu: its main buttons in an even grid, Resume across the top */
+#pause-menu .menu-actions:first-of-type {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+#pause-menu .menu-actions:first-of-type #resume {
+  grid-column: 1 / -1;
+}
+
+#pause-menu .menu-actions:first-of-type button {
+  justify-content: center;
+  width: 100%;
+}
+
+/* ====================================================================== short, wide screens (phones sideways) */
+@media (orientation: landscape) and (max-height: 520px) {
+  /* every card uses the width it has and keeps clear of the notch */
+  dialog {
+    max-height: calc(100dvh - 16px);
+    padding: 14px 18px;
+  }
+  .card-dialog {
+    width: min(460px, calc(100vw - 32px));
+  }
+  .card-dialog.wide {
+    width: min(760px, calc(100vw - 32px));
+  }
+  dialog h2 {
+    margin-block: 0 6px;
+  }
+
+  /* pause menu: what to do on the left, settings on the right */
+  #pause-menu[open] {
+    width: min(680px, calc(100vw - 32px));
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
+    align-items: start;
+  }
+  #pause-menu > * {
+    grid-column: 1;
+  }
+  #pause-menu > #role-picker,
+  #pause-menu > .toggle,
+  #pause-menu > .menu-actions:last-of-type {
+    grid-column: 2;
+  }
+  #pause-menu > #role-picker {
+    grid-row: 1 / span 3;
+    margin: 0;
+  }
+  #pause-menu .menu-actions {
+    margin: 8px 0 0;
+  }
+
+  /* help cards: four short columns side by side; the cooking steps are in How to play */
+  .help-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  #help .recipe-steps,
+  #help > p.muted {
+    display: none;
+  }
+}
+
+body.touch button.touch-only {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* short screens: the book keeps its size, its pages' contents get smaller so a whole recipe fits */
+@media (max-height: 520px) {
+  /* every page, including the one turning over (else it's full size mid-turn, then snaps) */
+  .book-spread .book-pg > * {
+    zoom: 0.8;
+  }
+}
+
+@media (max-height: 400px) {
+  /* every page, including the one turning over (else it's full size mid-turn, then snaps) */
+  .book-spread .book-pg > * {
+    zoom: 0.72;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  /* the briefing: tips side by side, so it reads at a glance */
+  #briefing[open] {
+    width: min(720px, calc(100vw - 32px));
+  }
+  #briefing-lines {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+  }
+  #briefing-lines li {
+    margin: 0;
+  }
+  /* each card's main button stays in reach at the bottom, even when the card scrolls */
+  #briefing-go,
+  #close-help,
+  #how-to-play .menu-actions,
+  #game-over .menu-actions {
+    position: sticky;
+    bottom: -14px;
+    z-index: 1;
+  }
+  #briefing-go,
+  #close-help {
+    box-shadow: 0 -10px 14px var(--paper), 0 4px 0 var(--honey-edge);
+  }
+}
+
+/* phones: the sign wheel opens just left of the thumb buttons, never on top of Use or Talk */
+body.touch #emote-wheel {
+  right: calc(max(14px, env(safe-area-inset-right)) + 230px);
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 30px);
+}
+
+/* phones: kitchen news sits low in the middle, between the thumbs, clear of the tickets */
+body.touch #toasts {
+  top: auto;
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 64px);
+  max-width: min(44vw, 340px);
+}
+
+/* while a sign wheel is open the news would sit under it: lift it above */
+body.touch:has(#emote-wheel:not([hidden])) #toasts {
+  display: none;
+}
+
+/* ====================================================================== phones: signs as a grid, not a ring */
+/* a ring sized for six signs overlaps with eight, and a thumb has to sweep around it; a small
+   4×2 grid gives every sign a full, separate thumb target. Ping and bell come first, tinted. */
+body.touch #emote-wheel {
+  width: auto;
+  height: auto;
+  zoom: 1;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, 58px);
+  gap: 8px;
+  border-radius: 22px;
+  background: var(--paper);
+  box-shadow: 0 0 0 4px var(--peach-soft), 0 10px 26px rgba(45, 28, 12, 0.35);
+}
+
+body.touch #emote-wheel[hidden] {
+  display: none;
+}
+
+body.touch #emote-wheel button,
+body.touch #emote-wheel button:hover {
+  position: static;
+  width: 58px;
+  height: 54px;
+  margin: 0;
+  border-radius: 16px;
+  transform: none;
+  font-size: 0.68rem;
+  order: 1;
+}
+
+body.touch #emote-wheel button .icon-svg {
+  width: 24px;
+  height: 24px;
+}
+
+body.touch #emote-wheel button.call {
+  order: 0;
+  background: #fde8dc;
+}
+
+body.touch #emote-wheel button:active {
+  transform: scale(0.94);
+}
+
+/* Talk lights up while its panel is open (tap again to close) */
+body.touch:has(#emote-wheel:not([hidden])) #wheel-button {
+  background: var(--honey);
+  box-shadow: 0 3px 0 var(--honey-edge);
+}
+
+/* phones: what the dish in hand still needs sits under the tickets, clear of the joystick */
+body.touch #checklist {
+  top: calc(max(var(--edge), env(safe-area-inset-top)) + 72px);
+  bottom: auto;
+  left: max(var(--edge), env(safe-area-inset-left));
+  width: 190px;
+  padding: 7px 10px;
+  zoom: 0.85;
+}
+
+/* phones: only what's left to do, at most four steps */
+body.touch #checklist-steps li.done {
+  display: none;
+}
+
+body.touch #checklist-steps li:not(.done) ~ li:not(.done) ~ li:not(.done) ~ li:not(.done) ~ li {
+  display: none;
+}
+
+/* ====================================================================== phones: view switch and slimmer tickets */
+/* tickets: narrower cards with smaller dots, so three fit without covering the kitchen */
+body.touch #orders {
+  gap: 6px;
+}
+
+body.touch #orders .order {
+  width: 104px;
+  padding: 6px 7px 6px;
+}
+
+body.touch #orders .order strong {
+  font-size: 0.82rem;
+  line-height: 1.1;
+}
+
+body.touch #orders .order small,
+body.touch #orders .order .table {
+  font-size: 0.58rem;
+}
+
+body.touch #orders .order .ing {
+  zoom: 0.68;
+}
+
+/* ====================================================================== settings */
+.setting-group {
+  border: none;
+  padding: 0;
+  margin: 8px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.setting-group legend {
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.setting-group input {
+  position: absolute;
+  opacity: 0;
+}
+
+.setting-group span {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border-radius: var(--r-md);
+  background: var(--paper);
+  box-shadow: var(--lift-sm);
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+}
+
+.setting-group span .icon-svg {
+  width: 30px;
+  height: 30px;
+}
+
+.setting-group small {
+  font-weight: 600;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.setting-group input:checked + span {
+  background: var(--honey);
+  box-shadow: 0 3px 0 var(--honey-edge);
+}
+
+.setting-group input:focus-visible + span {
+  outline: 3px solid var(--sky, #5aa9e6);
+}
+
+#settings h2 .icon-svg {
+  width: 26px;
+  height: 26px;
+  vertical-align: -4px;
+}
+
+/* ====================================================================== desktop title screen */
+/* wide screens: the title and where-to-cook on the left, the play buttons on the right, so the
+   whole menu fits without scrolling */
+@media (min-width: 900px) and (min-height: 521px) {
+  .title-screen {
+    width: min(880px, calc(100vw - 48px));
+    max-height: calc(100dvh - 32px);
+    padding: 24px 28px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 28px;
+    align-content: start;
+  }
+  .title-screen:not([open]) {
+    display: none;
+  }
+  .title-screen > * {
+    grid-column: 1;
+  }
+  .title-screen > #lobby-start,
+  .title-screen > #lobby-room,
+  .title-screen > #lobby-error {
+    grid-column: 2;
+    grid-row: 1 / span 8;
+    align-self: center;
+  }
+  .lobby-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+  .lobby-actions > #create-room,
+  .lobby-actions > #join-form,
+  .lobby-actions > #play-solo {
+    grid-column: 1 / -1;
+  }
+  .lobby-actions .learn-row {
+    display: contents;
+  }
+  .lobby-actions button {
+    white-space: nowrap;
+  }
+}
+
+/* ====================================================================== full screen */
+body.touch .fs-toggle[hidden] {
+  display: none;
+}
+
+#fullscreen-button.on {
+  background: var(--honey);
+}
+
+/* on the title card: a small corner button, clear of the logo */
+#lobby-fullscreen {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 36px;
+  height: 36px;
+  z-index: 1;
+}
+
+#lobby-fullscreen.on {
+  display: none;
+}
+
+/* phones: drags on the game are ours (look around, the stick), never the browser's scroll or zoom */
+body.touch,
+body.touch canvas {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+/* keep the stick out of the phone's edge-swipe strips (home, back, "exit full screen"): its zone
+   starts a thumb's width in from the edges and the stick rests further in */
+body.touch #touch-joy {
+  left: 20px;
+  bottom: 20px;
+}
+
+body.touch #touch-joy-base:not(.on) {
+  left: calc(var(--safe-l) + 58px);
+  top: calc(100% - var(--safe-b) - 62px);
+}
+
+/* ====================================================================== phones: the item picker as game tiles */
+/* the HUD lets touches through to the game; the picker has to take its own */
+body.touch #picker {
+  pointer-events: auto;
+  gap: 8px;
+  padding: 8px;
+  max-width: calc(100vw - 2 * 150px); /* between the stick and the Use button */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+body.touch #picker .pick {
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  width: 64px;
+  min-height: 64px;
+  padding: 6px 4px 5px;
+  border-radius: var(--r-md);
+  font-size: 0.66rem;
+  font-weight: 800;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.touch #picker .pick .icon-img,
+body.touch #picker .pick .icon-svg {
+  width: 30px;
+  height: 30px;
+}
+
+body.touch #picker .pick > span:last-child {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.touch #picker .pick:active {
+  transform: scale(0.94);
+}
+
+/* the chosen one: gold, lifted, and it says what a second tap does */
+body.touch #picker .pick.on {
+  color: var(--ink);
+  background: var(--honey);
+  box-shadow: 0 3px 0 var(--honey-edge);
+  transform: translateY(-3px);
+}
+
+/* spice racks hide the names of unchosen spices; on phones every tile keeps its name */
+body.touch #picker.spice .pick:not(.on) span:last-child {
+  display: block;
+}
+
+/* while the picker tiles are up (with what you hold above them), kitchen news moves up under
+   the tickets and the top bar, clear of the station's label */
+body.touch:has(#picker:not([hidden])) #toasts {
+  top: calc(max(10px, env(safe-area-inset-top)) + 62px);
+  bottom: auto;
+}
+
+/* phones: the picker tiles stay put at the bottom; what you're holding shows above them, so
+   picking something up never shoves the tiles */
+body.touch #hand-bar {
+  flex-direction: column;
+}
+
+body.touch #hand-bar #prompts {
+  order: 0;
+}
+
+body.touch #hand-bar #hand-slot {
+  order: 1;
+}
+
+body.touch #hand-bar #picker {
+  order: 2;
+}
+
+/* ====================================================================== phones: what you hold, on the Use button */
+/* no text box: the item's icon sits in a bubble on the Use button, under your thumb */
+body.touch #hand-slot {
+  display: none;
+}
+
+#touch-held {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 0 0 3px var(--honey), var(--lift-sm);
+  pointer-events: none;
+}
+
+#touch-held[hidden] {
+  display: none;
+}
+
+#touch-held .icon-img,
+#touch-held .icon-svg,
+#touch-held > * {
+  width: 34px;
+  height: 34px;
+}
+
+#touch-held.changed {
+  animation: held-pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+#touch-held.cold {
+  box-shadow: 0 0 0 3px #7fb8e8, var(--lift-sm);
+}
+
+#touch-held.warm,
+#touch-held.mouldy {
+  box-shadow: 0 0 0 3px var(--tomato, #e0563b), var(--lift-sm);
+}
+
+@keyframes held-pop {
+  from {
+    transform: scale(0.4);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* a row too wide for the space starts at its first tile (centring cut the first one off, out of
+   scroll reach); the spice rack's eight tiles get slimmer so they fit between the thumbs */
+body.touch #picker {
+  justify-content: safe center;
+}
+
+body.touch #picker.spice {
+  gap: 6px;
+}
+
+body.touch #picker.spice .pick {
+  width: 54px;
+  min-height: 58px;
+  font-size: 0.6rem;
+}
+
+body.touch #picker.spice .pick .icon-img,
+body.touch #picker.spice .pick .icon-svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* small screens: the page shrink makes page numbers tiny; give them back a readable size */
+@media (max-height: 520px) {
+  .book-spread .folio {
+    font-weight: 700;
+    color: var(--ink-soft);
+  }
+}
+
+/* small screens: smaller page-turn corners, so they cover less of the writing; numbers at the
+   top of each page; and the pages get a slim leather scrollbar */
+@media (max-height: 520px), (max-width: 640px) {
+  .page-corner {
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+  }
+  .page-corner.next {
+    padding: 0 0 8px 7px;
+  }
+  .page-corner.prev {
+    padding: 0 7px 8px 0;
+  }
+  .page-corner:hover {
+    width: 40px;
+    height: 40px;
+  }
+  .book-spread .book-pg {
+    padding-top: 16px;
+  }
+  /* a bigger "‹ Menu" for thumbs */
+  .book-back {
+    padding: 6px 16px;
+    font-size: 0.95rem;
+  }
+
+  .book-pg {
+    scrollbar-width: thin;
+    scrollbar-color: #c49a6c transparent;
+  }
+  .book-pg::-webkit-scrollbar {
+    display: block;
+    width: 5px;
+  }
+  .book-pg::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 10px 0;
+  }
+  .book-pg::-webkit-scrollbar-thumb {
+    background: #c49a6c;
+    border-radius: 3px;
+  }
+}
+
+/* ====================================================================== the recipe book's cover */
+/* leather: a warm brown with a fine grain, a darker worn edge, and stitching all round */
+#recipe-book {
+  background-color: #8a4f30;
+  background-image:
+    radial-gradient(ellipse at 30% 20%, rgba(255, 220, 180, 0.18), transparent 55%),
+    radial-gradient(ellipse at 80% 90%, rgba(40, 18, 6, 0.35), transparent 60%),
+    repeating-radial-gradient(circle at 17% 31%, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px),
+    repeating-radial-gradient(circle at 71% 63%, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(37deg, rgba(0, 0, 0, 0.035) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(-53deg, rgba(255, 235, 210, 0.03) 0 1px, transparent 1px 6px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 220, 180, 0.25),
+    inset 0 0 18px rgba(30, 12, 4, 0.55),
+    0 14px 30px rgba(30, 14, 4, 0.45);
+}
+
+/* the stitching: a dashed thread just inside the cover's edge, behind the pages */
+#recipe-book::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1.5px dashed rgba(246, 214, 160, 0.55);
+  border-radius: calc(var(--r-md) - 3px);
+  pointer-events: none;
+}
+
+#recipe-book .book-spread {
+  z-index: 1;
+}
+
+/* ====================================================================== the recipe book: long pages */
+/* a page that runs on scrolls, with a slim leather scrollbar and a fade at the bottom while
+   there's more to read */
+.book-spread .book-pg {
+  scrollbar-width: thin;
+  scrollbar-color: #c49a6c transparent;
+}
+
+.book-spread .book-pg::-webkit-scrollbar {
+  display: block;
+  width: 5px;
+}
+
+.book-spread .book-pg::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 10px 0;
+}
+
+.book-spread .book-pg::-webkit-scrollbar-thumb {
+  background: #c49a6c;
+  border-radius: 3px;
+}
+
+
+/* page numbers, every screen: the number tucks into the page's top margin, taking no room from the recipe */
+.book-spread .folio {
+  position: absolute;
+  top: 13px; /* level with "‹ Menu" and "Method", a touch above them */
+  bottom: auto;
+  align-self: auto;
+  left: auto;
+  right: 22px; /* the page's top right corner */
+  transform: none;
+  margin: 0;
+  padding-top: 10px;
+  font-size: 0.72rem;
+  line-height: normal;
+}
+/* the right page's corner is under the close button: sit just left of it */
+.book-spread .folio.right {
+  right: 58px;
+}
+
+
+/* the sign chosen by the mouse's direction */
+#emote-wheel button.picked {
+  transform: rotate(var(--a)) translate(94px) rotate(calc(-1 * var(--a))) scale(1.14);
+  background: var(--peach-soft);
+}
+
+/* --- title screen: wordmark top-left, a tilted paper menu, the restaurant behind --- */
+#title-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: linear-gradient(90deg, rgba(45, 28, 12, 0.22), transparent 45%);
+}
+#title-menu[hidden] {
+  display: none;
+}
+.title-wordmark {
+  position: absolute;
+  left: clamp(24px, 8vw, 120px);
+  top: clamp(14px, 9vh, 90px);
+  margin: 0;
+  transform: rotate(-4deg);
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 0.9;
+  color: var(--paper);
+  text-shadow: 0 4px 0 var(--honey-edge), 0 10px 22px rgba(45, 28, 12, 0.45);
+}
+.title-wordmark span {
+  display: block;
+  font-size: clamp(2.6rem, 8vw, 5.6rem);
+}
+.title-wordmark small {
+  display: block;
+  margin: 4px 0 0 0.6em;
+  font-size: clamp(1.7rem, 5vw, 3.6rem);
+  color: var(--honey);
+}
+.title-card {
+  position: absolute;
+  left: clamp(28px, 11vw, 160px);
+  top: max(46vh, calc(clamp(14px, 9vh, 90px) + 11rem));
+  width: 250px;
+  padding: 18px 16px;
+  display: grid;
+  gap: 2px;
+  transform: rotate(-3deg);
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  outline: 2px dashed var(--paper-shadow);
+  outline-offset: -8px;
+  box-shadow: var(--lift);
+}
+.title-card button,
+.title-card button:hover,
+.title-card button:active {
+  padding: 5px 12px;
+  border: none;
+  border-radius: var(--pill);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  translate: none;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+.title-card button.on {
+  background: var(--mint);
+  color: var(--mint-ink);
+}
+.title-hint {
+  position: absolute;
+  right: 24px;
+  bottom: 18px;
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: var(--pill);
+  background: rgba(45, 28, 12, 0.72);
+  color: var(--paper);
+  font-weight: 700;
+}
+body.touch .title-hint {
+  display: none;
+}
+/* phones held sideways: wordmark and card side by side */
+@media (max-height: 520px) {
+  .title-wordmark span { font-size: 2.6rem; }
+  .title-wordmark small { font-size: 1.6rem; }
+  .title-card { top: auto; bottom: 18px; width: 210px; padding: 12px; }
+  .title-card button, .title-card button:hover, .title-card button:active { font-size: 1.05rem; padding: 4px 10px; }
+}
+#lobby-back { margin-bottom: 6px; }
+
+/* --- the play screen: same scene and wordmark as the title, with two paper cards --- */
+body.in-lobby .title-card:not(.play-menu),
+body.in-lobby .title-hint {
+  display: none;
+}
+#lobby.play-screen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+  animation: none;
+  transform: none;
+}
+#lobby.play-screen:not([open]) {
+  display: none;
+}
+#lobby.play-screen::before {
+  display: none;
+}
+#lobby.play-screen::backdrop {
+  background: transparent;
+  backdrop-filter: none;
+}
+.play-menu {
+  width: 270px;
+  top: max(36vh, 13rem);
+  max-height: calc(100dvh - max(36vh, 13rem) - 24px);
+  overflow-y: auto;
+}
+.play-menu[hidden] {
+  display: none;
+}
+.title-card.play-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  font-size: 1.08rem;
+}
+.title-card.play-menu button:hover {
+  background: var(--mint);
+  color: var(--mint-ink);
+}
+.play-menu .icon-svg,
+.play-menu .icon-img {
+  width: 20px;
+  height: 20px;
+}
+.play-menu:hover button.on:not(:hover) {
+  background: transparent;
+  color: var(--ink);
+}
+#lobby #join-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  margin: 2px 0;
+}
+#lobby #join-form button {
+  width: auto;
+}
+#lobby input,
+#lobby select {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  padding: 6px 12px;
+  border-radius: var(--pill);
+  border: 2px solid var(--oat);
+  background: #fff;
+  color: var(--ink);
+}
+#room-code {
+  text-align: center;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.play-side,
+#lobby-room {
+  position: absolute;
+  right: clamp(20px, 6vw, 90px);
+  bottom: clamp(18px, 8vh, 70px);
+  width: min(340px, 44vw);
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  transform: rotate(1.5deg);
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  outline: 2px dashed var(--paper-shadow);
+  outline-offset: -8px;
+  box-shadow: var(--lift);
+}
+.play-side > p {
+  margin: 0;
+}
+#lobby-room[hidden] {
+  display: none;
+}
+/* in a room: chef choice takes the left of the screen, the shift stays on the right */
+#lobby-room:not([hidden]) {
+  right: auto;
+  left: clamp(20px, 5vw, 70px);
+  width: min(560px, 52vw);
+  transform: none;
+}
+#lobby-error {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  margin: 0;
+  color: var(--peach-ink);
+  font-weight: 800;
+}
+#lobby-fullscreen {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+}
+@media (max-height: 520px) {
+  .play-menu {
+    top: 92px;
+    bottom: auto;
+    left: 18px;
+    width: 400px;
+    max-width: 50vw;
+    max-height: calc(100dvh - 104px);
+    grid-template-columns: 1fr 1fr;
+    padding: 12px;
+  }
+  .play-menu #join-form {
+    grid-column: 1 / -1;
+  }
+  .title-card.play-menu button {
+    font-size: 0.92rem;
+    padding: 3px 6px;
+  }
+  .play-side {
+    bottom: 10px;
+    right: 14px;
+    padding: 12px;
+    gap: 4px;
+    font-size: 0.85rem;
+    max-height: calc(100dvh - 20px);
+  }
+  .play-side .venue-picker {
+    gap: 6px;
+  }
+  #lobby-room:not([hidden]) {
+    top: 8px;
+    bottom: 8px;
+    left: 12px;
+    width: 52vw;
+  }
+}
+.title-card.play-menu #join-form button {
+  background: var(--honey);
+  color: var(--ink);
+  padding: 5px 16px;
+}
+@media (max-height: 520px) {
+  body.in-lobby .title-wordmark {
+    left: 22px;
+    top: 10px;
+    white-space: nowrap;
+  }
+  body.in-lobby .title-wordmark span,
+  body.in-lobby .title-wordmark small {
+    display: inline;
+    margin: 0 0 0 6px;
+    font-size: 2.2rem;
+  }
+  .play-menu {
+    top: 72px;
+    max-height: calc(100dvh - 84px);
+  }
+  .play-side {
+    top: 10px;
+    bottom: auto;
+  }
+}
+
+/* the shift choice has its own dialog, so the menu stays small */
+#setup {
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+}
+#setup .field {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+}
+#setup input,
+#setup select {
+  width: 100%;
+  font: inherit;
+  padding: 7px 12px;
+  border-radius: var(--pill);
+  border: 2px solid var(--oat);
+  background: #fff;
+  color: var(--ink);
+}
+#setup .venue-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.play-setup span {
+  display: grid;
+  line-height: 1.15;
+}
+.play-setup small {
+  font-family: "Nunito", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.title-card.play-menu .play-setup {
+  background: var(--oat);
+  margin-bottom: 4px;
+}
+#lobby-room:not([hidden]) {
+  left: 50%;
+  right: auto;
+  width: min(620px, calc(100vw - 32px));
+  transform: translateX(-50%);
+}
+@media (max-height: 520px) {
+  #lobby-room:not([hidden]) {
+    left: 50%;
+    width: min(700px, calc(100vw - 24px));
+  }
+  #setup {
+    font-size: 0.88rem;
+    padding: 12px 16px;
+  }
+  .play-setup {
+    grid-column: 1 / -1;
+  }
+  #setup h2 {
+    margin: 0;
+  }
+}
+
+/* the play menu: big choices first, then the shift, then small tools */
+.play-menu {
+  width: 300px;
+  height: fit-content;
+  gap: 4px;
+  padding: 20px 18px 14px;
+}
+.title-card.play-menu button:focus:not(:hover) {
+  outline: none;
+}
+.title-card.play-menu button:focus-visible {
+  outline: 2px solid var(--honey-edge);
+  outline-offset: 1px;
+}
+.title-card.play-menu > #play-solo,
+.title-card.play-menu > #create-room {
+  font-size: 1.22rem;
+  padding: 7px 12px;
+}
+.title-card.play-menu .play-setup {
+  margin: 6px 0 2px;
+  padding: 6px 12px;
+  border-radius: var(--r-md);
+  font-size: 0.98rem;
+  text-align: left;
+  justify-content: flex-start;
+}
+.title-card.play-menu .play-setup:hover {
+  background: var(--paper-shadow);
+  color: var(--ink);
+}
+.play-tools {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 2px dashed var(--oat);
+}
+.title-card.play-menu .play-tools button {
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 0;
+  border-radius: var(--r-sm);
+  font-size: 0.74rem;
+}
+.title-card.play-menu .play-tools .icon-svg,
+.title-card.play-menu .play-tools .icon-img {
+  width: 24px;
+  height: 24px;
+}
+.title-card.play-menu #lobby-back {
+  width: auto;
+  justify-self: center;
+  padding: 2px 14px;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+}
+@media (max-height: 520px) {
+  .play-menu {
+    width: 430px;
+    max-width: 62vw;
+    padding: 12px 14px 8px;
+    gap: 2px;
+  }
+  .title-card.play-menu > #play-solo,
+  .title-card.play-menu > #create-room {
+    font-size: 0.95rem;
+    padding: 4px 6px;
+  }
+  .play-tools,
+  .play-setup,
+  #lobby-back {
+    grid-column: 1 / -1;
+  }
+  .title-card.play-menu .play-setup {
+    margin: 2px 0;
+    padding: 3px 10px;
+    font-size: 0.86rem;
+  }
+  .title-card.play-menu .play-tools button {
+    flex-direction: row;
+    gap: 4px;
+    padding: 3px 0;
+    font-size: 0.72rem;
+  }
+  .title-card.play-menu .play-tools .icon-svg,
+  .title-card.play-menu .play-tools .icon-img {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* more air in the play menu */
+.play-menu {
+  width: 330px;
+  gap: 10px;
+  padding: 26px 24px 18px;
+  top: max(30vh, 12.5rem);
+  max-height: calc(100dvh - max(30vh, 12.5rem) - 16px);
+}
+.title-card.play-menu > #play-solo,
+.title-card.play-menu > #create-room {
+  padding: 10px 12px;
+}
+.title-card.play-menu .play-setup {
+  margin: 6px 0;
+  padding: 10px 14px;
+}
+.play-tools {
+  padding-top: 12px;
+  gap: 6px;
+}
+.title-card.play-menu .play-tools button {
+  padding: 8px 0;
+  gap: 4px;
+}
+@media (max-height: 520px) {
+  .play-menu {
+    top: 66px;
+    width: 460px;
+    gap: 6px 10px;
+    padding: 14px 18px 10px;
+    max-height: calc(100dvh - 74px);
+  }
+  .title-card.play-menu > #play-solo,
+  .title-card.play-menu > #create-room {
+    padding: 6px;
+  }
+  .title-card.play-menu .play-setup {
+    margin: 0;
+    padding: 5px 12px;
+  }
+  .play-tools {
+    padding-top: 6px;
+  }
+  .title-card.play-menu .play-tools button {
+    padding: 4px 0;
+  }
+}
+
+/* the play menu sits in the centre of the screen */
+#lobby .title-card.play-menu {
+  left: 50%;
+  top: 50%;
+  bottom: auto;
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  gap: 10px;
+  padding: 26px 24px 18px;
+  transform: translate(-50%, -50%) rotate(-1.5deg);
+}
+#lobby .title-card.play-menu[hidden] {
+  display: none;
+}
+@media (max-height: 520px) {
+  #lobby .title-card.play-menu {
+    width: 470px;
+    gap: 6px 10px;
+    padding: 14px 18px 10px;
+  }
+  body.in-lobby .title-wordmark span,
+  body.in-lobby .title-wordmark small {
+    font-size: 1.5rem;
+  }
+}
+
+/* cards sit straight */
+#lobby .title-card.play-menu {
+  transform: translate(-50%, -50%);
+}
+#title-menu .title-card {
+  transform: none;
+}
+
+/* the room and shift cards: flat and soft, like the play menu */
+#lobby-room button,
+#lobby-room button:hover,
+#lobby-room button:active,
+#setup button,
+#setup button:hover,
+#setup button:active {
+  box-shadow: none;
+  transform: none;
+  translate: none;
+}
+#lobby-room #copy-link,
+#lobby-room #room-setup,
+#setup .venue-picker button:not(.on):not([aria-checked="true"]) {
+  background: var(--oat);
+  border-radius: var(--r-md);
+}
+#lobby-room #copy-link:hover,
+#lobby-room #room-setup:hover,
+#lobby-room .chef-card:hover {
+  filter: brightness(0.97);
+}
+#lobby-room #start-game,
+#setup #setup-done {
+  border-radius: var(--pill);
+}
+#lobby-room #start-game:not(:disabled) {
+  background: var(--mint);
+  color: var(--mint-ink);
+}
+#lobby-room #start-game:disabled {
+  background: var(--oat);
+  color: var(--ink-faint);
+}
+#lobby-room .chef-card {
+  border-radius: var(--r-md);
+}
+
+/* no lift on anything in these cards (overrides the shared button styles, whatever their state) */
+#lobby-room button,
+#setup button {
+  box-shadow: none !important;
+  border-bottom-width: 0;
+}
+#lobby #lobby-room:not([hidden]) {
+  top: 50%;
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  width: min(620px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  transform: translate(-50%, -50%);
+  padding: 22px 24px;
+  gap: 4px;
+}
+/* the room needs the width: the logo steps aside */
+body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
+  display: none;
+}
+
+/* the room: code on top, choose a chef, who's here, then the two actions */
+#lobby #lobby-room:not([hidden]) {
+  width: min(600px, calc(100vw - 24px));
+  gap: 12px;
+  padding: 26px 28px 22px;
+}
+#lobby-room .room-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding-bottom: 12px;
+  border-bottom: 2px dashed var(--oat);
+}
+#lobby-room #room-code-display {
+  margin-left: 6px;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  letter-spacing: 0.14em;
+  color: var(--honey-edge);
+}
+#lobby-room #copy-link {
+  width: auto;
+  padding: 6px 14px;
+  border-radius: var(--pill);
+  font-size: 0.9rem;
+}
+#lobby-room #lobby-roles {
+  margin: 0;
+  grid-template-columns: repeat(3, 1fr);
+}
+#lobby-room #lobby-roles legend,
+#lobby-room .room-label {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+#lobby-room .chef-card {
+  justify-items: center;
+  align-content: start;
+  gap: 4px;
+  padding: 14px 10px;
+}
+#lobby-room .chef-card .chef-emoji {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 2px;
+  border-radius: 50%;
+  background: var(--paper);
+}
+#lobby-room .chef-card .chef-emoji .icon-svg {
+  width: 34px;
+  height: 34px;
+}
+#lobby-room .chef-card > span {
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+#lobby-room .blind-option {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: transparent;
+}
+#lobby-room .blind-option .chef-emoji {
+  width: 26px;
+  height: 26px;
+  margin: 0;
+}
+#lobby-room .blind-option .chef-emoji .icon-svg {
+  width: 20px;
+  height: 20px;
+}
+#lobby-room #lobby-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+#lobby-room #lobby-players li {
+  padding: 4px 12px;
+  border-radius: var(--pill);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+#lobby-room .room-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 8px;
+  margin-top: 2px;
+}
+#lobby-room .room-actions button {
+  width: 100%;
+  margin: 0;
+  border-radius: var(--pill);
+  font-family: var(--font-display);
+}
+#lobby-room #start-game[hidden] {
+  display: none;
+}
+#lobby-room #lobby-status {
+  margin: 0;
+  text-align: center;
+  font-size: 0.86rem;
+}
+#lobby-room #lobby-status:empty {
+  display: none;
+}
+@media (max-height: 520px) {
+  #lobby #lobby-room:not([hidden]) {
+    width: min(720px, calc(100vw - 24px));
+    gap: 6px;
+    padding: 14px 18px;
+  }
+  #lobby-room .room-line {
+    padding-bottom: 6px;
+  }
+  #lobby-room #room-code-display {
+    font-size: 1.2rem;
+  }
+  #lobby-room .chef-card {
+    padding: 6px;
+  }
+  #lobby-room .chef-card .chef-emoji {
+    width: 34px;
+    height: 34px;
+  }
+  #lobby-room .chef-card .chef-emoji .icon-svg {
+    width: 22px;
+    height: 22px;
+  }
+  #lobby-room .chef-card > span {
+    font-size: 0.68rem;
+  }
+  #lobby-room .room-actions button {
+    padding: 5px 8px;
+    font-size: 0.9rem;
+  }
+}
+
+/* chef cards: one colour, and the same green highlight as the menus when chosen */
+#lobby-room .chef-card.head,
+#lobby-room .chef-card.deaf,
+#lobby-room .chef-card.mute {
+  background: var(--oat);
+  border: 3px solid transparent;
+}
+#lobby-room .chef-card.blind-option {
+  background: transparent;
+  border: 3px solid transparent;
+  border-radius: var(--pill);
+}
+#lobby-room .chef-card:hover {
+  filter: none;
+  background: var(--mint-soft);
+}
+#lobby-room .chef-card[aria-pressed="true"],
+#lobby-room .chef-card[aria-pressed="true"]:hover {
+  background: var(--mint);
+  border-color: var(--mint-ink);
+  color: var(--mint-ink);
+}
+#lobby-room .chef-card[aria-pressed="true"] > span {
+  color: var(--mint-ink);
+}
+#lobby-room .chef-card .chef-emoji .icon-svg {
+  display: block;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0;
+  margin: 0;
+  background: none;
+  transform: none;
+}
+#lobby-room .chef-card.blind-option .chef-emoji {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  background: none;
+}
+#lobby-room .chef-card.blind-option .chef-emoji .icon-svg {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+}
+#lobby-room .chef-card.blind-option > span {
+  display: inline;
+  font-size: 0.8rem;
+}
+@media (max-height: 520px) {
+  #lobby-room .chef-card .chef-emoji .icon-svg {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+  }
+}
+
+/* a quiet hover: just a shade deeper, green is only for what's chosen */
+#lobby-room .chef-card:not([aria-pressed="true"]):hover {
+  background: #f1e5d2;
+}
+#lobby-room .chef-card.blind-option:not([aria-pressed="true"]):hover {
+  background: var(--oat);
+}
+
+/* the blind cook line stays a quiet line of text: hover only darkens the words */
+#lobby-room .chef-card.blind-option:not([aria-pressed="true"]):hover {
+  background: transparent;
+}
+#lobby-room .chef-card.blind-option:not([aria-pressed="true"]):hover > span {
+  color: var(--ink);
+}
+
+/* same green hover as the menus, and a thin border when chosen */
+#lobby-room .chef-card.head,
+#lobby-room .chef-card.deaf,
+#lobby-room .chef-card.mute {
+  border-width: 1px;
+}
+#lobby-room .chef-card:not([aria-pressed="true"]):hover,
+#lobby-room #copy-link:hover,
+#lobby-room #room-setup:hover {
+  background: var(--mint-soft);
+  color: var(--mint-ink);
+  filter: none;
+}
+#lobby-room .chef-card:not([aria-pressed="true"]):hover > span {
+  color: var(--mint-ink);
+}
+
+/* cozy colourway: warm honey for what's chosen, soft peach on hover, dark ink text throughout */
+.title-card button.on,
+.title-card.play-menu button:hover {
+  background: var(--honey);
+  color: var(--ink);
+}
+#lobby-room .chef-card[aria-pressed="true"],
+#lobby-room .chef-card[aria-pressed="true"]:hover {
+  background: var(--honey);
+  border-color: var(--honey-edge);
+  color: var(--ink);
+}
+#lobby-room .chef-card[aria-pressed="true"] > span {
+  color: var(--ink);
+}
+#lobby-room .chef-card:not([aria-pressed="true"]):hover,
+#lobby-room #copy-link:hover,
+#lobby-room #room-setup:hover {
+  background: var(--peach-soft);
+  color: var(--ink);
+}
+#lobby-room .chef-card:not([aria-pressed="true"]):hover > span {
+  color: var(--ink-soft);
+}
+#lobby-room #start-game:not(:disabled) {
+  background: var(--peach);
+  color: var(--ink);
+}
+#lobby-room #start-game:not(:disabled):hover {
+  background: var(--honey-strong);
+}
+.title-card.play-menu #join-form button {
+  background: var(--peach-soft);
+}
+.title-card.play-menu #join-form button:hover {
+  background: var(--peach);
+}
+
+/* softer, muted warm tones in the menus */
+.title-card button.on,
+.title-card.play-menu button:hover,
+#lobby-room .chef-card[aria-pressed="true"],
+#lobby-room .chef-card[aria-pressed="true"]:hover {
+  background: #eedcb8;
+  color: var(--ink);
+}
+#lobby-room .chef-card[aria-pressed="true"] {
+  border-color: #cdb07c;
+}
+#lobby-room .chef-card:not([aria-pressed="true"]):hover,
+#lobby-room #copy-link:hover,
+#lobby-room #room-setup:hover {
+  background: #f3e7d6;
+}
+#lobby-room #start-game:not(:disabled) {
+  background: #e6c9b0;
+}
+#lobby-room #start-game:not(:disabled):hover {
+  background: #dfbc9f;
+}
+.title-card.play-menu #join-form button {
+  background: #f0e2cf;
+}
+.title-card.play-menu #join-form button:hover {
+  background: #e6c9b0;
+}
+
+/* soft, playful pastels: butter, blush and lilac */
+.title-card button.on {
+  background: #fbe9b7;
+  color: var(--ink);
+}
+.title-card.play-menu button:hover {
+  background: #fbdfd6;
+  color: var(--ink);
+}
+.title-card.play-menu .play-setup {
+  background: #eee6f8;
+}
+.title-card.play-menu .play-setup:hover {
+  background: #e4d9f5;
+}
+.title-card.play-menu #join-form button {
+  background: #e4d9f5;
+}
+.title-card.play-menu #join-form button:hover {
+  background: #d9cbf1;
+}
+#lobby-room .chef-card.head { background: #fdf3d3; }
+#lobby-room .chef-card.deaf { background: #fde8e1; }
+#lobby-room .chef-card.mute { background: #f0e9f9; }
+#lobby-room .chef-card.head:not([aria-pressed="true"]):hover { background: #fbecbf; }
+#lobby-room .chef-card.deaf:not([aria-pressed="true"]):hover { background: #fbdcd2; }
+#lobby-room .chef-card.mute:not([aria-pressed="true"]):hover { background: #e7dcf6; }
+#lobby-room .chef-card.head[aria-pressed="true"],
+#lobby-room .chef-card.head[aria-pressed="true"]:hover { background: #f9e09a; border-color: #d9b45c; }
+#lobby-room .chef-card.deaf[aria-pressed="true"],
+#lobby-room .chef-card.deaf[aria-pressed="true"]:hover { background: #f8c9ba; border-color: #d99a86; }
+#lobby-room .chef-card.mute[aria-pressed="true"],
+#lobby-room .chef-card.mute[aria-pressed="true"]:hover { background: #d9c9f2; border-color: #a78fd0; }
+#lobby-room #copy-link:hover,
+#lobby-room #room-setup:hover {
+  background: #eee6f8;
+}
+#lobby-room #start-game:not(:disabled) {
+  background: #f8c9ba;
+}
+#lobby-room #start-game:not(:disabled):hover {
+  background: #f5b9a6;
+}
+
+/* the shift dialog: same flat dashed paper card as the menus */
+#setup {
+  width: min(460px, calc(100vw - 32px));
+  padding: 26px 28px 22px;
+  border: none;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--lift);
+  outline: 2px dashed var(--paper-shadow);
+  outline-offset: -8px;
+  text-align: left;
+}
+#setup::before,
+#setup::after {
+  display: none;
+}
+#setup::backdrop {
+  background: rgba(45, 28, 12, 0.18);
+  backdrop-filter: none;
+}
+#setup h2 {
+  margin: 0 0 10px;
+  font-size: 1.4rem;
+  text-align: center;
+}
+#setup .field {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-align: left;
+}
+#setup input,
+#setup select {
+  background: var(--oat);
+  border-color: transparent;
+  font-family: "Nunito", sans-serif;
+  font-weight: 700;
+}
+#setup input:focus,
+#setup select:focus {
+  outline: none;
+  border-color: #d9c9f2;
+  box-shadow: none;
+}
+#setup .venue-picker button {
+  background: #f0e9f9;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  color: var(--ink);
+}
+#setup .venue-picker button:hover {
+  background: #e7dcf6;
+}
+#setup .venue-picker button.on,
+#setup .venue-picker button.on:hover,
+#setup .venue-picker button[aria-checked="true"],
+#setup .venue-picker button[aria-checked="true"]:hover {
+  background: #f9e09a;
+  border-color: #d9b45c;
+}
+#setup #level-blurb {
+  margin: 4px 0 14px;
+  font-size: 0.9rem;
+}
+#setup #setup-done {
+  display: block;
+  width: 100%;
+  background: #f8c9ba;
+  color: var(--ink);
+  font-family: var(--font-display);
+}
+#setup #setup-done:hover {
+  background: #f5b9a6;
+}
+@media (max-height: 520px) {
+  #setup {
+    padding: 14px 20px;
+  }
+  #setup h2 {
+    display: none;
+  }
+  #setup #level-blurb {
+    margin-bottom: 8px;
+  }
+}
+
+/* a little more breathing room */
+#setup {
+  padding: 32px 34px 28px;
+}
+#setup h2 {
+  margin-bottom: 16px;
+}
+#setup .field {
+  gap: 7px;
+  margin: 14px 0;
+}
+#setup .venue-picker {
+  gap: 10px;
+  margin: 14px 0;
+}
+#setup #level-blurb {
+  margin: 8px 0 20px;
+}
+#lobby #lobby-room:not([hidden]) {
+  gap: 16px;
+  padding: 30px 32px 26px;
+}
+#lobby-room #lobby-roles {
+  gap: 10px;
+}
+#lobby-room .room-actions {
+  gap: 10px;
+}
+@media (max-height: 520px) {
+  #setup {
+    padding: 14px 22px;
+  }
+  #setup .field,
+  #setup .venue-picker {
+    margin: 6px 0;
+  }
+  #setup #level-blurb {
+    margin: 4px 0 8px;
+  }
+  #lobby #lobby-room:not([hidden]) {
+    gap: 6px;
+    padding: 14px 18px;
+  }
+}
+
+/* the in-game HUD is flat: no lift or shadow under its pieces */
+#hud {
+  --lift: none;
+  --lift-sm: none;
+}
+#orders-box *,
+#hud kbd,
+#hud .round-btn,
+#hand-bar *,
+#toasts * {
+  box-shadow: none !important;
+}
+#hud #clock-ring {
+  box-shadow: 0 0 0 5px var(--peach);
+}
+
+/* the pause menu: same flat, dashed pastel card as the other menus */
+#pause-menu {
+  width: min(400px, calc(100vw - 32px));
+  padding: 30px 30px 24px;
+  border: none;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--lift);
+  outline: 2px dashed var(--paper-shadow);
+  outline-offset: -8px;
+}
+#pause-menu::before {
+  display: none;
+}
+#pause-menu::backdrop {
+  background: rgba(45, 28, 12, 0.18);
+  backdrop-filter: none;
+}
+#pause-menu button,
+#pause-menu button:hover,
+#pause-menu button:active {
+  box-shadow: none !important;
+  transform: none;
+  translate: none;
+  border-radius: var(--r-md);
+  background: var(--oat);
+  color: var(--ink);
+  font-family: var(--font-display);
+}
+#pause-menu button:hover {
+  background: #fbdfd6;
+}
+#pause-menu button:focus {
+  outline: none;
+}
+#pause-menu button:focus-visible {
+  outline: 2px solid #d9b45c;
+  outline-offset: 1px;
+}
+#pause-menu button.primary,
+#pause-menu button.primary:hover {
+  border-radius: var(--pill);
+  background: #fbe9b7;
+}
+#pause-menu button.primary:hover {
+  background: #f9e09a;
+}
+#pause-menu #quit,
+#pause-menu #quit:hover {
+  border-radius: var(--pill);
+  background: #fde8e1;
+  color: var(--ink);
+}
+#pause-menu #quit:hover {
+  background: #f8c9ba;
+}
+@media (max-height: 520px) {
+  #pause-menu {
+    padding: 14px 22px;
+  }
+}
+
+/* pause menu: icons first, few words */
+#pause-note {
+  display: none;
+}
+#pause-menu .menu-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+#pause-menu .menu-actions #resume {
+  grid-column: 1 / -1;
+  flex-direction: row;
+}
+#pause-menu .menu-actions button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 2px;
+  font-size: 0.8rem;
+}
+#pause-menu .menu-actions #resume {
+  padding: 10px;
+  font-size: 1.1rem;
+}
+#pause-menu .menu-actions button:not(#resume) .icon-svg,
+#pause-menu .menu-actions button:not(#resume) .icon-img {
+  width: 28px;
+  height: 28px;
+}
+#pause-menu #role-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 12px 0 8px;
+  padding: 0;
+  border: none;
+}
+#pause-menu #role-picker legend {
+  margin-bottom: 6px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+#pause-menu #role-picker label {
+  margin: 0;
+}
+#pause-menu #role-picker label > span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 0;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: var(--oat);
+  box-shadow: none;
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+#pause-menu #role-picker label:hover > span {
+  background: #fbdfd6;
+}
+#pause-menu #role-picker input:checked + span {
+  background: #fbe9b7;
+  border-color: #d9b45c;
+}
+#pause-menu #role-picker .icon-svg,
+#pause-menu #role-picker .icon-img {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+#pause-menu .menu-actions:has(#quit) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+#pause-menu .menu-actions #quit {
+  padding: 7px 18px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+#pause-menu .menu-actions:has(#quit) a {
+  white-space: nowrap;
+}
+
+/* Back is a quiet text link: hover underlines it, with no colour behind it */
+#lobby .title-card.play-menu #lobby-back:hover,
+#lobby .title-card.play-menu #lobby-back:focus {
+  background: transparent;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* the role badge: a cute icon on the role's pastel */
+#role-avatar {
+  display: grid;
+  place-items: center;
+  background: var(--role-color);
+}
+#role-avatar .icon-svg {
+  width: 62%;
+  height: 62%;
+  padding: 0;
+  background: none;
+}
+
+/* small labels: plain rounded type, larger and darker, so they read at a glance */
+#pause-menu .menu-actions button:not(#resume),
+#pause-menu #role-picker label > span,
+.title-card.play-menu .play-tools button,
+#lobby-room .room-actions button,
+#lobby-room #copy-link,
+#pause-menu #quit {
+  font-family: "Nunito", sans-serif;
+  font-weight: 800;
+  color: var(--ink);
+}
+#pause-menu .menu-actions button:not(#resume) {
+  font-size: 0.98rem;
+}
+#pause-menu #role-picker label > span {
+  font-size: 0.88rem;
+}
+.title-card.play-menu .play-tools button {
+  font-size: 0.86rem;
+}
+.title-card.play-menu .play-setup small,
+#lobby-room .chef-card > span,
+#setup #level-blurb {
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+#lobby-room .chef-card > strong {
+  font-size: 1.05rem;
+}
+
+/* settings: a list of rows, a label on the left and its control on the right */
+#settings {
+  width: min(420px, calc(100vw - 32px));
+  padding: 28px 30px 24px;
+  border: none;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--lift);
+  outline: 2px dashed var(--paper-shadow);
+  outline-offset: -8px;
+}
+#settings::before {
+  display: none;
+}
+#settings::backdrop {
+  background: rgba(45, 28, 12, 0.18);
+  backdrop-filter: none;
+}
+#settings h2 {
+  margin: 0 0 14px;
+  text-align: center;
+  font-size: 1.4rem;
+}
+.setting-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--r-md);
+  background: var(--oat);
+}
+.setting-row legend {
+  float: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  font-weight: 800;
+  color: var(--ink);
+}
+.setting-row legend .icon-svg {
+  width: 22px;
+  height: 22px;
+}
+.segmented {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  padding: 3px;
+  border-radius: var(--pill);
+  background: var(--paper);
+}
+.segmented label {
+  cursor: pointer;
+}
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.segmented span {
+  display: block;
+  padding: 5px 16px;
+  border-radius: var(--pill);
+  font-weight: 800;
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+.segmented label:hover span {
+  background: #fbdfd6;
+}
+.segmented input:checked + span {
+  background: #fbe9b7;
+}
+.segmented input:focus-visible + span {
+  outline: 2px solid #d9b45c;
+}
+#settings #settings-done,
+#settings #settings-done:hover,
+#settings #settings-done:active {
+  display: block;
+  width: 100%;
+  border-radius: var(--pill);
+  background: #f8c9ba;
+  box-shadow: none;
+  transform: none;
+  color: var(--ink);
+}
+#settings #settings-done:hover {
+  background: #f5b9a6;
+}
+
+/* the remaining dialogs share the flat, dashed pastel card (the recipe book keeps its leather) */
+#help,
+#how-to-play,
+#shop,
+#briefing,
+#game-over {
+  padding: 30px 32px 26px;
+  border: none;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--lift);
+  outline: 2px dashed var(--paper-shadow);
+  outline-offset: -8px;
+}
+#help::before,
+#how-to-play::before,
+#shop::before,
+#briefing::before,
+#game-over::before {
+  display: none;
+}
+#help::backdrop,
+#how-to-play::backdrop,
+#shop::backdrop,
+#briefing::backdrop,
+#game-over::backdrop {
+  background: rgba(45, 28, 12, 0.18);
+  backdrop-filter: none;
+}
+#help button,
+#how-to-play button,
+#shop button,
+#briefing button,
+#game-over button,
+#help button:hover,
+#how-to-play button:hover,
+#shop button:hover,
+#briefing button:hover,
+#game-over button:hover,
+#help button:active,
+#how-to-play button:active,
+#shop button:active,
+#briefing button:active,
+#game-over button:active {
+  box-shadow: none !important;
+  transform: none;
+  translate: none;
+  border-radius: var(--pill);
+  background: var(--oat);
+  color: var(--ink);
+}
+#help button:hover,
+#how-to-play button:hover,
+#shop button:hover,
+#briefing button:hover,
+#game-over button:hover {
+  background: #fbdfd6;
+}
+#help button.primary,
+#how-to-play button.primary,
+#shop button.primary,
+#briefing button.primary,
+#game-over button.primary,
+#help button.primary:hover,
+#how-to-play button.primary:hover,
+#shop button.primary:hover,
+#briefing button.primary:hover,
+#game-over button.primary:hover {
+  background: #f8c9ba;
+}
+#help button.primary:hover,
+#how-to-play button.primary:hover,
+#shop button.primary:hover,
+#briefing button.primary:hover,
+#game-over button.primary:hover {
+  background: #f5b9a6;
+}
+#help button:focus:not(:focus-visible),
+#how-to-play button:focus:not(:focus-visible),
+#shop button:focus:not(:focus-visible),
+#briefing button:focus:not(:focus-visible),
+#game-over button:focus:not(:focus-visible) {
+  outline: none;
+}
+#help button:focus-visible,
+#how-to-play button:focus-visible,
+#shop button:focus-visible,
+#briefing button:focus-visible,
+#game-over button:focus-visible {
+  outline: 2px solid #d9b45c;
+  outline-offset: 1px;
+}
+#help kbd,
+#how-to-play kbd,
+#shop kbd,
+#briefing kbd,
+#game-over kbd {
+  box-shadow: none;
+}
+#shop .shop-list li,
+#final-stats {
+  box-shadow: none;
+  border-radius: var(--r-md);
+  background: var(--oat);
+}
+#shop .shop-list li.owned {
+  background: #fbe9b7;
+}
+@media (max-height: 520px) {
+  #help, #how-to-play, #shop, #briefing, #game-over {
+    padding: 16px 20px;
+  }
+}
+
+/* bigger icons across the menus */
+#lobby .title-card.play-menu > button:not(.play-setup):not(#lobby-back) .icon-svg,
+#lobby .title-card.play-menu > button:not(.play-setup):not(#lobby-back) .icon-img {
+  width: 30px;
+  height: 30px;
+}
+#lobby .title-card.play-menu .play-setup .icon-svg {
+  width: 30px;
+  height: 30px;
+}
+#lobby .title-card.play-menu .play-tools .icon-svg,
+#lobby .title-card.play-menu .play-tools .icon-img {
+  width: 36px;
+  height: 36px;
+}
+#pause-menu .menu-actions #resume .icon-svg {
+  width: 28px;
+  height: 28px;
+}
+#pause-menu .menu-actions button:not(#resume) .icon-svg,
+#pause-menu .menu-actions button:not(#resume) .icon-img {
+  width: 38px;
+  height: 38px;
+}
+#pause-menu #role-picker .icon-svg,
+#pause-menu #role-picker .icon-img {
+  width: 32px;
+  height: 32px;
+}
+#lobby-room .chef-card .chef-emoji {
+  width: 66px;
+  height: 66px;
+}
+#lobby-room .chef-card .chef-emoji .icon-svg {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+}
+#lobby-room #copy-link .icon-svg,
+#lobby-room #room-setup .icon-svg,
+#lobby-room #start-game .icon-svg {
+  width: 26px;
+  height: 26px;
+}
+.setting-row legend .icon-svg {
+  width: 30px;
+  height: 30px;
+}
+#role-avatar .icon-svg {
+  width: 76%;
+  height: 76%;
+}
+#hud .round-btn .icon-svg {
+  width: 30px;
+  height: 30px;
+}
+@media (max-height: 520px) {
+  #lobby .title-card.play-menu > button:not(.play-setup):not(#lobby-back) .icon-svg,
+  #lobby .title-card.play-menu > button:not(.play-setup):not(#lobby-back) .icon-img,
+  #lobby .title-card.play-menu .play-setup .icon-svg,
+  #lobby .title-card.play-menu .play-tools .icon-svg,
+  #lobby .title-card.play-menu .play-tools .icon-img {
+    width: 24px;
+    height: 24px;
+  }
+  #lobby-room .chef-card .chef-emoji {
+    width: 42px;
+    height: 42px;
+  }
+  #lobby-room .chef-card .chef-emoji .icon-svg {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+}
+
+/* the shift button just names itself */
+#setup-summary {
+  display: none;
+}
+.title-card.play-menu .play-setup {
+  justify-content: center;
+}
+
+/* the chef badge shows the same clear, full-colour icon as the menus */
+#role-avatar {
+  background: #fff;
+}
+#role-avatar .icon-svg,
+#role-avatar .icon-svg * {
+  opacity: 1;
+  filter: none;
+}
+#role-avatar svg.icon-svg {
+  width: 30px;
+  height: 30px;
+  transform: none;
+}
+
+/* the sign wheel: a pointer from the centre shows the direction being chosen */
+#emote-wheel::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  background: var(--tomato);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  opacity: 0;
+  transform: rotate(var(--aim, 0deg)) translateY(-44px);
+  pointer-events: none;
+}
+#emote-wheel.aiming::after {
+  opacity: 1;
+}
+#emote-wheel button.picked {
+  background: #fbe9b7;
+  box-shadow: none;
+}
+
+/* touch adds Ping and Bell: eight signs share the ring, so none sit on top of each other */
+body.touch #emote-wheel button {
+  --a: calc(var(--i) * 45deg - 90deg);
+  width: 62px;
+  height: 62px;
+  margin: -31px 0 0 -31px;
+}
+#hud:has(#emote-wheel:not([hidden])) #crosshair {
+  display: none;
+}
+
+/* the title card sits at a slight tilt, like the wordmark */
+#title-menu .title-card {
+  transform: rotate(-2deg);
+}
+
+/* how to play: four steps, three chefs, a few keys */
+#how-to-play {
+  width: min(680px, calc(100vw - 24px));
+}
+#how-to-play h2 {
+  margin: 0 0 4px;
+  text-align: center;
+}
+.how-lead {
+  margin: 0 0 16px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--ink);
+}
+.how-label {
+  margin: 16px 0 8px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+}
+.how-steps,
+.how-chefs,
+.how-keys {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.how-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  counter-reset: step;
+}
+.how-chefs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.how-steps li,
+.how-chefs li {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 3px;
+  padding: 12px 8px;
+  border-radius: var(--r-md);
+  background: var(--oat);
+  text-align: center;
+}
+.how-steps li {
+  position: relative;
+  counter-increment: step;
+}
+.how-steps li::before {
+  content: counter(step);
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.how-chefs li.head { background: #fdf3d3; }
+.how-chefs li.deaf { background: #fde8e1; }
+.how-chefs li.mute { background: #f0e9f9; }
+#how-to-play .how-steps .icon-svg,
+#how-to-play .how-chefs .icon-svg {
+  width: 38px;
+  height: 38px;
+}
+#how-to-play li strong {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+}
+#how-to-play li span {
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.how-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+#how-to-play .menu-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+#how-to-play .menu-actions button {
+  margin: 0;
+}
+/* messages from the lobby stay readable over the kitchen */
+#lobby-error:not(:empty) {
+  padding: 6px 16px;
+  border-radius: var(--pill);
+  background: var(--paper);
+}
+@media (max-height: 520px), (max-width: 620px) {
+  .how-steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-height: 520px) {
+  .how-steps {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  #how-to-play li span {
+    font-size: 0.76rem;
+  }
+  #how-to-play .how-steps .icon-svg,
+  #how-to-play .how-chefs .icon-svg {
+    width: 28px;
+    height: 28px;
+  }
+  .how-steps li,
+  .how-chefs li {
+    padding: 8px 6px;
+  }
+}
+
+/* the loading screen: a happy little pot coming to the boil */
+#loading {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #fbe9d7;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+}
+#loading[hidden] {
+  display: none;
+}
+.load-pot {
+  width: min(190px, 42vh);
+  height: auto;
+  overflow: visible;
+  animation: load-wobble 1.6s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+.load-lid {
+  animation: load-lid 0.8s ease-in-out infinite;
+  transform-origin: 80px 66px;
+}
+.load-steam path {
+  stroke: #e9cdb6;
+  animation: load-steam 1.8s ease-out infinite;
+}
+.load-steam path:nth-child(2) { animation-delay: 0.45s; }
+.load-steam path:nth-child(3) { animation-delay: 0.9s; }
+.load-flames path {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: load-flame 0.5s ease-in-out infinite alternate;
+}
+.load-flames path:nth-child(2) { animation-delay: 0.15s; }
+.load-flames path:nth-child(3) { animation-delay: 0.3s; }
+.load-text {
+  margin: 8px 0 0;
+}
+.load-dots {
+  display: flex;
+  gap: 8px;
+}
+.load-dots i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f8c9ba;
+  animation: load-dot 1.1s ease-in-out infinite;
+}
+.load-dots i:nth-child(2) { background: #f6c35b; animation-delay: 0.15s; }
+.load-dots i:nth-child(3) { background: #d9c9f2; animation-delay: 0.3s; }
+@keyframes load-wobble {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+@keyframes load-lid {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  30% { transform: translateY(-9px) rotate(-5deg); }
+  60% { transform: translateY(-3px) rotate(4deg); }
+}
+@keyframes load-steam {
+  0% { opacity: 0; transform: translateY(14px); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-18px); }
+}
+@keyframes load-flame {
+  from { transform: scale(0.85, 0.92); }
+  to { transform: scale(1.08, 1.12); }
+}
+@keyframes load-dot {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-9px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #loading * {
+    animation: none;
+  }
+}
+/* How to play on a sideways phone: chefs' details stay short so it needs less scrolling */
+@media (max-height: 520px) {
+  .how-lead,
+  #how-to-play .how-label {
+    margin: 4px 0;
+    font-size: 0.86rem;
+  }
+}
+
+/* how to play: one idea per page, with big icons and very few words */
+#how-to-play {
+  width: min(480px, calc(100vw - 24px));
+  text-align: center;
+}
+.how-page[hidden] {
+  display: none;
+}
+#how-to-play h2 {
+  margin: 0 0 6px;
+  font-size: 1.7rem;
+  text-align: center;
+}
+#how-to-play .how-lead {
+  margin: 0 0 24px;
+  font-size: 1.05rem;
+}
+.how-row {
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.how-row li {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 8px;
+  min-width: 72px;
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+.how-row small {
+  margin-top: -6px;
+  font-family: "Nunito", sans-serif;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+#how-to-play .how-row .icon-svg {
+  width: 56px;
+  height: 56px;
+}
+.how-row kbd {
+  display: grid;
+  place-items: center;
+  min-width: 56px;
+  height: 56px;
+  padding: 0 8px;
+  border-radius: var(--r-md);
+  font-size: 1.1rem;
+}
+.how-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 26px 0 18px;
+}
+.how-dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--oat);
+}
+.how-dots i.on {
+  background: #f8c9ba;
+}
+.how-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.how-actions button {
+  margin: 0;
+}
+.how-actions button[hidden] {
+  display: none;
+}
+@media (max-height: 520px) {
+  #how-to-play .how-lead {
+    margin-bottom: 10px;
+    font-size: 0.92rem;
+  }
+  #how-to-play h2 {
+    font-size: 1.3rem;
+    margin-bottom: 2px;
+  }
+  #how-to-play .how-row .icon-svg,
+  .how-row kbd {
+    width: 42px;
+    height: 42px;
+  }
+  .how-row kbd {
+    width: auto;
+    min-width: 42px;
+  }
+  .how-dots {
+    margin: 12px 0 10px;
+  }
+}
+
+/* the fire: layered red, orange and gold flames that lick upward */
+.load-flames path {
+  animation: none;
+}
+.load-flame {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: load-lick 0.55s ease-in-out infinite alternate;
+}
+.load-flame:nth-child(2) { animation-delay: 0.18s; }
+.load-flame:nth-child(3) { animation-delay: 0.32s; animation-duration: 0.42s; }
+@keyframes load-lick {
+  from { transform: scale(0.9, 0.86) skewX(-4deg); }
+  to { transform: scale(1.06, 1.14) skewX(4deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .load-flame {
+    animation: none;
+  }
+}
+
+/* our own dropdown: a soft pill that opens a list in place */
+.dropdown {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+.dropdown button,
+.dropdown button:hover,
+.dropdown button:active {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: var(--r-md);
+  box-shadow: none !important;
+  transform: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: "Nunito", sans-serif;
+  font-size: 0.98rem;
+  font-weight: 700;
+  text-align: left;
+}
+.dropdown .dd-face,
+.dropdown .dd-face:hover {
+  border-radius: var(--pill);
+  background: var(--oat);
+}
+.dropdown .dd-face:hover {
+  background: #f1e5d2;
+}
+.dd-value,
+.dropdown .dd-list button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dd-arrow {
+  width: 9px;
+  height: 9px;
+  margin: -3px 2px 0 2px;
+  border-right: 3px solid var(--ink);
+  border-bottom: 3px solid var(--ink);
+  border-radius: 1px;
+  transform: rotate(45deg);
+  transition: transform 0.15s, margin 0.15s;
+}
+.dropdown.open .dd-arrow {
+  margin-top: 4px;
+  transform: rotate(225deg);
+}
+.dd-list {
+  display: grid;
+  gap: 2px;
+  max-height: 188px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: var(--r-md);
+  background: var(--oat);
+}
+.dd-list[hidden] {
+  display: none;
+}
+.dropdown .dd-list button:hover,
+.dropdown .dd-list button:focus {
+  outline: none;
+  background: #fbdfd6;
+}
+.dropdown .dd-list button.on {
+  background: #fbe9b7;
+}
+.dd-stars {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+}
+.dropdown .dd-stars .icon-svg {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+}
+.dd-stars .icon-svg.empty {
+  filter: grayscale(1) brightness(1.25);
+  opacity: 0.55;
+}
+
+/* cozy dropdown: a butter pill with a numbered badge, little ticket rows and chubby stars */
+.dropdown .dd-face,
+.dropdown .dd-face:hover {
+  padding: 8px 14px 8px 8px;
+  background: #fdf3d3;
+}
+.dropdown .dd-face:hover {
+  background: #fbe9b7;
+}
+.dd-value,
+.dropdown .dd-list button {
+  justify-content: flex-start;
+}
+.dd-name {
+  flex: 1;
+  min-width: 0;
+}
+.dd-number {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.dd-list {
+  gap: 4px;
+  padding: 0;
+  background: transparent;
+}
+.dropdown .dd-list button,
+.dropdown .dd-list button:active {
+  padding: 6px 12px 6px 8px;
+  border-radius: var(--pill);
+  background: var(--oat);
+}
+.dropdown .dd-list button:hover,
+.dropdown .dd-list button:focus {
+  background: #fde8e1;
+}
+.dropdown .dd-list button.on {
+  background: #fbe9b7;
+}
+.dd-stars {
+  gap: 1px;
+}
+.dd-star {
+  width: 24px;
+  height: 24px;
+  fill: #eadfca;
+  stroke: #eadfca;
+}
+.dd-star.earned {
+  fill: #ffd257;
+  stroke: #ffd257;
+}
+.dd-arrow {
+  border-color: #b98a4a;
+}
+
+/* the select: a plain field, and a list that floats over the card when opened */
+#setup {
+  overflow: visible;
+}
+.dropdown {
+  position: relative;
+}
+.dd-number {
+  display: none;
+}
+.dropdown .dd-face,
+.dropdown .dd-face:hover {
+  padding: 9px 16px;
+  border-radius: var(--pill);
+  background: var(--oat);
+}
+.dropdown.open .dd-face {
+  background: #fbe9b7;
+}
+.dd-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  gap: 2px;
+  max-height: 260px;
+  padding: 8px;
+  border: 1px solid var(--paper-shadow);
+  border-radius: var(--r-md);
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(45, 28, 12, 0.14);
+}
+.dropdown .dd-list button,
+.dropdown .dd-list button:active {
+  padding: 7px 10px;
+  border-radius: var(--r-sm);
+  background: transparent;
+}
+.dropdown .dd-list button:hover,
+.dropdown .dd-list button:focus {
+  background: #fde8e1;
+}
+.dropdown .dd-list button.on {
+  background: #fbe9b7;
+}
+.dd-star {
+  width: 22px;
+  height: 22px;
+}
+
+/* stars use the game's own outlined star icon: gold when earned, cream when not */
+.dropdown .dd-stars .icon-svg {
+  width: 22px;
+  height: 22px;
+  filter: none;
+  opacity: 1;
+}
+.dropdown .dd-stars .icon-svg.empty {
+  filter: none;
+  opacity: 1;
+}
+.dropdown .dd-stars .icon-svg.empty path {
+  fill: #fffaf0;
+}
+
+/* the trigger matches its list: white, thin border, same corners and text */
+.dropdown .dd-face,
+.dropdown .dd-face:hover,
+.dropdown.open .dd-face {
+  padding: 9px 14px 9px 18px;
+  border: 1px solid var(--paper-shadow);
+  border-radius: var(--r-md);
+  background: #fff;
+}
+.dropdown .dd-face:hover,
+.dropdown.open .dd-face {
+  background: #fff;
+  border-color: #d9b45c;
+}
+
+/* select UX: comfy targets, numbers for order, a clear current row, and stars in one column */
+.dropdown .dd-face,
+.dropdown .dd-face:hover,
+.dropdown.open .dd-face {
+  min-height: 46px;
+  padding: 8px 14px 8px 12px;
+}
+.dropdown .dd-face:focus-visible {
+  outline: 2px solid #d9b45c;
+  outline-offset: 1px;
+}
+.dropdown .dd-number {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  background: var(--oat);
+  font-size: 0.82rem;
+}
+.dropdown .dd-list button.on .dd-number {
+  background: #fff;
+}
+.dropdown .dd-list button.on .dd-name {
+  font-weight: 800;
+}
+.dropdown .dd-list button,
+.dropdown .dd-list button:active {
+  min-height: 42px;
+  padding: 6px 12px 6px 10px;
+}
+.dropdown .dd-list button:focus-visible {
+  outline: 2px solid #d9b45c;
+  outline-offset: -2px;
+}
+.dropdown.up .dd-list {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+.dropdown .dd-arrow {
+  flex: none;
+}
+/* the name field reads as the same kind of control */
+#setup input,
+#setup input:focus {
+  min-height: 46px;
+  border: 1px solid var(--paper-shadow);
+  border-radius: var(--r-md);
+  background: #fff;
+}
+#setup input:focus {
+  border-color: #d9b45c;
+}
+#setup input:focus-visible {
+  outline: 2px solid #d9b45c;
+  outline-offset: 1px;
+}
+
+/* cozy select and name field: warm cream with a soft tan edge and generous corners */
+.dropdown .dd-face,
+.dropdown .dd-face:hover,
+.dropdown.open .dd-face,
+#setup input,
+#setup input:focus {
+  border: 2px solid #ecdcc0;
+  border-radius: 18px;
+  background: #fff6e6;
+}
+.dropdown .dd-face:hover,
+.dropdown.open .dd-face,
+#setup input:focus {
+  border-color: #e3c58f;
+  background: #fff1d6;
+}
+.dropdown .dd-face:focus-visible,
+#setup input:focus-visible {
+  outline: none;
+  border-color: #d9a95c;
+}
+.dd-list {
+  padding: 6px;
+  border: 2px solid #ecdcc0;
+  border-radius: 18px;
+  background: #fff6e6;
+  box-shadow: 0 6px 0 #ecdcc0;
+}
+.dropdown .dd-list button,
+.dropdown .dd-list button:active {
+  border-radius: 13px;
+}
+.dropdown .dd-list button:hover,
+.dropdown .dd-list button:focus {
+  background: #fde8d8;
+}
+.dropdown .dd-list button.on {
+  background: #fbe3a6;
+}
+.dropdown .dd-number,
+.dropdown .dd-list button.on .dd-number {
+  background: #fff;
+  color: #9a6b2f;
+}
+
+/* every card stays on screen whatever its size: centred, and scrolls inside if it must */
+#settings, #help, #how-to-play, #shop, #briefing, #game-over, #pause-menu, #setup {
+  margin: auto;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+}
+#settings, #help, #how-to-play, #shop, #briefing, #game-over, #pause-menu {
+  overflow-y: auto;
+}
+#setup:not(:has(.dropdown.open)) {
+  overflow-y: auto;
+}
+@media (max-height: 520px) {
+  #pause-menu {
+    width: min(620px, calc(100vw - 16px));
+    padding: 12px 18px;
+  }
+  #pause-menu h2 {
+    margin: 0 0 6px;
+    font-size: 1.1rem;
+  }
+  #pause-menu .menu-actions:not(:has(#quit)) {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+  #pause-menu .menu-actions #resume {
+    grid-column: auto;
+    flex-direction: column;
+    padding: 6px 2px;
+    font-size: 0.86rem;
+  }
+  #pause-menu .menu-actions button:not(#resume) {
+    padding: 6px 2px;
+    font-size: 0.86rem;
+  }
+  #pause-menu .menu-actions button .icon-svg,
+  #pause-menu .menu-actions button .icon-img {
+    width: 26px !important;
+    height: 26px !important;
+  }
+  #pause-menu #role-picker {
+    margin: 6px 0 4px;
+  }
+  #pause-menu #role-picker label > span {
+    flex-direction: row;
+    justify-content: center;
+    padding: 4px 0;
+  }
+  #pause-menu #role-picker .icon-svg {
+    width: 20px;
+    height: 20px;
+  }
+  #pause-menu #role-picker legend {
+    display: none;
+  }
+}
+/* narrow phones held upright */
+@media (max-width: 480px) {
+  #lobby #lobby-room:not([hidden]) {
+    padding: 18px 16px;
+    gap: 10px;
+  }
+  #lobby-room .room-line {
+    flex-wrap: wrap;
+  }
+  #lobby-room .room-actions {
+    grid-template-columns: 1fr;
+  }
+  #lobby-room .chef-card {
+    padding: 10px 4px;
+  }
+  #lobby-room .chef-card > span {
+    display: none;
+  }
+  .how-row {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .how-row li {
+    min-width: 62px;
+  }
+  #how-to-play .how-row .icon-svg {
+    width: 44px;
+    height: 44px;
+  }
+  #settings, #help, #how-to-play, #shop, #briefing, #game-over, #pause-menu, #setup {
+    padding: 22px 18px 18px;
+  }
+  .setting-row {
+    flex-wrap: wrap;
+  }
+}
+
+/* an older "#setup button" rule removes bottom borders: the select keeps its full edge */
+#setup .dropdown .dd-face {
+  border-bottom-width: 2px;
+}
+
+/* the select and name field are soft cream shapes with no border at all */
+#setup .dropdown .dd-face,
+#setup .dropdown .dd-face:hover,
+#setup .dropdown.open .dd-face,
+#setup input,
+#setup input:focus,
+.dd-list {
+  border: none;
+}
+#setup .dropdown .dd-face:hover,
+#setup .dropdown.open .dd-face,
+#setup input:focus {
+  background: #fdeccb;
+}
+.dd-list {
+  box-shadow: 0 6px 16px rgba(45, 28, 12, 0.12);
+}
+
+/* a touch of colour: blush for the name, lilac for the shift */
+#setup input,
+#setup input:focus {
+  background: #fde8e1;
+}
+#setup input:focus {
+  background: #fbdcd2;
+}
+#setup .dropdown .dd-face {
+  background: #f0e9f9;
+}
+#setup .dropdown .dd-face:hover,
+#setup .dropdown.open .dd-face {
+  background: #e7dcf6;
+}
+.dd-list {
+  background: #faf6fe;
+}
+.dropdown .dd-list button:hover,
+.dropdown .dd-list button:focus {
+  background: #f0e9f9;
+}
+.dropdown .dd-list button.on {
+  background: #e7dcf6;
+}
+.dropdown .dd-number,
+.dropdown .dd-list button.on .dd-number {
+  color: #6f5a94;
+}
+
+/* shift: soft butter rather than lilac */
+#setup .dropdown .dd-face {
+  background: #fdf3d3;
+}
+#setup .dropdown .dd-face:hover,
+#setup .dropdown.open .dd-face {
+  background: #fbecbf;
+}
+.dd-list {
+  background: #fffaf0;
+}
+.dropdown .dd-list button:hover,
+.dropdown .dd-list button:focus {
+  background: #fdf3d3;
+}
+.dropdown .dd-list button.on {
+  background: #fbe9b7;
+}
+.dropdown .dd-number,
+.dropdown .dd-list button.on .dd-number {
+  color: #9a6b2f;
+}
+
+/* toasts: a clear icon and a few words */
+.toast .icon .icon-svg {
+  width: 26px;
+  height: 26px;
+}
+.toast .text {
+  font-weight: 800;
+}
+.toast .icon {
+  width: 34px;
+  height: 34px;
+}
+.toast.good .icon {
+  background: #fdf3d3;
+}
+/* short words, short toast */
+#toasts {
+  align-items: flex-start;
+}
+.toast {
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* toast icons sit directly on the paper */
+.toast .icon,
+.toast.good .icon,
+.toast.urgent .icon,
+.toast.soft .icon {
+  width: auto;
+  height: auto;
+  background: none;
+}
+.toast {
+  padding: 6px 12px 6px 10px;
+}
+
+/* a longer message wraps to a second line instead of being cut off */
+.toast .text {
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
+}
+#toasts {
+  max-width: min(320px, calc(100vw - 24px));
+}
+
+/* one clear keyboard focus ring everywhere (mouse clicks don't show it) */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input[type="checkbox"]:focus-visible,
+#title-menu .title-card button:focus-visible,
+.title-card.play-menu button:focus-visible,
+#pause-menu button:focus-visible,
+#help button:focus-visible,
+#how-to-play button:focus-visible,
+#shop button:focus-visible,
+#briefing button:focus-visible,
+#game-over button:focus-visible,
+#setup .dropdown .dd-face:focus-visible,
+.dropdown .dd-list button:focus-visible,
+#lobby-room button:focus-visible,
+#setup input:focus-visible,
+#lobby input:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+.segmented input:focus-visible + span,
+#role-picker input:focus-visible + span,
+#pause-menu #role-picker input:focus-visible + span {
+  outline: 3px solid var(--ink);
+  outline-offset: 1px;
+}
+
+/* shift briefing: a short title, then icon-and-words lines */
+#briefing {
+  width: min(430px, calc(100vw - 24px));
+  text-align: center;
+}
+#briefing h2 {
+  margin: 2px 0 16px;
+  font-size: 1.6rem;
+}
+#briefing .briefing-lines {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+#briefing .briefing-lines li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-weight: 700;
+  font-size: 1.02rem;
+  color: var(--ink);
+}
+#briefing .briefing-lines li::before {
+  display: none;
+}
+#briefing .briefing-lines .icon-svg,
+#briefing .briefing-role .icon-svg {
+  flex: none;
+  width: 38px;
+  height: 38px;
+}
+#briefing .briefing-role {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--oat);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-align: left;
+}
+#briefing .briefing-role .icon-svg {
+  width: 30px;
+  height: 30px;
+}
+#briefing #briefing-go {
+  width: 100%;
+}
+@media (max-height: 520px) {
+  #briefing h2 {
+    margin-bottom: 8px;
+    font-size: 1.2rem;
+  }
+  #briefing .briefing-lines {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  #briefing .briefing-lines .icon-svg {
+    width: 28px;
+    height: 28px;
+  }
+  #briefing .briefing-role {
+    margin-bottom: 8px;
+    padding: 6px 12px;
+  }
 }
