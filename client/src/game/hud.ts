@@ -15,6 +15,8 @@ import {
   levelByNumber,
   levelsAt,
   venueById,
+  comboWindow,
+  starGoals,
   starsFor,
   stationName,
   targetStation,
@@ -28,12 +30,13 @@ import {
 } from "@kitchen/shared";
 import { glyph, img, renderedIcon } from "../ui/icons";
 import { SPICE_GLYPHS, actionHints, foodIcon, itemIconNode, soupIcon, stationIconNode, stockIconNode, stockName } from "./hints";
+import { $ } from "../ui/dom";
+import { teamAwards } from "./awards";
+import { nextTimeTip, shiftReport } from "./report";
 
 /** Tables on the terrace, numbered left to right. */
 const TABLES = [...new Set(SEATS.map((s) => s.table.join()))].sort((a, b) => Number(a.split(",")[0]) - Number(b.split(",")[0]));
 const tableNumber = (seat: number) => TABLES.indexOf(SEATS[seat].table.join()) + 1;
-
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 function clock(seconds: number): string {
   const s = Math.ceil(seconds);
@@ -95,6 +98,15 @@ export class Hud {
   private readonly finalText = $("final-score");
   private readonly finalStars = $("final-stars");
   private readonly finalStats = $("final-stats");
+  private readonly finalAwards = $("final-awards");
+  private readonly finalReport = $("final-report");
+  private readonly finalTip = $("final-tip");
+  private readonly combo = $("combo");
+  private readonly comboCount = $("combo-count");
+  private readonly comboFill = $("combo-fill");
+  private readonly rushTag = $("rush-tag");
+  private readonly rushTime = $("rush-time");
+  private lastCombo = 0;
   private readonly nextLevel = $<HTMLButtonElement>("next-level");
   private readonly signals = $("signals");
   private readonly picker = $("picker");
@@ -157,12 +169,22 @@ export class Hud {
       logo.replaceChildren(glyph(`logo-${level.venue}`));
     }
     this.levelNumber.closest<HTMLElement>("#level-chip")!.title = `${venueById(level.venue).name}: ${level.name}`;
-    this.syncScore(game.score, level.stars);
+    this.syncScore(game.score, starGoals(level, game.crew));
+    this.syncCombo(game);
     this.setText(this.tillCoins, `Till ${game.coins ?? 0}`);
     this.tillCoins.hidden = !game.coins; // nothing to show until someone has paid
-    this.setText(this.time, clock(game.timeLeft));
+    // overtime counts up instead of down
+    this.setText(this.time, game.overtime > 0 ? `+${clock(game.overtime)}` : clock(game.timeLeft));
+    this.clockChip.classList.toggle("overtime", game.overtime > 0);
     this.clockRing.style.setProperty("--left", String(Math.max(0, game.timeLeft / level.time)));
     this.clockChip.classList.toggle("urgent", game.timeLeft < 30);
+    // rush hour and combos only while the shift is on
+    const rushing = game.phase === "playing" && game.rush > 0;
+    this.clockChip.classList.toggle("rush", rushing);
+    // the last ten seconds: the clock pulses (and ticks, for anyone who can hear)
+    this.clockChip.classList.toggle("ending", game.phase === "playing" && game.timeLeft <= 10 && game.overtime === 0);
+    this.rushTag.hidden = !rushing;
+    if (rushing) this.setText(this.rushTime, `${Math.ceil(game.rush)}s`);
 
     // hands
     const { sees } = currentSenses(game, me);
@@ -328,12 +350,31 @@ export class Hud {
     });
   }
 
-  /** @returns the stars earned */
-  showGameOver(game: Game): number {
+  /** A combo of two or more: its count, and a bar that drains until the next dish must go out. */
+  private syncCombo(game: Game) {
+    const on = game.phase === "playing" && game.combo >= 2 && game.comboLeft > 0;
+    this.combo.hidden = !on;
+    if (on) {
+      this.setText(this.comboCount, `×${game.combo}`);
+      this.comboFill.style.setProperty("--left", Math.min(1, game.comboLeft / comboWindow(game)).toFixed(3));
+      if (game.combo !== this.lastCombo) {
+        // each new step pops the tag again
+        this.combo.classList.remove("pop");
+        void this.combo.offsetWidth;
+        this.combo.classList.add("pop");
+      }
+    }
+    this.lastCombo = on ? game.combo : 0;
+  }
+
+  /** @param meId your chef, whose award says "You" @returns the stars earned */
+  showGameOver(game: Game, meId?: string): number {
     const level = levelByNumber(game.level);
-    const stars = starsFor(level, game.score);
-    const next = level.stars.find((s) => game.score < s);
-    const goal = next ? `${next - game.score} more points for the next star.` : "Top marks — three stars!";
+    const goals = starGoals(level, game.crew);
+    const stars = starsFor(level, game.score, game.crew);
+    const next = goals.find((s) => game.score < s);
+    const overtime = game.overtime > 0 ? ` Overtime added ${game.score - game.overtimeFrom} points.` : "";
+    const goal = (next ? `${next - game.score} more points for the next star.` : "Top marks — three stars!") + overtime;
     this.finalStars.replaceChildren(
       ...[0, 1, 2].map((i) => {
         const s = document.createElement("span");
@@ -354,6 +395,40 @@ export class Hud {
       return div;
     };
     this.finalStats.replaceChildren(stat("Score", game.score), stat("Dishes", game.served), stat("Perfect", game.perfects), stat("Takings", game.coins ?? 0));
+    // where the points came from and went: together the lines make the score
+    this.finalReport.replaceChildren(
+      ...shiftReport(game).map((line) => {
+        const li = document.createElement("li");
+        if (line.points < 0) li.className = "lost";
+        const label = document.createElement("span");
+        label.textContent = line.label;
+        const points = document.createElement("b");
+        points.textContent = line.points > 0 ? `+${line.points}` : `−${-line.points}`;
+        li.append(glyph(line.icon), label, points);
+        return li;
+      }),
+    );
+    const tip = nextTimeTip(game, game.chefs.find((c) => c.id === meId)?.role ?? "full");
+    this.finalTip.hidden = !tip;
+    const tipText = document.createElement("span");
+    tipText.textContent = `Next time: ${tip ?? ""}`;
+    this.finalTip.replaceChildren(glyph("chef"), tipText);
+    this.finalAwards.replaceChildren(
+      ...teamAwards(game).map((award) => {
+        const li = document.createElement("li");
+        const who = document.createElement("strong");
+        who.textContent = award.chef.id === meId ? "You" : award.chef.name;
+        const title = document.createElement("span");
+        title.textContent = award.title;
+        const detail = document.createElement("small");
+        detail.textContent = award.detail;
+        const words = document.createElement("span");
+        words.className = "award-words";
+        words.append(who, title, detail);
+        li.append(glyph(award.icon), words);
+        return li;
+      }),
+    );
     this.nextLevel.hidden = stars === 0 || level.n >= LEVELS.length;
     if (!this.gameOver.open) this.gameOver.showModal();
     return stars;
@@ -389,13 +464,21 @@ export class Hud {
           const seat = seated.get(order.id);
           // what a player needs: which table it's for (the order number is just noise)
           const table = seat === undefined ? "" : `Table ${tableNumber(seat)}`;
-          tag.textContent = order.channel === "ticket" ? table || "Walk-in" : `Phone${table ? ` · ${table}` : ""}`;
+          const who = [order.critic ? "Critic" : order.kid ? "Kid" : "", order.channel === "phone" ? "Phone" : ""].filter(Boolean).join(" ");
+          tag.textContent = [who, table].filter(Boolean).join(" · ") || "Walk-in";
           const name = document.createElement("strong");
           name.textContent = order.recipe.name;
           if (order.channel === "phone") {
             const badge = document.createElement("span");
             badge.className = "phone-badge";
             badge.append(glyph("phone"));
+            li.append(badge);
+          }
+          if (order.critic) {
+            li.classList.add("critic");
+            const badge = document.createElement("span");
+            badge.className = "critic-badge";
+            badge.append(glyph("critic"));
             li.append(badge);
           }
           // the finished dish, then exactly what goes into it (pictured in the right state)

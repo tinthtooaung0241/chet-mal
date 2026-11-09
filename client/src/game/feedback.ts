@@ -5,6 +5,7 @@
 import {
   EMOTES,
   FOOD_RULES,
+  RECIPES,
   SOUP_TIME,
   ROLES,
   currentSenses,
@@ -17,7 +18,9 @@ import {
   type GameEvent,
   type Role,
 } from "@kitchen/shared";
-import { glyph } from "../ui/icons";
+import { glyph, img } from "../ui/icons";
+import { foodIcon } from "./hints";
+import { dishImage } from "./recipeBook";
 
 type Wave = OscillatorType;
 interface Note {
@@ -60,6 +63,18 @@ const SOUNDS: Partial<Record<EventKind, Note[]>> = {
   ping: [n(1760, 0, 0.18, "sine", 0.22), n(2637, 0.08, 0.3, "sine", 0.14)],
   bell: [n(2093, 0, 0.9, "sine", 0.25), n(4186, 0, 0.5, "sine", 0.08)],
   over: [n(784, 0, 0.15), n(659, 0.16, 0.15), n(523, 0.32, 0.4)],
+  // a combo: a quick bright run up
+  combo: [n(784, 0, 0.07, "triangle"), n(988, 0.07, 0.07, "triangle"), n(1319, 0.14, 0.16, "triangle")],
+  // a food critic: a little fanfare
+  critic: [n(659, 0, 0.1, "triangle"), n(880, 0.11, 0.1, "triangle"), n(1175, 0.22, 0.24, "triangle")],
+  // a fire: the smoke alarm, three sharp beeps
+  fire: [n(3136, 0, 0.12, "square", 0.1), n(3136, 0.2, 0.12, "square", 0.1), n(3136, 0.4, 0.12, "square", 0.1)],
+  // spilled oil: glass breaking, then a slosh
+  spill: [n(2400, 0, 0.05, "square", 0.08, 900), n(300, 0.06, 0.3, "sine", 0.18, 120)],
+  // a clean plate: a bright little squeak
+  washed: [n(1175, 0, 0.06, "sine", 0.15), n(1568, 0.05, 0.1, "sine", 0.15)],
+  // rush hour: the kitchen bell, three times
+  rush: [n(1568, 0, 0.12, "sine", 0.18), n(1568, 0.18, 0.12, "sine", 0.18), n(1568, 0.36, 0.2, "sine", 0.18)],
   // a quick shake-shake over the plate
   season: [n(3200, 0, 0.03, "square", 0.05), n(2800, 0.07, 0.03, "square", 0.05), n(3400, 0.14, 0.03, "square", 0.05)],
   // a soft, falling "uh-oh" as cold food warms up
@@ -92,6 +107,13 @@ const THUNDER: Note[] = [n(55, 0, 1.6, "sawtooth", 0.35, 35), n(80, 0.05, 1.2, "
 const LOG_SIZE = 6;
 const MAX_TOASTS = 3;
 
+// the last ten seconds of a shift
+const TICK = [n(1760, 0, 0.04, "square", 0.06)];
+const TICK_HIGH = [n(2349, 0, 0.06, "square", 0.08)];
+
+// a new sticker: a little sparkle up the scale
+const STICKER_SOUND = [n(1047, 0, 0.09, "sine", 0.18), n(1319, 0.08, 0.09, "sine", 0.18), n(1568, 0.16, 0.09, "sine", 0.18), n(2093, 0.24, 0.3, "sine", 0.16)];
+
 const TOAST_ICONS: Partial<Record<EventKind | "info", string>> = {
   pickup: "pickup",
   place: "place",
@@ -121,6 +143,12 @@ const TOAST_ICONS: Partial<Record<EventKind | "info", string>> = {
   season: "salt",
   checkout: "coin",
   paid: "coin",
+  combo: "bolt",
+  rush: "hurry",
+  critic: "critic",
+  washed: "sink",
+  fire: "flame",
+  spill: "warning",
   warm: "snow",
   info: "chef",
 };
@@ -130,7 +158,9 @@ const TOAST_WORDS: [RegExp, string][] = [
   [/^Kitchen open! You are the (.+?)\. .*/, "Kitchen open: $1"],
   [/^Practice kitchen open!.*/, "Kitchen open!"],
   [/^You can talk, so.*/, "Only the mute chef signals"],
+  [/^New ticket: (.+), kid's, no seasoning\.$/, "$1 for a kid: plain"],
   [/^New ticket: (.+)\.$/, "$1"],
+  [/^Phone order: "Hi! One (.+?) please\..*for my kid.*/, "$1 by phone, plain"],
   [/^Phone order: "Hi! One (.+?) please\..*/, "$1 by phone"],
   [/^Served (.+?)!.*Plus (\d+) points\.$/, "$1 +$2"],
   [/^The (.+?) is cooked\..*/, "$1 is cooked"],
@@ -155,8 +185,31 @@ const TOAST_WORDS: [RegExp, string][] = [
   [/^.+ pings: (.+?)( at the (.+))?\.$/, "Look: $3"],
   [/^.+ signals: (.+)!$/, "$1!"],
   [/^Time's up!.*/, "Time's up!"],
+  [/^Combo ×(\d+)! Plus (\d+) .*/, "Combo ×$1 +$2"],
+  [/^Rush hour! .*/, "Rush hour! Pay ×1.5"],
+  [/^Three stars! Overtime.*/, "Overtime! Keep cooking"],
+  [/^New high score on this level: (\d+)!$/, "High score: $1"],
+  [/^Rush hour is over\..*/, "Rush hour over"],
+  [/^A food critic just walked in, for (Table \d+)\..*/, "Critic at $1"],
+  [/^A food critic just walked in\..*/, "A food critic is here"],
+  [/^A rave review!.*plus (\d+) points.*/, "Rave review! +$1"],
+  [/^The critic's verdict: "(.+?)\.".*/, "Critic: $1"],
+  [/^The food critic walked out.* minus (\d+) points\.$/, "Critic walked out -$1"],
+  [/^The fire spread to the next stove!.*/, "Fire spread! Hold F at it"],
+  [/^The burnt (.+?) caught fire!.*/, "Fire! Hold F at the stove"],
+  [/^The fire's out\..*/, "Fire's out"],
+  [/^It's on fire!.*/, "On fire! Hold F"],
+  [/^A bottle of oil smashed.*/, "Oil spill! Hold F to mop"],
+  [/^Mopped up the spill\.$/, "Spill mopped"],
+  [/^Washed a (plate|bowl)\. (\d+) still to wash\.$/, "$1 clean · $2 to go"],
+  [/^Washed a (plate|bowl)\. All clean!$/, "All dishes clean!"],
+  [/^No clean (plates|bowls)! .*/, "No clean $1! Wash some"],
+  [/^Daily special done! Plus (\d+) coins.*/, "Daily special +$1 coins"],
+  [/^New best today: (\d+) points!$/, "Best today: $1"],
   [/^Bought (.+?)\..*/, "Bought $1"],
-  [/^Lost connection.*/, "Connection lost. Refresh"],
+  [/^Lost connection.*/, "Connection lost. Reconnecting…"],
+  [/^Back in the kitchen!$/, "Reconnected"],
+  [/^Couldn't get back to the kitchen.*/, "Connection lost. Refresh"],
   [/^(.+?) wants to pay by (.+?), not .*/, "$1 pays by $2"],
   [/^(.+?) doesn't handle raw food\..*/, "Hand it over on a plate"],
   [/^(.+?) is in front of you\..*/, "Nothing to give"],
@@ -171,6 +224,22 @@ const TOAST_WORDS: [RegExp, string][] = [
   [/^Put the (.+?) back in .*/, "Put back $1"],
 ];
 
+/** The dish or food a toast is about, drawn: Salad gets the salad. Longest names first ("Steak salad" before "Steak"). */
+const FOOD_TOASTS = new Set<EventKind | "info">(["order", "phone", "served", "cooked", "chopped", "perfect", "smoking", "burnt", "expired", "pickup", "place", "warm", "season", "handoff"]);
+const DISHES = [...RECIPES].sort((a, b) => b.name.length - a.name.length);
+const FOODS = Object.keys(FOOD_RULES).sort((a, b) => b.length - a.length);
+
+function toastPicture(text: string, kind: EventKind | "info"): HTMLElement | null {
+  if (!FOOD_TOASTS.has(kind)) return null;
+  const lower = text.toLowerCase();
+  const dish = DISHES.find((r) => lower.includes(r.name.toLowerCase()));
+  if (dish) return dishImage(dish);
+  const food = FOODS.find((f) => lower.includes(f.toLowerCase()));
+  if (!food) return null;
+  const state = kind === "burnt" ? "burnt" : kind === "cooked" || kind === "perfect" || kind === "smoking" ? "cooked" : kind === "chopped" ? "chopped" : "raw";
+  return img(foodIcon(food, state));
+}
+
 function toastWords(text: string): string {
   for (const [pattern, words] of TOAST_WORDS) {
     if (pattern.test(text)) return text.replace(pattern, words).replace(/^Look: $/, "Look here").replace(/^./, (c) => c.toUpperCase());
@@ -179,7 +248,7 @@ function toastWords(text: string): string {
   return text.match(/^.*?[.!?](?=\s|$)/)?.[0].replace(/\.$/, "") ?? text;
 }
 
-const GOOD = new Set<EventKind | "info">(["served", "cooked", "chopped", "perfect", "order", "phone", "season", "paid"]);
+const GOOD = new Set<EventKind | "info">(["served", "cooked", "chopped", "perfect", "order", "phone", "season", "paid", "combo", "critic", "washed"]);
 const SMOKE_BEEP_INTERVAL = 0.6;
 
 interface Sizzle {
@@ -197,6 +266,10 @@ export class Feedback {
   private sizzles = new Map<number, Sizzle>();
   private storm: { source: AudioBufferSourceNode; gain: GainNode } | null = null;
   private smokeTimer = 0;
+  private master: GainNode | null = null;
+  private volume = 1;
+  /** the last second of a shift that ticked */
+  private lastTick = 0;
   private flip = false;
   private time = 0;
   speak = false;
@@ -286,6 +359,13 @@ export class Feedback {
     if (speech && this.speak) this.speakAloud(text, urgent);
   }
 
+  /** A new sticker: for screen readers and the log, with a chime. The sticker pop shows it instead of a toast. */
+  sticker(text: string) {
+    this.announce(text, false);
+    this.addLog(text, false);
+    this.chime(STICKER_SOUND);
+  }
+
   /** Continuous cues that are about state rather than single events. */
   update(game: Game, me: Chef, dt: number) {
     this.time += dt;
@@ -294,6 +374,12 @@ export class Feedback {
     const hearsNow = currentSenses(game, me).hears;
     this.updateSizzles(game, me, hearsNow);
     if (!hearsNow) return;
+    // the last ten seconds tick, the final three a little higher
+    const second = Math.ceil(game.timeLeft);
+    if (game.phase === "playing" && !game.overtime && second <= 10 && second !== this.lastTick) {
+      this.lastTick = second;
+      this.chime(second <= 3 ? TICK_HIGH : TICK);
+    }
 
     this.smokeTimer -= dt;
     if (this.smokeTimer <= 0) {
@@ -336,7 +422,33 @@ export class Feedback {
     const ctx = this.ctx;
     if (!ctx || ctx.state !== "running") return;
     const panner = this.panner(x, z, me);
-    panner.connect(ctx.destination);
+    panner.connect(this.out(ctx));
+    this.notes(notes, panner);
+  }
+
+  /** Every game sound goes through here, so the Sound setting turns them all up or down. */
+  private out(ctx: AudioContext): GainNode {
+    if (!this.master) {
+      this.master = new GainNode(ctx, { gain: this.volume });
+      this.master.connect(ctx.destination);
+    }
+    return this.master;
+  }
+
+  /** 0 (off) to 1 (full). */
+  setVolume(volume: number) {
+    this.volume = volume;
+    this.master?.gain.setTargetAtTime(volume, this.master.context.currentTime, 0.05);
+  }
+
+  /** Notes from nowhere in particular, for things outside the kitchen (a new sticker). */
+  private chime(notes: Note[]) {
+    const ctx = this.ctx;
+    if (ctx?.state === "running") this.notes(notes, this.out(ctx));
+  }
+
+  private notes(notes: Note[], out: AudioNode) {
+    const ctx = this.ctx!;
     const now = ctx.currentTime;
     for (const note of notes) {
       const osc = new OscillatorNode(ctx, { type: note.wave, frequency: note.freq });
@@ -346,7 +458,7 @@ export class Feedback {
       gain.gain.setValueAtTime(0, start);
       gain.gain.linearRampToValueAtTime(note.gain ?? 0.25, start + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, start + note.dur);
-      osc.connect(gain).connect(panner);
+      osc.connect(gain).connect(out);
       osc.start(start);
       osc.stop(start + note.dur + 0.02);
     }
@@ -390,7 +502,7 @@ export class Feedback {
         const panner = this.panner(s.x, s.z, me);
         source.connect(filter).connect(gain).connect(panner);
         whistle.connect(whistleGain).connect(panner);
-        panner.connect(ctx.destination);
+        panner.connect(this.out(ctx));
         source.start();
         whistle.start();
         sizzle = { source, filter, gain, whistle, whistleGain, panner };
@@ -454,7 +566,7 @@ export class Feedback {
     gain.gain.setValueAtTime(0, t);
     gain.gain.linearRampToValueAtTime(own ? 0.05 : 0.22, t + 0.008);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
-    source.connect(filter).connect(gain).connect(panner).connect(ctx.destination);
+    source.connect(filter).connect(gain).connect(panner).connect(this.out(ctx));
     source.start(t, Math.random() * 0.5, 0.12);
   }
 
@@ -466,7 +578,7 @@ export class Feedback {
       const source = new AudioBufferSourceNode(ctx, { buffer: this.noiseBuffer(), loop: true });
       const filter = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 700, Q: 0.4 });
       const gain = new GainNode(ctx, { gain: 0 });
-      source.connect(filter).connect(gain).connect(ctx.destination);
+      source.connect(filter).connect(gain).connect(this.out(ctx));
       source.start();
       gain.gain.setTargetAtTime(0.5, ctx.currentTime, 0.6);
       this.storm = { source, gain };
@@ -510,7 +622,8 @@ export class Feedback {
     el.className = `toast ${tone}`;
     const icon = document.createElement("span");
     icon.className = "icon";
-    icon.append(glyph(TOAST_ICONS[kind] ?? "signs"));
+    const picture = toastPicture(text, kind);
+    icon.append(picture ?? glyph(TOAST_ICONS[kind] ?? "signs"));
     const body = document.createElement("span");
     body.className = "text";
     body.textContent = toastWords(text);

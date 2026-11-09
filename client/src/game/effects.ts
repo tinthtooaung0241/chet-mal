@@ -1,6 +1,7 @@
 // Particles that make the kitchen feel alive and add visual cues for sighted chefs:
 // steam while cooking, grey smoke when food is about to burn, black smoke once it has,
-// bits flying off the board while chopping, and confetti at the pass for a served dish.
+// bits flying off the board while chopping, flames on a stove that caught fire, and confetti at
+// the pass for a served dish.
 // (The "perfect" moment stays sound-only by design, so there is no sparkle for it.)
 import {
   Color4,
@@ -11,7 +12,7 @@ import {
 } from "@babylonjs/core";
 import { FOOD_RULES, potPhase, stovePhase, targetStation, type Game } from "@kitchen/shared";
 
-type Kind = "steam" | "smoke" | "burnt" | "bits";
+type Kind = "steam" | "smoke" | "burnt" | "bits" | "fire";
 
 const BITS_COLOR: Record<string, string> = {
   Tomato: "#d8392b",
@@ -56,8 +57,25 @@ export class Effects {
     const ps = new ParticleSystem(`fx-${kind}`, kind === "bits" ? 80 : 160, this.scene);
     ps.particleTexture = this.dot;
     ps.emitter = at.clone();
-    ps.blendMode = ParticleSystem.BLENDMODE_STANDARD;
+    ps.blendMode = kind === "fire" ? ParticleSystem.BLENDMODE_ADD : ParticleSystem.BLENDMODE_STANDARD;
     switch (kind) {
+      case "fire":
+        ps.minEmitBox = new Vector3(-0.16, 0, -0.12);
+        ps.maxEmitBox = new Vector3(0.16, 0, 0.12);
+        ps.color1 = new Color4(1, 0.62, 0.15, 0.95);
+        ps.color2 = new Color4(1, 0.35, 0.08, 0.85);
+        ps.colorDead = new Color4(0.6, 0.1, 0.02, 0);
+        ps.minSize = 0.1;
+        ps.maxSize = 0.24;
+        ps.minLifeTime = 0.35;
+        ps.maxLifeTime = 0.7;
+        ps.direction1 = new Vector3(-0.1, 1, -0.1);
+        ps.direction2 = new Vector3(0.1, 1, 0.1);
+        ps.minEmitPower = 0.6;
+        ps.maxEmitPower = 1.1;
+        ps.addSizeGradient(0, 1);
+        ps.addSizeGradient(1, 0.3);
+        break;
       case "steam":
         ps.minEmitBox = new Vector3(-0.08, 0, -0.08);
         ps.maxEmitBox = new Vector3(0.08, 0, 0.08);
@@ -135,7 +153,9 @@ export class Effects {
       let steam = 0;
       let smoke = 0;
       let burnt = 0;
-      if (s.kind === "stove" && s.item?.type === "food") {
+      const fire = s.fire ? 90 : 0;
+      if (s.fire) burnt = 20;
+      else if (s.kind === "stove" && s.item?.type === "food") {
         const phase = stovePhase(s.item);
         if (s.item.state === "burnt" && FOOD_RULES[s.item.kind]?.cookFrom) burnt = 14;
         else if (phase === "smoking") smoke = 26;
@@ -151,6 +171,7 @@ export class Effects {
       this.set(`steam-${s.id}`, "steam", top, steam);
       this.set(`smoke-${s.id}`, "smoke", top, smoke);
       this.set(`burnt-${s.id}`, "burnt", top, burnt);
+      this.set(`fire-${s.id}`, "fire", top, fire);
     }
 
     // chopping: bits fly off the board in the ingredient's colour

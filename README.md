@@ -1,6 +1,6 @@
 # Kitchen Co-op
 
-A web co-op cooking game for three friends, won by talking: a **head chef** who runs the pass (sees every order and how each dish is going, but doesn't cook), a **deaf chef** who cooks by sight, and a **mute chef** who cooks and hears everything but talks only with pings, signs and a bell. Nobody has all the information, so the team has to pass it around. A **blind cook** role (the whole game by sound) stays available as an accessibility option. See [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md).
+A web co-op cooking game for three friends, won by talking: a **head chef** who runs the pass (sees every order and how each dish is going, but doesn't cook), a **deaf chef** who cooks by sight, and a **mute chef** who cooks and hears everything but talks only with pings, signs and a bell. Nobody has all the information, so the team has to pass it around. How it plays and scores: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md). What's next: [ROADMAP.md](ROADMAP.md).
 
 Cooking works like a real kitchen, sped up: one storage corner holds two reach-in fridges (meat and fish; dairy and greens, which go off if left out too long) and two pantry shelves (root vegetables; bread and tomatoes). Every dish is seasoned the way it really is (grilled fish with salt, lemon and herbs; fish & chips with salt and malt vinegar...) from a spice rack by the stoves holding salt, pepper, olive oil, butter, lemon, fresh herbs, soy sauce and malt vinegar. Customers walk in, sit at a table on the terrace, come to the pass for their dish, eat, then pay at the till on the pass, by cash or card as they ask (1 or 2 at the till), or storm off if their order runs out. What they pay is your restaurant's money, kept between shifts. Spend it on equipment upgrades (sharp knives, better fridge seals, copper pans, a tip jar, a neon sign) at the till or from the title screen.
 
@@ -18,12 +18,16 @@ npm run dev:client   # game on http://localhost:5180
 
 Open http://localhost:5180, then either **Practice solo** or **Create a kitchen**, and send the invite link to two friends.
 
-Production (one process serves the game and the server):
+Production (one process serves the game and the server). `npm run build` builds the client
+with Vite and bundles the server with esbuild into `server/dist/index.js`, so the host only needs
+Node, not tsx:
 
 ```bash
 npm run build
-npm start            # http://localhost:8787
+npm run start:prod   # http://localhost:8787 (PORT sets another port)
 ```
+
+`npm start` still runs the server from source with tsx.
 
 ## Layout
 
@@ -41,3 +45,23 @@ npm start            # http://localhost:8787
 
 W/S walk · A/D step sideways · mouse or ←/→ look · Space/E use · 1–8 at a fridge or spice rack (or scroll / [ ] then Space) · hold F chop · H take a teammate's hand · Q describe surroundings · R recipe book · V first-person/overhead · P pause (solo) · 0–4 switch chef (solo).
 Mute chef: G ping · B bell · hold T + 1–6 emotes.
+
+## Going online: domain, CDN, error tracking, analytics
+
+Everything below is off until you add keys, so local play needs none of it.
+
+1. **Domain.** Buy one (Cloudflare Registrar or Namecheap) and point it at your game host
+   (Render/Railway give you a CNAME target).
+2. **CDN.** Add the domain to Cloudflare, proxy it (orange cloud) and turn on WebSockets
+   (on by default). The server already sends the right headers: hashed `/assets/*` files are
+   cached for a year, `index.html` is never cached, and text files are gzipped.
+3. **Error tracking (Sentry).** Make a "Browser JavaScript" project and a "Node" project.
+   Set `VITE_SENTRY_DSN` when building the client and `SENTRY_DSN` on the server.
+4. **Analytics (PostHog).** Make a project and set `VITE_POSTHOG_KEY` (and `VITE_POSTHOG_HOST`
+   for the EU cloud) when building the client. The game sends `shift_start` and `shift_end`
+   (level, stars, coins, players). Players can turn this off in Settings → Share play stats.
+5. **Voice relay (TURN).** Phones on mobile data often can't connect voice directly. Get TURN
+   credentials (Cloudflare Calls, Twilio Network Traversal, metered.ca, or your own coturn) and
+   set `VITE_TURN_URL`, `VITE_TURN_USERNAME` and `VITE_TURN_CREDENTIAL` when building the client.
+
+See `client/.env.example` for the variable names.

@@ -1,7 +1,11 @@
 // A Session is where the game runs: in this browser (solo) or on the server (online).
 // The rest of the client only talks to this interface.
+import { helperOn } from "./helper";
+import { myLook } from "./looks";
 import {
   SNAPSHOT_HZ,
+  addBot,
+  stepBots,
   addChef,
   chopHint,
   createGame,
@@ -25,6 +29,7 @@ import {
   type LobbyPlayer,
   type Role,
   type ServerMessage,
+  type TwistId,
 } from "@kitchen/shared";
 import { loadBusiness } from "./business";
 
@@ -51,9 +56,17 @@ export class LocalSession implements Session {
   game: Game;
   me: Chef;
 
-  constructor(role: Role, level = 1) {
-    this.game = createGame(level, loadBusiness().upgrades);
+  /** @param twist a daily special's twist; helper: a porter bot cooks alongside you */
+  constructor(
+    role: Role,
+    level = 1,
+    twist?: TwistId,
+    private readonly helper = helperOn(),
+  ) {
+    this.game = createGame(level, loadBusiness().upgrades, twist);
     this.me = addChef(this.game, "solo", role, "You");
+    this.me.look = myLook();
+    if (helper) addBot(this.game);
   }
 
   setRole(role: Role) {
@@ -61,6 +74,7 @@ export class LocalSession implements Session {
   }
 
   step(dt: number, input: Input) {
+    stepBots(this.game, dt);
     update(this.game, this.me, dt, input);
   }
 
@@ -83,8 +97,12 @@ export class LocalSession implements Session {
 
   restart(level = this.game.level) {
     const role = this.me.role;
-    this.game = createGame(level, loadBusiness().upgrades); // anything bought since is in place now
+    // playing again keeps a daily special's twist; another level is a normal shift
+    const twist = level === this.game.level ? this.game.twist : undefined;
+    this.game = createGame(level, loadBusiness().upgrades, twist); // anything bought since is in place now
     this.me = addChef(this.game, "solo", role, "You");
+    this.me.look = myLook();
+    if (this.helper) addBot(this.game);
   }
 }
 
@@ -97,12 +115,16 @@ export interface LobbyState {
   players: LobbyPlayer[];
   playing: boolean;
   level: number;
+  twist: TwistId | null;
 }
 
 const ID_KEY = "kitchen.playerId";
 const MOVE_HZ = 20;
 
 /** Online play. The server runs the kitchen; this client moves its own chef and reports it. */
+/** how many times a dropped connection is retried (1, 2, 4, 8, 8, 8 s apart) */
+const RECONNECT_TRIES = 6;
+
 export class NetSession implements Session {
   readonly online = true;
   game: Game | null = null;
@@ -119,22 +141,50 @@ export class NetSession implements Session {
   onError: (message: string) => void = () => {};
   onStart: () => void = () => {};
   onRtc: (from: string, data: unknown) => void = () => {};
+  /** the connection is gone for good (reconnecting didn't work, or there was never a kitchen) */
   onClose: () => void = () => {};
+  /** the connection dropped and we're trying again (attempt 1, 2, ...); then back in */
+  onReconnecting: (attempt: number) => void = () => {};
+  onReconnected: () => void = () => {};
+  /** failed reconnects in a row, and whether we've ever been let in */
+  private retries = 0;
+  private reconnecting = false;
 
-  constructor(name: string, room: string) {
+  constructor(
+    private readonly name: string,
+    private room: string,
+  ) {
+    this.ws = this.open();
+  }
+
+  /** Connect (again): the server gives a returning chef their seat back, by id. */
+  private open(): WebSocket {
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    this.ws = new WebSocket(`${proto}://${location.host}/ws`);
-    this.ws.addEventListener("open", () => {
+    const ws = new WebSocket(`${proto}://${location.host}/ws`);
+    ws.addEventListener("open", () => {
       let id: string | undefined;
       try {
         id = sessionStorage.getItem(ID_KEY) ?? undefined;
       } catch {
         // no storage: we just can't rejoin after a refresh
       }
-      this.send({ t: "hello", name, room, id });
+      this.send({ t: "hello", name: this.name, room: this.lobby?.room ?? this.room, id, look: myLook() });
     });
-    this.ws.addEventListener("message", (e) => this.receive(JSON.parse(e.data) as ServerMessage));
-    this.ws.addEventListener("close", () => this.onClose());
+    ws.addEventListener("message", (e) => this.receive(JSON.parse(e.data) as ServerMessage));
+    ws.addEventListener("close", () => this.dropped());
+    return ws;
+  }
+
+  /** Lost the connection: once we've been in a kitchen, try again a few times, waiting longer each time. */
+  private dropped() {
+    if (!this.lobby || this.retries >= RECONNECT_TRIES) {
+      this.onClose();
+      return;
+    }
+    this.retries += 1;
+    this.reconnecting = true;
+    this.onReconnecting(this.retries);
+    setTimeout(() => (this.ws = this.open()), Math.min(8000, 1000 * 2 ** (this.retries - 1)));
   }
 
   get me(): Chef | null {
@@ -153,16 +203,21 @@ export class NetSession implements Session {
   private receive(msg: ServerMessage) {
     switch (msg.t) {
       case "welcome":
+        this.retries = 0;
+        if (this.reconnecting) {
+          this.reconnecting = false;
+          this.onReconnected();
+        }
         try {
           sessionStorage.setItem(ID_KEY, msg.you);
         } catch {
           // ignore
         }
-        this.lobby = { you: msg.you, room: msg.room, host: "", players: [], playing: false, level: 1 };
+        this.lobby = { you: msg.you, room: msg.room, host: "", players: [], playing: false, level: 1, twist: null };
         return;
       case "lobby":
         if (!this.lobby) return;
-        this.lobby = { ...this.lobby, players: msg.players, host: msg.host, playing: msg.playing, level: msg.level };
+        this.lobby = { ...this.lobby, players: msg.players, host: msg.host, playing: msg.playing, level: msg.level, twist: msg.twist ?? null };
         this.onLobby(this.lobby);
         return;
       case "snap": {
@@ -200,12 +255,12 @@ export class NetSession implements Session {
     this.send({ t: "role", role });
   }
 
-  chooseLevel(level: number) {
-    this.send({ t: "level", level });
+  chooseLevel(level: number, twist: TwistId | null = null) {
+    this.send({ t: "level", level, twist });
   }
 
   start() {
-    this.send({ t: "start", upgrades: loadBusiness().upgrades });
+    this.send({ t: "start", upgrades: loadBusiness().upgrades, helper: helperOn() });
   }
 
   step(dt: number, input: Input) {
@@ -245,6 +300,7 @@ export class NetSession implements Session {
   }
 
   close() {
+    this.retries = RECONNECT_TRIES; // on purpose: don't come back
     this.ws.close();
   }
 }

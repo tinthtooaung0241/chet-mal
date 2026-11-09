@@ -172,7 +172,8 @@ export function guideFor(g: Game, chef: Chef): Guide | null {
       steps.push({ text: `Soup of ${spiceList(recipe.items.map((i) => lower(i.kind)))}`, done: soup });
       if (!soup) {
         const pot = nearest(g, chef, (s) => s.kind === "pot");
-        if (pot?.pot?.state === "done") go(dish ? "Ladle the soup into your bowl" : "Take a bowl from the bowl rack", dish ? pot : nearest(g, chef, (s) => s.kind === "bowls"));
+        if (!dish && g.dishes?.bowls === 0) go("No clean bowls: hold F at the sink to wash one", nearest(g, chef, (s) => s.kind === "sink"));
+        else if (pot?.pot?.state === "done") go(dish ? "Ladle the soup into your bowl" : "Take a bowl from the bowl rack", dish ? pot : nearest(g, chef, (s) => s.kind === "bowls"));
         else if (pot?.pot?.state === "cooking") go("The soup is boiling: grab a bowl and wait", nearest(g, chef, (s) => s.kind === "bowls"));
         else {
           const have = pot?.pot?.contents.map((f) => f.kind) ?? [];
@@ -199,7 +200,8 @@ export function guideFor(g: Game, chef: Chef): Guide | null {
           if (lying && lying.food.state === it.state && remote) {
             go(`Pick up the ${food(it.kind, it.state)} and add it to the plate`, lying.at);
           } else if (lying && lying.food.state === it.state && !dish && lying.at.kind !== "stove") {
-            go(`Get a plate, then add the ${food(it.kind, it.state)}`, nearest(g, chef, (s) => s.kind === "plates"));
+            if (g.dishes?.plates === 0) go("No clean plates: hold F at the sink to wash one", nearest(g, chef, (s) => s.kind === "sink"));
+            else go(`Get a plate, then add the ${food(it.kind, it.state)}`, nearest(g, chef, (s) => s.kind === "plates"));
           } else if (lying && lying.food.state === it.state) {
             go(`${dish ? "Add" : "Pick up"} the ${food(it.kind, it.state)}`, lying.at);
           } else if (lying?.at.kind === "board" && lying.food.state === "raw" && needsChop(it)) {

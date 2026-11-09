@@ -21,6 +21,7 @@ import {
   type FoodState,
   type Station,
   ROLES,
+  spillUnder,
 } from "@kitchen/shared";
 import { glyph, img, renderedIcon } from "../ui/icons";
 
@@ -126,6 +127,7 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
   const held = me.held;
   const st = targetStation(g, me);
   if (!st) {
+    if (!held && spillUnder(g, me)) return [{ key: "F", text: "Hold to mop the spill" }];
     const mate = chefInFront(g, me);
     if (mate && held?.type === "food" && mate.held?.type === "plate") return [{ key: "Space", text: `Put on ${mate.name.split(" (")[0]}'s plate` }];
     if (mate && held && !mate.held) return [{ key: "Space", text: `Hand to ${mate.name.split(" (")[0]}` }];
@@ -133,6 +135,8 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
     return [];
   }
   const use = (text: string): Prompt => ({ key: "Space", text });
+  if (st.fire) return [{ key: "F", text: "Hold to smother the fire!" }];
+  if (!held && spillUnder(g, me)) return [{ key: "F", text: "Hold to mop the spill" }];
   switch (st.kind) {
     case "crate":
       if (!held) return [use(`Take ${article(st.crate!.toLowerCase())}`)];
@@ -142,7 +146,9 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
     case "plates":
     case "bowls": {
       const thing = st.kind === "plates" ? "plate" : "bowl";
-      if (!held) return [use(`Take a ${thing}`)];
+      const clean = g.dishes ? (thing === "plate" ? g.dishes.plates : g.dishes.bowls) : null;
+      if (clean === 0 && (!held || (thing === "plate" && held.type === "food"))) return [{ text: `No clean ${thing}s: wash some at the sink` }];
+      if (!held) return [use(`Take a ${thing}${clean === null ? "" : ` (${clean} clean)`}`)];
       if (held.type === thing && (held.type === "plate" ? !held.contents.length : !held.soup)) return [use("Put it back")];
       if (thing === "plate" && held.type === "food") return [use("Plate it")];
       return [{ text: "Hands full" }];
@@ -159,8 +165,11 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
         return [{ text: held?.type === "food" ? "Plate it first" : "Bring a finished dish" }, g.charmWait > 0 ? { text: `Wave again in ${Math.ceil(g.charmWait)}s` } : { key: "B", text: "Wave: tables wait longer" }];
       }
       return [{ text: held?.type === "food" ? "Plate it first" : "Bring a finished dish" }];
-    case "sink":
-      return [];
+    case "sink": {
+      const dirty = g.dishes ? g.dishes.dirtyPlates + g.dishes.dirtyBowls : 0;
+      if (!dirty) return [{ text: "Nothing to wash" }];
+      return [held ? { text: "Empty hands to wash up" } : { key: "F", text: `Hold to wash (${dirty} dirty)` }];
+    }
     case "register": {
       const payer = payingDiners(g)[0];
       if (!payer) return [{ key: "Space", text: "Upgrades shop" }];

@@ -3,7 +3,8 @@
 // same keys as the keyboard, so every action works the same way. The buttons light up when they'd
 // do something, and Use shows what it will do ("Pick up", "Serve"...).
 
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+import { readText, writeText } from "./storage";
+import { $ } from "./ui/dom";
 
 /** Whether this device is mainly touch (a phone or tablet), or the page asked for touch controls. */
 export const wantsTouch = () =>
@@ -111,21 +112,13 @@ export class TouchControls {
     };
     // the first time only: a little "Move" over the stick
     const hint = $("touch-joy-hint");
-    try {
-      hint.hidden = localStorage.getItem("moved") === "1";
-    } catch {
-      hint.hidden = false;
-    }
+    hint.hidden = readText("moved") === "1";
     zone.addEventListener("pointerdown", (e) => {
       // a new thumb on the stick always takes it, even if the phone swallowed the last one's lift
       // (an edge swipe in full screen goes to the system and never tells the page)
       if (!hint.hidden) {
         hint.hidden = true;
-        try {
-          localStorage.setItem("moved", "1");
-        } catch {
-          // private mode: it just shows again next time
-        }
+        writeText("moved", "1");
       }
       e.preventDefault();
       joyId = e.pointerId;

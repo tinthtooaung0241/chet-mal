@@ -3,6 +3,11 @@
 const FOCUSABLE = "button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex='0']";
 
 export function setupMenuKeys() {
+  // the focus ring is only for people moving around by keyboard, not after a menu just opens
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Tab" || e.key.startsWith("Arrow")) document.body.classList.add("keyboard-nav");
+  }, true);
+  document.addEventListener("pointerdown", () => document.body.classList.remove("keyboard-nav"), true);
   document.addEventListener("keydown", (e) => {
     if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
     const target = e.target instanceof HTMLElement ? e.target : null;

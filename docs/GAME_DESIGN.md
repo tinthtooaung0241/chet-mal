@@ -1,167 +1,192 @@
-# Kitchen Co-op — Game Design
+# Kitchen Co-op: game design
 
-Three friends run one kitchen. One chef is blind, one is deaf, one can't speak. Nobody has all the information, and every chef has something nobody else has. Most of the fun is in passing information between the three of them.
+Up to three friends run one kitchen. The head chef sees and hears everything but doesn't cook.
+The deaf chef cooks by sight. The mute chef sees and hears everything but can only signal. Nobody
+has all the information, so the team has to pass it around. What to build next is in
+[ROADMAP.md](../ROADMAP.md).
 
-Inspirations: *Overcooked* (kitchen chaos), *Keep Talking and Nobody Explodes* (split information that has to be talked through), *Spaceteam* (shouting under pressure).
-
----
+Inspirations: kitchen-chaos co-op games, *Keep Talking and Nobody Explodes* (information that has
+to be talked through) and *Spaceteam* (shouting under pressure).
 
 ## 1. Design pillars
 
-1. **Every chef is the best at something.** Each role is built around a strength, not a missing sense. If a role has nothing only it can do, the design is wrong.
-2. **Information is split by sense.** Each order, timer and danger reaches the kitchen through sight or sound (sometimes both). Whoever perceives it has to get it to whoever needs it.
-3. **Limits on communication drive the gameplay.** The comedy and tension come from relaying information under time pressure. The cooking itself stays simple.
-4. **Each role is fully playable by someone who has that disability.** A blind player can play the blind chef by audio alone. A deaf player can play the deaf chef with no sound. A player who doesn't speak never needs a microphone. Players without disabilities get the same experience because the game filters their senses for them.
+1. **Every chef is the best at something.** Each role is built around a strength, not a missing
+   sense.
+2. **Information is split by sense.** Every order, timer and danger reaches the kitchen by sight,
+   sound or touch. Whoever perceives it has to get it to whoever needs it.
+3. **Limits on talking drive the game.** The tension comes from passing information under time
+   pressure, not from fiddly controls.
+4. **Each role can be played by someone with that disability.** A deaf player never needs sound,
+   and a player who doesn't speak never needs a microphone.
+5. **One new idea per level.** A briefing card introduces it before the shift starts.
 
----
+## 2. The chefs
 
-## 2. The three chefs
+| | Head chef | Deaf chef | Mute chef | Solo (all senses) |
+|---|---|---|---|---|
+| **Perceives** | Sight and sound | Sight only | Sight and sound | Sight and sound |
+| **Talks with** | Voice and signals | Voice | Signals only: ping (G), signs (T), bell (B) | — |
+| **Cooks** | No: plates, finishes and serves | Yes | Yes | Yes |
+| **Only they can** | See every ticket and hear every call, and run the pass | Play through a storm unaffected | Charm the tables (B at the pass: +8 s for every order, then 35 s rest) | — |
 
-| | Blind chef — *the Listener* | Deaf chef — *the Watcher* | Mute chef — *the Signaler* |
-|---|---|---|---|
-| **Perceives** | Sound only (game audio + voice chat) | Sight only (no game audio, no voice) | Sight **and** sound — the only one who gets everything |
-| **Can say** | Voice | Voice | No voice: pings, emote wheel, bell, whiteboard |
-| **Superpower** | Perfect hearing: hears the *perfect* sizzle, phone orders, hidden pests, impatient customers | Eagle eye: reads tickets and the recipe book, spots mould, judges plating | Fastest hands (chops and plates fastest), and is the team's translator |
-| **Natural station** | Stove / grill | Pass: reading tickets, plating, serving | Prep: chopping and running food |
-| **Gets help with** | Finding things and knowing what's on the ticket | Anything that only makes a sound | Getting their knowledge across quickly |
+Chefs can hand things to each other (use while facing a teammate) and lead each other by the hand
+(H). A ping (G) names what you hold or point at.
 
-### Who can talk to whom
+**Helper bot (optional):** a porter that puts out fires, mops spills, washes up, and otherwise fetches
+and chops what the orders need. It never cooks, plates or serves, and doesn't count towards the
+crew size.
 
-| from ↓ / to → | Blind | Deaf | Mute |
-|---|---|---|---|
-| **Blind** | — | ✘ (except lip-reading up close, see §6) | ✔ voice |
-| **Deaf** | ✔ voice | — | ✔ voice |
-| **Mute** | ✔ bell / knocks / hand-lead | ✔ pings / emotes / pointing | — |
+## 3. Information by sense
 
-Each pair has *some* channel, but no single chef has every channel. The deaf chef can broadcast to everyone but can't receive voice. The mute chef receives everything but can only send signals. The blind chef can't tell the deaf chef anything directly, so the mute chef usually relays between them.
+Every `GameEvent` names the senses that carry it (`sight`, `sound`, `touch`). `perceivesEvent()`
+decides what reaches each chef, so each client shows only what its chef could know. "Touch" reaches
+only the chef who did something.
 
----
+| Information | Sense |
+|---|---|
+| Ticket orders | sight |
+| Phone orders (said once) | sound |
+| Food is cooked, smoking, burnt | sight and sound |
+| The perfect sizzle (bonus timing) | sound only |
+| An impatient ticket (it turns red) / phone caller (a sigh) | sight / sound |
+| Mouldy produce | sight, or sniff it (Z) |
+| A customer at the till, the food critic walking in | sight and sound |
+| Power cut | nobody sees |
+| Storm | nobody hears |
 
-## 3. Information is tagged by sense
+## 4. A shift
 
-Every piece of game information has a source:
+1. **The briefing card** shows what's new on this level and a tip for your role. Solo, the kitchen
+   waits while any card or menu is open.
+2. **Orders arrive.** Each one is a ticket (seen) or a phone call (heard). Each brings a customer
+   who sits at a terrace table. A shift starts with two orders; a new one comes every 20 s, with up
+   to 4 open at once (3 on the opening levels).
+3. **Cook the dish.**
+   1. Fetch ingredients from crates, fridges or pantry shelves.
+   2. Chop on a board (hold F, 1.8 s).
+   3. Season at the rack. Some spices go on before cooking, some straight after.
+   4. Cook on a stove, or in the soup pot (three chopped ingredients, 10 s).
+   5. Plate it, or ladle soup into a bowl.
+   6. Add the finishing spices on top.
+4. **Serve at the pass.** The customer collects the dish, eats, then queues at the till. Ring them
+   up the way they want to pay (1 cash, 2 card). They wait 30 s at the till before leaving
+   unpaid.
+5. **Time's up** after 170 to 240 s. The end screen shows:
+   - stars and the score;
+   - a report of where the points came from and went, with one tip;
+   - an award for each chef;
+   - any stickers earned.
 
-| Information | Sense | Who gets it directly |
-|---|---|---|
-| **Ticket orders** (from the printer) | sight | Deaf, Mute |
-| **Phone orders** (customer calls in) | sound | Blind, Mute |
-| Cooking colour (raw → brown → black) | sight | Deaf, Mute |
-| **Perfect sizzle window** (bonus timing) | sound only | Blind (best ear), Mute |
-| Oven *ding* (timer done) | sound only | Blind, Mute |
-| Smoke / flames | sight + sound | everyone (fire is never single-channel) |
-| Mouldy ingredient | sight (spots) | Deaf, Mute |
-| Spoiled ingredient (smell) | "sniff" action, sound cue | Blind |
-| Customer patience | sound (sighs, tapping) **or** sight (face) | depends on the order |
-| Pest in the kitchen | sound (scurrying) | Blind, Mute |
-| Plating diagram (presentation bonus) | sight | Deaf, Mute |
+### Cooking timings
 
-This changes the current code. Today `Feedback` delivers **every** event through sound, visuals and text to the local player. Instead, each event carries a `senses` tag, and each client **filters by role** before presenting:
+- **Food:** cooked after its cook time (4 to 8 s). The perfect window opens 0.8 s later and lasts
+  1.6 s. You can only hear it.
+- **Burning:** food smokes halfway to burning and burns after its burn time (5 to 7 s more).
+- **Soup:** boils dry 12 s after it's ready.
+- **Cold food** (from level 4): warns after 35 s out of the fridge, and goes off at 50 s.
 
-- **Blind client:** perceives `sound` events and presents them as panned audio plus screen-reader text. Sight-only events never arrive.
-- **Deaf client:** perceives `sight` events and presents them as visuals plus the text log. Sound-only events never arrive. Its voice chat is muted.
-- **Mute client:** perceives everything. Its microphone is disabled and the ping/emote wheel replaces voice.
+## 5. Scoring
 
-The text log and screen reader stay, but they only describe what that role could actually perceive.
+**A served dish** is worth `max(5, price + speed + perfect + seasoning)`:
 
----
+- **price:** 20 to 45 points, set by the recipe;
+- **speed:** up to 10, for the share of the customer's patience left;
+- **perfect:** +10 for each item taken off at the sizzle's peak;
+- **seasoning:** +5 if everything is right; −5 for each missing or extra spice, −3 for each spice
+  added at the wrong step.
 
-## 4. Core mechanics
+That total is then multiplied by 1.5 in rush hour, and by the daily twist's pay.
 
-### 4.1 Split orders
-Orders arrive two ways and the team has to merge them:
-- **Ticket printer** (visual): a written ticket with a timer bar. The deaf chef usually reads it out loud.
-- **Phone** (audio): the phone rings and a customer reads their order once. The blind chef can ask the mute chef to repeat it with the bell, but the phone never replays it.
+**Combo:** each dish served within 30 s of the last adds +5 per dish in the chain, up to +20.
+Combo party doubles this.
 
-Later levels mix both: *"Steak — ticket says medium, phone caller added fries."*
+**Losing points** (the score never goes below 0):
 
-### 4.2 Sound-timed cooking — the blind chef's stage
-- Every cookable has a **perfect window** inside "cooked", marked by a distinct sizzle pitch. Taking it off then gives a **Perfect** dish (bonus points and a star toward level rating).
-- The window is **audio-only**. Sighted chefs see only cooked vs burnt colour, so they can cook fine, but only by ear can you cook perfectly.
-- Burning is visible *and* audible, because danger is never single-channel.
+| What happened | Cost |
+|---|---|
+| A customer gives up | −10 (a critic: −20) |
+| A customer gets sick from spoiled food | −15 |
+| A dish nobody ordered | wasted, and the combo ends |
 
-### 4.3 Signals — the mute chef's voice
-- **Ping (point):** marks a spot or item with an icon the deaf chef sees. To the blind chef it plays as a *spatial chime* from that spot, so a ping works for both.
-- **Emote wheel:** 8 words: *yes, no, here, hurry, stop, done*, plus the item icon in hand. Seen by deaf. Each also has a distinct short sound for blind.
-- **Bell:** a counter bell the mute chef rings. Blind and Mute hear it. Teams invent their own codes ("two rings = steak ready").
-- **Whiteboard:** draw or write by the pass. The deaf chef reads it. A slow channel, but it holds a lot of detail.
+**Coins:** each customer pays their dish's points at the till (+20% with the tip jar). Coins go
+into the restaurant's money for upgrades. The all-time total opens new restaurants.
 
-### 4.4 Lead by the hand
-Any chef can **take the blind chef's hand** (hold E near them). While holding hands, the blind chef is guided along at walking pace and hears a gentle pull in the guide's direction. It's the fastest way to bring the blind chef to a new station. Either chef can let go.
+**Stars:** each level sets the points for 1, 2 and 3 stars. A crew of three needs 25% more and gets
+orders about 15% more often.
 
-### 4.5 Hand-offs
-Items can be passed **directly** between chefs (face each other, press use). The blind chef hears a clear "received: raw steak" cue with a unique sound per ingredient: crunch for lettuce, squish for tomato, slap for steak. Over time players learn the sounds and stop needing the text.
+## 6. Pressure
 
-### 4.6 Touch and smell (blind tools)
-- **Feel** (automatic on pickup): identifies the item by sound and screen-reader text.
-- **Sniff** (key): tells fresh from spoiled. Spoiled food served is a big penalty. The deaf chef can catch the same problem by spotting mould. Either sense works, and both chefs are useful for it.
+- **Patience:** each recipe sets how long its customer waits (60 to 100 s). That time grows on easy
+  levels and in the tutorial, and with the neon sign.
+- **Rush hour** (from level 3): once a shift, from 45% of the way in, for 35 s. Orders come twice
+  as fast and pay 1.5×.
+- **Food critic** (from level 4): once a shift, somewhere between 20% and 70% of the way in.
+  - They wait three-quarters as long as other customers.
+  - A dish seasoned just right and served before their ticket turns red earns a rave review:
+    +25 points, and they pay their bill twice over.
+  - If they walk out, it costs 20 points.
+- **Spoiled produce** (levels 5, 6 and 10): 10 to 25% of crate produce is mouldy.
+- **Power cuts and storms** (levels 6 and 10): power cuts make everyone talk; storms make everyone
+  watch the deaf chef.
+- **Fires** (from level 2): burnt food left on a stove for 8 s catches fire.
+  - It costs 10 points, and spreads to the next stove after 12 s.
+  - Hold F at it for 1.5 s to smother it. Anyone can.
+- **Oil spills** (from level 6, once a shift): chefs in the puddle move at 45% speed until someone
+  holds F on it for 2 s.
+- **Washing up** (from level 5, except 7): the racks hold 4 plates and 3 bowls. Every eaten or
+  wasted dish comes back dirty; hold F at the sink for 1.5 s to wash one.
+- **Kids** (from level 3): one customer in five wants the dish plain, with no seasoning at all.
+- **Layouts:** levels 4 to 6 and 8 to 10 each rearrange the middle of the room: an island,
+  a split kitchen, or a corridor behind the stoves.
 
-### 4.7 Role-reversal events
-Mid-shift chaos events flip who leads, so each chef gets a hero moment:
-- **Power cut:** the lights go out for 20 seconds. Everyone else is effectively blind, but the blind chef plays exactly as usual and becomes the team's guide.
-- **Extractor fan breaks / thunderstorm:** a roar drowns out game sound and voice. Everyone else loses their hearing, but the deaf chef is unaffected and leads by sight.
-- **Rush hour:** too many orders to talk through. Teams fall back on the mute chef's quick signals, and their pings become the fastest communication.
+## 7. Between shifts
 
----
+- **Levels:**
+  - Street food stand: levels 1 to 6.
+  - Burmese restaurant: levels 7 to 10. It opens at 500 total sales and a star on Storm night.
+  - A tutorial kitchen, which the very first *Let's Play* opens.
+- **Upgrades** (60 to 120 coins), each in place from the next shift:
+  - sharp knives;
+  - better fridge seals;
+  - copper pans;
+  - a tip jar;
+  - a neon sign.
+- **Daily special:** one shift a day with a twist. Friends get the same one, and no twist comes
+  two days in a row.
+  - The twists are Busy day, Big tippers, Combo party, Stormy night, Power trouble, Critics in
+    town, Picky eaters, Phone frenzy and Half the menu.
+  - The first finish each day with a star pays 40 coins, plus 10 for each day of streak (up to
+    +50).
+- **Overtime:** a shift that has three stars when the clock runs out keeps going, busier and
+  busier, until a customer gives up (2 minutes at most). Each level keeps its high score.
+- **Shop:** besides upgrades, hats for your chef (seen by everyone) and decor for the terrace (seen
+  in your own game).
+- **Stickers:** 25 stickers in an album in the play menu, for moments and long goals:
+  - a perfect sizzle;
+  - a 6× combo;
+  - cooking in the dark;
+  - a rave review;
+  - no lost customers;
+  - a 7-day streak;
+  - three stars at a restaurant.
 
-## 5. A round in practice
+## 8. Where it lives
 
-> 🔔 *Phone rings.* **Blind** hears: "Two steaks, and fries!" and says it out loud.
-> **Mute** heard it too and pings the fridge twice with a steak icon so **Deaf** knows.
-> **Deaf** reads the printer: "Salad, no onion" and says it out loud for everyone.
-> **Mute** chops lettuce and tomato at double speed; **Deaf** carries steaks to the stove and hands them to **Blind**. *Slap* — "received: raw steak."
-> **Blind** listens… the sizzle rises… *now*. "Steaks perfect!" **Mute** rings the bell twice; **Deaf** sees the ping on the pass, plates them to the diagram, and serves.
-> *Lights flicker. Power cut.* Everyone freezes except **Blind**: "Follow my voice, I've got the stove."
-
----
-
-## 6. Later ideas (not in the first build)
-- **Lip-reading:** the deaf chef sees live captions of the blind chef's speech only when facing them up close. Needs speech-to-text (Web Speech API, Chrome-only).
-- **Guide dog / cane upgrades** for the blind chef (echo pulses, better beacons).
-- **Restaurant progression:** stars per level unlock recipes and kitchen layouts.
-- **Two-player mode:** pick any two roles; the missing role's information falls back to a shared fallback channel.
-
----
-
-## 7. Level structure (six levels)
-
-Each level teaches one mechanic (defined in `shared/src/rules.ts` → `LEVELS`):
-
-1. **Opening day:** salad, grilled fish, cheese toastie; tickets only. Learn hand-offs and basic roles.
-2. **The grill:** steak and fish dishes. The perfect sizzle makes the blind chef the grill master.
-3. **Soup's on:** the soup pot (three chopped vegetables, boil, ladle into a bowl), and phone orders start.
-4. **Breakfast rush:** fried egg + toast + mushrooms on one plate, plus soups and fish & chips.
-5. **Bad batch:** 25% of produce is spoiled. Sighted chefs see mould; anyone can sniff (Z).
-6. **Storm night:** a power cut at 0:55 (nobody can see, except the blind chef plays as usual) and a storm at 2:15 (nobody can hear, voices ducked; the deaf chef plays as usual). The role-reversal finale.
-
-**Recipes (11):** salad, grilled fish, cheese toastie, steak & fries, steak & onions, steak salad, fish & chips, full breakfast, tomato soup, vegetable soup, mushroom soup.
-
-**Equipment:** 11 ingredient crates (tomato, lettuce, potato, steak, fish, egg, bread, cheese, onion, mushroom, carrot), three cutting boards, three pans, the soup pot (boils dry and burns if left; scrape it out empty-handed), plate rack, bowl rack, the pass, a bin, and a sink.
-Scoring: points per dish plus a speed tip, a **Perfect** bonus (+10 per perfectly timed item, sound-only cue), −10 for an expired order, −15 for serving spoiled food. 1–3 stars per level; best stars are saved in the browser.
-
----
-
-## 8. Build status
-
-All three phases are built and tested in the browser (2026-10-20).
-
-**Phase A — roles ✅**
-- Every `GameEvent` has `senses` (sight / sound / touch) and `actors`. `perceivesEvent()` decides what reaches a chef, including the power cut and storm.
-- Blind: dark screen, 3D (HRTF) sound placed around the chef, station "signature" sounds when facing them, live stove sizzles. Deaf: no game audio. Mute: ping (G), emotes (T + 1–6), bell (B).
-- Perfect sizzle window and phone orders. In solo, keys 0–3 switch chef.
-
-**Phase B — three players ✅** (two deliberate changes from the plan above)
-- `shared/` workspace package holds the pure rules; `server/` runs rooms of up to three chefs.
-- Server is plain WebSockets (`ws`) instead of Colyseus: with three players per room, a framework adds more to learn than it saves. Each client moves its own chef (instant feel) and the server owns everything else at 20 Hz.
-- Voice is peer-to-peer WebRTC signalled through the game server instead of LiveKit: three players don't need a media server and there's no paid service. Mute sends no mic, deaf plays no voices, voices come from each chef's position.
-- Lobby with four-letter kitchen codes and invite links, one chef per role, host picks the level. Hand-offs (use on a teammate), lead-by-hand (H).
-
-**Phase C — content ✅**
-- Five levels, two new recipes, spoiled food + sniff, power cut, storm with lightning, stars and best scores.
-
-**Art ✅**
-- Restaurant kitchen on a floating island (Blender, `Kitchen_Room.glb`), restyled stations, three chef characters (`assets/kitchen/characters/`) with role-coloured aprons and arms that swing for walking, carrying and chopping.
-
-**Next ideas**
-- Mute chef's whiteboard; lip-reading (§6); dish washing at the sink.
-- Playtest with blind, deaf and non-speaking players, and tune timings from what they say.
-- Hosting: one Node process (`npm run build && npm start`) serves the game and the WebSocket server; any host with long-lived WebSockets works (Fly.io, Railway, a VPS).
+| What | Where |
+|---|---|
+| Rules (recipes, levels, timings, restaurants, upgrades) | `shared/src/rules.ts` |
+| Kitchen layouts | `shared/src/layout.ts` |
+| Music | `client/src/music.ts` |
+| Helper bot | `shared/src/bots.ts` |
+| Comfort settings (sound, voices, text, graphics, motion) | `client/src/prefs.ts` |
+| Hats | `shared/src/looks.ts`, `client/src/looks.ts`; drawn in `client/src/game/chef.ts` |
+| Terrace decor | `client/src/decor.ts`, `client/src/game/terrace.ts` |
+| The state, one step of the world, every action | `shared/src/state.ts` |
+| Roles and senses | `shared/src/roles.ts` |
+| Customers | `shared/src/diners.ts` |
+| Daily twists | `shared/src/twists.ts` |
+| The coach's checklist | `shared/src/guide.ts` |
+| Solo play | the browser runs `LocalSession` |
+| Online play | `server/src/index.ts` owns the world at 20 Hz; each client moves its own chef |
+| End screen report, awards, stickers | `client/src/game/report.ts`, `client/src/game/awards.ts`, `client/src/stickers.ts` |
+| Progress (stars, coins, daily record, stickers) | the browser's localStorage |

@@ -14,10 +14,11 @@ import {
   StandardMaterial,
   TransformNode,
   Vector3,
+  type Mesh,
   type Scene,
   type ShadowGenerator,
 } from "@babylonjs/core";
-import { CHEF_SPEED, type Chef, type Role } from "@kitchen/shared";
+import { CHEF_SPEED, type Chef, type ChefLook, type Role } from "@kitchen/shared";
 import type { AssetLibrary } from "../assets";
 import clipData from "./clips.json";
 
@@ -122,6 +123,8 @@ export class ChefModel {
   /** how far the body drops onto a chair: from this character's own hip height */
   private sitDrop = SIT_DROP;
   private blink = 0;
+  /** the hat on the head (see setLook) */
+  private hat: TransformNode | null = null;
   /** called on each footfall with the foot's world position */
   onStep: ((x: number, z: number) => void) | null = null;
 
@@ -204,6 +207,40 @@ export class ChefModel {
       knife.setEnabled(false);
       this.knife = knife;
     }
+  }
+
+  /**
+   * Put a hat on. The chefs' models wear a toque already: the toque look tints it, and any other
+   * hat (built from simple shapes, riding on the head bone) takes its place where its band sat.
+   */
+  setLook(look: ChefLook | undefined) {
+    this.hat?.dispose(false, true);
+    this.hat = null;
+    const head = this.joints.head?.node;
+    if (!look || !head) return;
+    const scene = head.getScene();
+    this.root.computeWorldMatrix(true);
+    const toque = this.bob.getChildMeshes(false).filter((m) => /Toque_/.test(m.name));
+    for (const mesh of toque) {
+      mesh.setEnabled(look.hat === "toque");
+      if (look.hat !== "toque" || !mesh.material) continue;
+      const tinted = mesh.material.clone(`${mesh.material.name}-${look.color}`)!;
+      const color = Color3.FromHexString(look.color);
+      if ("albedoColor" in tinted) tinted.albedoColor = color;
+      else if ("diffuseColor" in tinted) tinted.diffuseColor = color;
+      mesh.material = tinted;
+    }
+    if (look.hat === "none" || look.hat === "toque") return;
+    // where the toque's band sat is the top of the head; its width is the head's
+    const band = toque.find((m) => m.name.endsWith("Toque_Band"))?.getBoundingInfo().boundingBox;
+    const at = head.getAbsolutePosition();
+    const { max } = this.bob.getHierarchyBoundingVectors(true);
+    const size = band ? Math.max(band.maximumWorld.x - band.minimumWorld.x, band.maximumWorld.z - band.minimumWorld.z) * 1.15 : 0.3;
+    const hat = buildHat(scene, look, size);
+    hat.position.set(at.x, band ? band.minimumWorld.y - size * 0.05 : max.y, at.z);
+    hat.rotation.y = this.root.rotation.y;
+    hat.setParent(head);
+    this.hat = hat;
   }
 
   /** Simple stand-in if a character model is missing. */
@@ -503,4 +540,49 @@ export class ChefModel {
     const target = joint.rest.multiply(joint.frameInv.multiply(turn).multiply(joint.frame));
     joint.node.rotationQuaternion = Quaternion.Slerp(joint.node.rotationQuaternion!, target, rate);
   }
+}
+
+/** A hat from a few primitives, its brim at y = 0, facing +z. */
+function buildHat(scene: Scene, look: ChefLook, size: number): TransformNode {
+  const root = new TransformNode(`hat-${look.hat}`, scene);
+  const mat = new StandardMaterial(`hatMat-${look.hat}-${look.color}`, scene);
+  // a little deeper than the swatch: the kitchen's bright light washes pastels out
+  mat.diffuseColor = (look.hat === "crown" ? Color3.FromHexString("#f2c14e") : Color3.FromHexString(look.color)).scale(0.8);
+  mat.specularColor = look.hat === "crown" ? new Color3(0.6, 0.5, 0.2) : new Color3(0.08, 0.08, 0.08);
+  const add = (mesh: Mesh, x: number, y: number, z: number) => {
+    mesh.material = mat;
+    mesh.parent = root;
+    mesh.position.set(x, y, z);
+    mesh.isPickable = false;
+    return mesh;
+  };
+  const s = size;
+  switch (look.hat) {
+    case "toque": // the tall pleated chef's hat
+      add(MeshBuilder.CreateCylinder("band", { diameter: s * 0.95, height: s * 0.45, tessellation: 20 }, scene), 0, s * 0.22, 0);
+      add(MeshBuilder.CreateSphere("puff", { diameter: s * 1.25, segments: 12 }, scene), 0, s * 0.62, 0).scaling.y = 0.7;
+      break;
+    case "beanie": {
+      const dome = add(MeshBuilder.CreateSphere("dome", { diameter: s * 1.05, segments: 14, slice: 0.5 }, scene), 0, 0, 0);
+      dome.scaling.y = 0.9;
+      add(MeshBuilder.CreateTorus("rim", { diameter: s * 1.0, thickness: s * 0.14, tessellation: 22 }, scene), 0, s * 0.03, 0);
+      add(MeshBuilder.CreateSphere("bobble", { diameter: s * 0.3, segments: 8 }, scene), 0, s * 0.5, 0);
+      break;
+    }
+    case "cap": {
+      add(MeshBuilder.CreateSphere("crown", { diameter: s * 1.02, segments: 14, slice: 0.5 }, scene), 0, 0, 0).scaling.y = 0.75;
+      const brim = add(MeshBuilder.CreateCylinder("brim", { diameter: s * 0.75, height: s * 0.04, tessellation: 18 }, scene), 0, s * 0.02, s * 0.42);
+      brim.scaling.z = 0.75;
+      break;
+    }
+    case "crown": {
+      add(MeshBuilder.CreateCylinder("ring", { diameter: s * 0.9, height: s * 0.32, tessellation: 8 }, scene), 0, s * 0.16, 0);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        add(MeshBuilder.CreateSphere("jewel", { diameter: s * 0.17, segments: 6 }, scene), Math.sin(a) * s * 0.45, s * 0.38, Math.cos(a) * s * 0.45);
+      }
+      break;
+    }
+  }
+  return root;
 }

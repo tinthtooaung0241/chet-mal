@@ -2,6 +2,7 @@
 // bought with it. Kept in this browser; online, the host's equipment is what the kitchen uses.
 import { LEVELS, UPGRADES, VENUES, levelByNumber, levelsAt, type Venue } from "@kitchen/shared";
 import { bestStars } from "./progress";
+import { readJson, writeJson } from "./storage";
 
 const KEY = "kitchen.business";
 
@@ -14,24 +15,15 @@ export interface Business {
 }
 
 export function loadBusiness(): Business {
-  try {
-    const b = JSON.parse(localStorage.getItem(KEY) ?? "{}") as Partial<Business>;
-    const coins = Math.max(0, Math.floor(b.coins ?? 0));
-    // saves from before total sales existed: at least what's in the bank was sold
-    const totalSales = Math.max(coins, Math.floor(b.totalSales ?? 0));
-    return { coins, totalSales, upgrades: (b.upgrades ?? []).filter((id) => UPGRADES.some((u) => u.id === id)) };
-  } catch {
-    return { coins: 0, totalSales: 0, upgrades: [] };
-  }
+  const b = readJson<Partial<Business> | null>(KEY, null) ?? {};
+  const coins = Math.max(0, Math.floor(Number(b.coins) || 0));
+  // saves from before total sales existed: at least what's in the bank was sold
+  const totalSales = Math.max(coins, Math.floor(Number(b.totalSales) || 0));
+  const upgrades = Array.isArray(b.upgrades) ? b.upgrades.filter((id) => UPGRADES.some((u) => u.id === id)) : [];
+  return { coins, totalSales, upgrades };
 }
 
-function save(b: Business) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(b));
-  } catch {
-    // storage unavailable: the business just isn't remembered
-  }
-}
+const save = (b: Business) => writeJson(KEY, b);
 
 /** A shift's takings go into the restaurant's money. */
 export function addTakings(coins: number) {
@@ -56,6 +48,15 @@ export function venueLock(venue: Venue): { sales: number; bigNight: string | nul
 
 /** Whether this level's restaurant is open. */
 export const canPlay = (level: number) => LEVELS.some((l) => l.n === level) && !venueLock(VENUES.find((v) => v.id === levelByNumber(level).venue)!);
+
+/** Spend coins on something else (a hat, decor); false if there aren't enough. */
+export function spendCoins(cost: number): boolean {
+  const b = loadBusiness();
+  if (b.coins < cost) return false;
+  b.coins -= cost;
+  save(b);
+  return true;
+}
 
 /** Buy an upgrade; false if it's owned already or there isn't enough money. */
 export function buyUpgrade(id: string): boolean {

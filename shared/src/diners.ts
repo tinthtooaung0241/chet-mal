@@ -75,6 +75,8 @@ export interface Diner {
   bill: number;
   /** their place in the queue at the till */
   slot: number;
+  /** a kid (drawn smaller) */
+  kid?: boolean;
 }
 
 /** Tables on the terrace, numbered left to right (as on the tickets). */
@@ -113,7 +115,7 @@ function seatToExit(s: Seat): Point[] {
 }
 
 /** A new order brings a customer to a free chair (none if the terrace is full). */
-export function addDiner(g: Game, orderId: number) {
+export function addDiner(g: Game, orderId: number, kid = false) {
   const taken = new Set(g.diners.map((d) => d.seat));
   const free = SEATS.map((_, i) => i).filter((i) => !taken.has(i));
   if (!free.length) return;
@@ -137,6 +139,7 @@ export function addDiner(g: Game, orderId: number) {
     pay: Math.random() < 0.5 ? "Cash" : "Card",
     bill: 0,
     slot: 0,
+    ...(kid ? { kid } : {}),
   });
 }
 
@@ -176,7 +179,7 @@ function sitDown(d: Diner) {
 }
 
 /** Something a diner did that the kitchen should hear about. */
-export type DinerNews = "at-till" | "left-unpaid";
+export type DinerNews = "at-till" | "left-unpaid" | "finished";
 
 /** The customers waiting at the till, first in line first. */
 export function payingDiners(g: Game): Diner[] {
@@ -264,6 +267,7 @@ export function stepDiners(g: Game, dt: number, news?: (d: Diner, what: DinerNew
     if (d.state === "returning" && d.timer > 0 && (d.timer -= dt) <= 0) {
       d.path = passToSeat(seatOf(d), d.pickup);
     } else if (d.state === "eating" && (d.timer -= dt) <= 0) {
+      news?.(d, "finished");
       goToTill(g, d); // happy customers pay on the way out; a sick one just leaves
     }
   }

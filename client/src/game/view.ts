@@ -222,6 +222,13 @@ export class GameView {
   private readonly stationNodes = new Map<number, TransformNode>();
   private readonly surfaceY = new Map<number, number>();
   private readonly bars = new Map<number, ProgressBar>();
+  /** points floating up from the pass, fading as they rise */
+  private readonly floaters: { mesh: Mesh; age: number }[] = [];
+  /** puddles of spilled oil on the floor */
+  private readonly puddles = new Map<number, Mesh>();
+  private puddleMat: StandardMaterial | null = null;
+  /** plates waiting by each sink, shown as many as there are dirty dishes (up to the stack's size) */
+  private readonly dirtyStacks = new Map<number, TransformNode[]>();
   private readonly items = new Map<number, { node: TransformNode; key: string }>();
   private readonly chefs = new Map<string, ChefEntry>();
   private readonly racks = new Map<number, { parts: Map<string, { node: TransformNode; restY: number }>; lit: string | null }>();
@@ -251,6 +258,7 @@ export class GameView {
     if (!entry || entry.role !== chef.role) {
       if (entry) this.disposeChef(chef.id, entry);
       const model = new ChefModel(this.scene, this.shadows, this.lib, chef.role, APRON[chef.role]);
+      model.setLook(chef.look);
       const id = chef.id;
       model.onStep = (x, z) => this.onFootstep?.(id, x, z);
       model.root.position.set(chef.x, 0, chef.z);
@@ -411,9 +419,21 @@ export class GameView {
       case "trash":
         this.spawnInto(root, "TrashBin", 0, 1.15);
         break;
-      case "sink":
+      case "sink": {
         this.spawnInto(root, "Sink");
+        // dirty dishes pile up on the edge of the sink until someone washes them
+        const stack = [0, 1, 2, 3].map((i) => {
+          const plate = this.spawnInto(root, "Plate", COUNTER_TOP + 0.01 + i * 0.03, PLATE_SCALE);
+          plate.position.x = 0.28;
+          plate.position.z = 0.12;
+          plate.rotation.y = i * 0.7;
+          plate.setEnabled(false);
+          return plate;
+        });
+        this.dirtyStacks.set(s.id, stack);
+        this.bars.set(s.id, new ProgressBar(this.scene, s.x, 1.22, s.z));
         break;
+      }
       case "register": {
         // the till sits on the pass counter, its screen and card reader facing both sides
         this.spawnInto(root, "Counter");
@@ -688,6 +708,14 @@ export class GameView {
   clearItems() {
     for (const { node } of this.items.values()) node.dispose();
     this.items.clear();
+    // and a new round's floor is clean, with no points still floating
+    for (const disc of this.puddles.values()) disc.dispose();
+    this.puddles.clear();
+    for (const f of this.floaters) {
+      f.mesh.material?.dispose(true, true);
+      f.mesh.dispose();
+    }
+    this.floaters.length = 0;
     // a new round starts its ids again, so forget the old customers too
     for (const entry of this.diners.values()) {
       entry.model.root.dispose(false, false);
@@ -747,6 +775,9 @@ export class GameView {
     this.syncRacks(game, me);
     const faced = !this.selfVisible && game.phase === "playing" ? (targetStation(game, me)?.id ?? null) : null;
     this.syncBars(game, faced);
+    this.syncDirty(game);
+    this.syncPuddles(game);
+    this.syncFloaters(dt);
     this.syncPots(game);
     this.syncSignals(game);
   }
@@ -791,7 +822,7 @@ export class GameView {
       );
       // fade in at the terrace steps, fade out as they leave
       entry.fade = Math.min(1, entry.fade + dt * 2);
-      entry.model.root.scaling.setAll(0.75 + 0.25 * entry.fade);
+      entry.model.root.scaling.setAll((0.75 + 0.25 * entry.fade) * (d.kid ? 0.7 : 1));
 
       // their dish: on the pass, in their hands, then on the table
       if (d.dish && spot) {
@@ -823,10 +854,12 @@ export class GameView {
                 ? "Thanks!"
                 : order?.warned
                   ? "Hungry!"
-                  : null;
+                  : order?.critic
+                    ? "Critic"
+                    : null;
       if (text !== (entry.bubble?.text ?? null)) {
         entry.bubble?.mesh.dispose(false, true);
-        const color = d.mood === "angry" || text === "Hungry!" ? "#f6a491" : "#fffaf0";
+        const color = d.mood === "angry" || text === "Hungry!" ? "#f6a491" : text === "Critic" ? "#f6c35b" : "#fffaf0";
         entry.bubble = text ? { text, mesh: makeTag(this.scene, `diner-${d.id}`, text, color, "#3b2f27") } : null;
       }
       const at = entry.model.root.position;
@@ -959,6 +992,10 @@ export class GameView {
         // counts down to burning; flashes red once the warning has been given
         const left = 1 - (food.cook - (rule.cookTime ?? 6)) / burnTimeFor(game, food.kind);
         this.showBurnCountdown(bar, left, food.warned, visible);
+      } else if (s.fire && (s.smother ?? 0) > 0) {
+        bar.show(s.smother!, BAR.work, visible);
+      } else if (s.kind === "sink" && (s.wash ?? 0) > 0) {
+        bar.show(s.wash!, BAR.work, visible);
       } else if (s.pot && s.pot.state === "filling" && s.pot.contents.length) {
         bar.show(s.pot.contents.length / SOUP_SIZE, BAR.work, visible);
       } else if (s.pot && s.pot.state === "cooking") {
@@ -968,6 +1005,68 @@ export class GameView {
       } else {
         bar.hide();
       }
+    }
+  }
+
+  /** "+35" rising from where a dish was served (a bigger tag for a bigger score). */
+  floatPoints(text: string, x: number, z: number, good = true) {
+    const mesh = makeTag(this.scene, `float-${this.time}`, text, good ? "#5cbf6b" : "#e4553f", "#ffffff");
+    // several at once (a dish, its combo, a rave) stack instead of overlapping
+    mesh.position.set(x, 1.5 - 0.17 * this.floaters.filter((f) => f.age < 0.4).length, z);
+    mesh.scaling.setAll(1.3);
+    this.floaters.push({ mesh, age: 0 });
+  }
+
+  private syncFloaters(dt: number) {
+    for (const f of [...this.floaters]) {
+      f.age += dt;
+      f.mesh.position.y += dt * 0.55;
+      f.mesh.visibility = Math.min(1, 2.4 - f.age * 1.6);
+      if (f.age < 1.5) continue;
+      f.mesh.material?.dispose(true, true);
+      f.mesh.dispose();
+      this.floaters.splice(this.floaters.indexOf(f), 1);
+    }
+  }
+
+  /** Spilled oil: a glossy amber puddle that shrinks as it's mopped. */
+  private syncPuddles(game: Game) {
+    const live = new Set<number>();
+    for (const spill of game.spills ?? []) {
+      live.add(spill.id);
+      let disc = this.puddles.get(spill.id);
+      if (!disc) {
+        if (!this.puddleMat) {
+          this.puddleMat = new StandardMaterial("puddle", this.scene);
+          this.puddleMat.diffuseColor = new Color3(0.86, 0.66, 0.2);
+          this.puddleMat.specularColor = new Color3(0.9, 0.85, 0.6);
+          this.puddleMat.alpha = 0.8;
+        }
+        disc = MeshBuilder.CreateDisc(`puddle-${spill.id}`, { radius: 0.42, tessellation: 18 }, this.scene);
+        disc.rotation.x = Math.PI / 2;
+        disc.position.set(spill.x, 0.012, spill.z);
+        disc.scaling.y = 0.75; // a squashed, puddle-ish oval
+        disc.material = this.puddleMat;
+        disc.isPickable = false;
+        this.puddles.set(spill.id, disc);
+      }
+      const left = 1 - spill.mop * 0.7;
+      disc.scaling.x = left;
+      disc.scaling.y = 0.75 * left;
+    }
+    for (const [id, disc] of this.puddles) {
+      if (live.has(id)) continue;
+      disc.dispose();
+      this.puddles.delete(id);
+    }
+  }
+
+  /** Dirty dishes waiting by the sinks: the first sink's stack fills up, then the next. */
+  private syncDirty(game: Game) {
+    let left = game.dishes ? game.dishes.dirtyPlates + game.dishes.dirtyBowls : 0;
+    for (const stack of this.dirtyStacks.values()) {
+      stack.forEach((plate, k) => plate.setEnabled(k < left));
+      left = Math.max(0, left - stack.length);
     }
   }
 

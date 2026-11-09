@@ -1,18 +1,25 @@
 // The start screen: practice solo, or create/join a kitchen and pick a chef.
-import { ROLES, VENUES, levelByNumber, levelsAt, type Role, type VenueId } from "@kitchen/shared";
+import { LAYOUTS, ROLES, VENUES, levelByNumber, levelsAt, type Role, type TwistId, type VenueId } from "@kitchen/shared";
 import { loadBusiness, venueLock } from "./business";
 import { bestStars, starText } from "./progress";
 import type { LobbyState } from "./session";
+import { dailyStatus, todaysSpecial } from "./daily";
+import { helperOn, setHelper } from "./helper";
+import { readText, writeText } from "./storage";
+import { glyph } from "./ui/icons";
+import { enhanceSelect } from "./ui/dropdown";
+import { $ } from "./ui/dom";
 
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const NAME_KEY = "kitchen.name";
 
 export interface LobbyHandlers {
   solo(name: string): void;
+  /** today's daily special, solo */
+  daily(name: string): void;
   create(name: string): void;
   join(name: string, code: string): void;
   chooseRole(role: Role): void;
-  chooseLevel(level: number): void;
+  chooseLevel(level: number, twist: TwistId | null): void;
   start(): void;
 }
 
@@ -27,28 +34,59 @@ export class Lobby {
   private readonly levelSelect = $<HTMLSelectElement>("level-select");
   private roomCode = "";
   private venue: VenueId = "street";
-  private onLevel: (level: number) => void = () => {};
+  private onLevel: (level: number, twist: TwistId | null) => void = () => {};
+  /** the shift is today's daily special; in a room, the host's pick of it */
+  private daily = false;
+  private roomDailyLevel: number | null = null;
 
   constructor(handlers: LobbyHandlers) {
-    try {
-      this.nameInput.value = localStorage.getItem(NAME_KEY) ?? "";
-    } catch {
-      // storage unavailable: start with an empty name
-    }
+    this.nameInput.value = readText(NAME_KEY) ?? "";
     const invited = new URLSearchParams(location.search).get("room");
     if (invited) this.codeInput.value = invited.toUpperCase();
 
-    this.onLevel = (level) => handlers.chooseLevel(level);
+    this.onLevel = (level, twist) => handlers.chooseLevel(level, twist);
     this.refreshLevels();
     this.levelSelect.addEventListener("change", () => {
       this.showBlurb();
-      handlers.chooseLevel(this.level);
+      this.renderMap();
+      handlers.chooseLevel(this.level, this.twist);
     });
 
-    // the lobby is the start screen: Esc shouldn't dismiss it
-    this.dialog.addEventListener("cancel", (e) => e.preventDefault());
+    // name, restaurant and shift live in their own dialog; the play menu shows what's chosen
+    const setup = $<HTMLDialogElement>("setup");
+    const shifts = enhanceSelect(this.levelSelect);
+    for (const id of ["open-setup", "room-setup"]) {
+      $(id).addEventListener("click", () => {
+        shifts.render();
+        setup.showModal();
+      });
+    }
+    $("setup-done").addEventListener("click", () => setup.close());
+    // the helper bot: solo, or in an empty seat of a kitchen you host
+    const helpers = setup.querySelectorAll<HTMLInputElement>('input[name="helper"]');
+    for (const radio of helpers) {
+      radio.checked = (radio.value === "on") === helperOn();
+      radio.addEventListener("change", () => setHelper(radio.value === "on"));
+    }
+    for (const radio of this.shiftKinds) {
+      radio.addEventListener("change", () => {
+        this.setDaily(radio.value === "daily");
+        this.onLevel(this.level, this.twist);
+      });
+    }
+    $("play-daily").addEventListener("click", () => handlers.daily(this.name()));
+    setup.addEventListener("close", () => this.showSummary());
+
+    // Esc never dismisses the lobby itself: it steps back from the play menu to the title
+    // (but not out of a room you've joined)
+    this.dialog.addEventListener("cancel", (e) => {
+      e.preventDefault();
+      if (this.roomPane.hidden) this.hide();
+    });
+    $("lobby-back").addEventListener("click", () => this.hide());
     $("play-solo").addEventListener("click", () => handlers.solo(this.name()));
     $("create-room").addEventListener("click", () => handlers.create(this.name()));
+    $("quick-play").addEventListener("click", () => handlers.join(this.name(), "*"));
     $<HTMLFormElement>("join-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const code = this.codeInput.value.trim().toUpperCase();
@@ -70,16 +108,42 @@ export class Lobby {
 
   private name(): string {
     const name = this.nameInput.value.trim() || "Chef";
-    try {
-      localStorage.setItem(NAME_KEY, name);
-    } catch {
-      // ignore
-    }
+    writeText(NAME_KEY, name);
     return name;
   }
 
   get level(): number {
+    if (this.daily) return this.roomDailyLevel ?? todaysSpecial().level;
     return Number(this.levelSelect.value) || 1;
+  }
+
+  /** the daily special's twist, when that's the shift */
+  get twist(): TwistId | null {
+    return this.daily ? todaysSpecial().twist.id : null;
+  }
+
+  private get shiftKinds() {
+    return document.querySelectorAll<HTMLInputElement>('#shift-kind input[name="shift-kind"]');
+  }
+
+  private setDaily(on: boolean) {
+    this.daily = on;
+    for (const radio of this.shiftKinds) radio.checked = radio.value === (on ? "daily" : "normal");
+    $("normal-shift").hidden = on;
+    this.showBlurb();
+    this.showSummary();
+  }
+
+  /** The play menu's daily special card: today's twist and shift, and your streak. */
+  renderDaily() {
+    const { level, twist } = todaysSpecial();
+    const status = dailyStatus();
+    $("daily-icon").replaceChildren(glyph(twist.icon));
+    $("daily-summary").textContent = status.playedToday ? `${twist.name} · best ${status.best}` : `${twist.name} · ${levelByNumber(level).name}`;
+    const streak = $("daily-streak");
+    streak.hidden = status.streak < 1;
+    streak.replaceChildren(glyph("flame"), String(status.streak));
+    streak.title = `${status.streak}-day streak`;
   }
 
   /** Restaurants and their shifts with your best stars; call again after a round to update them. */
@@ -98,6 +162,43 @@ export class Lobby {
     );
     this.levelSelect.value = String(levelByNumber(selected).venue === this.venue ? selected : levelsAt(this.venue)[0].n);
     this.showBlurb();
+    this.renderMap();
+  }
+
+  /** The restaurant's shifts as a path of cards: number, name, best stars and how the kitchen is laid out. */
+  private renderMap() {
+    const chosen = Number(this.levelSelect.value);
+    $("level-map").replaceChildren(
+      ...levelsAt(this.venue).map((l, i) => {
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = "level-card";
+        card.setAttribute("role", "radio");
+        card.setAttribute("aria-checked", String(l.n === chosen));
+        card.disabled = this.levelSelect.disabled; // in a room, only the host picks
+        const best = bestStars(l.n);
+        card.setAttribute("aria-label", `Shift ${i + 1}, ${l.name}, best ${best} of 3 stars`);
+        const num = document.createElement("b");
+        num.textContent = String(i + 1);
+        const name = document.createElement("strong");
+        name.textContent = l.name;
+        const stars = document.createElement("span");
+        stars.className = "level-stars";
+        stars.append(...[0, 1, 2].map((k) => {
+          const star = glyph("star");
+          if (k >= best) star.classList.add("empty");
+          return star;
+        }));
+        const layout = document.createElement("small");
+        layout.textContent = LAYOUTS[l.layout ?? "standard"].name.replace(" kitchen", "");
+        card.append(num, name, stars, layout);
+        card.addEventListener("click", () => {
+          this.levelSelect.value = String(l.n);
+          this.levelSelect.dispatchEvent(new Event("change"));
+        });
+        return card;
+      }),
+    );
   }
 
   /** A card per restaurant: open ones can be picked, locked ones say what's still needed. */
@@ -131,7 +232,7 @@ export class Lobby {
         card.addEventListener("click", () => {
           if (lock || v.id === this.venue) return;
           this.refreshLevels(levelsAt(v.id)[0].n);
-          this.onLevel(this.level);
+          this.onLevel(this.level, this.twist);
         });
         return card;
       }),
@@ -139,14 +240,27 @@ export class Lobby {
   }
 
   private showBlurb() {
-    $("level-blurb").textContent = levelByNumber(this.level).blurb;
+    const level = levelByNumber(this.level);
+    const twist = this.daily ? todaysSpecial().twist : null;
+    $("level-blurb").textContent = twist ? `${twist.name}: ${twist.blurb.toLowerCase()}. Today's shift is ${level.name}.` : level.blurb;
+  }
+
+  /** The chosen shift, under the play menu's Restaurant & Shift button. */
+  private showSummary() {
+    const name = this.levelSelect.selectedOptions[0]?.textContent ?? "";
+    const shift = this.daily ? `Daily special · ${todaysSpecial().twist.name}` : name.replace(/[☆★\s]+$/, "");
+    $("setup-summary").textContent = helperOn() ? `${shift} · helper bot` : shift;
   }
 
   show() {
+    document.body.classList.add("in-lobby");
+    this.showSummary();
+    this.renderDaily();
     if (!this.dialog.open) this.dialog.showModal();
   }
 
   hide() {
+    document.body.classList.remove("in-lobby");
     if (this.dialog.open) this.dialog.close();
   }
 
@@ -182,12 +296,15 @@ export class Lobby {
     );
 
     const isHost = state.host === state.you;
-    // the host picks the level; everyone sees it
-    if (this.level !== state.level) {
-      this.levelSelect.value = String(state.level);
-      this.showBlurb();
-    }
+    // the host picks the level (or the daily special); everyone sees it
+    this.roomDailyLevel = state.twist ? state.level : null;
+    if (this.daily !== !!state.twist) this.setDaily(!!state.twist);
+    if (!state.twist && this.level !== state.level) this.levelSelect.value = String(state.level);
+    this.showBlurb();
+    this.showSummary();
     this.levelSelect.disabled = !isHost;
+    this.renderMap();
+    for (const radio of this.shiftKinds) radio.disabled = !isHost;
     const everyoneReady = state.players.length > 0 && state.players.every((p) => p.role);
     this.startButton.hidden = !isHost;
     this.startButton.disabled = !everyoneReady;

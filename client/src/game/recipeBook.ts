@@ -4,8 +4,7 @@
 import { FOOD_RULES, displayKind, ROLES, SOUP_SIZE, SPICE_NAMES, spiceList, levelByNumber, levelsAt, recipeById, type Game, type Recipe, type Role, type Spice } from "@kitchen/shared";
 import { glyph, img, renderedIcon } from "../ui/icons";
 import { SPICE_GLYPHS, foodIcon, soupIcon } from "./hints";
-
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+import { $ } from "../ui/dom";
 
 const lower = (kind: string) => displayKind(kind).toLowerCase();
 /** How each food is cooked in the pan, in plain words. */
@@ -48,7 +47,7 @@ export function recipeSentence(recipe: Recipe): string {
   return `${recipe.name}: ${list}, on one plate.${spice}`;
 }
 
-function dishImage(recipe: Recipe): HTMLElement {
+export function dishImage(recipe: Recipe): HTMLElement {
   const dish = document.createElement("div");
   dish.className = "dish";
   // dishes with their own finished-dish picture (rendered from the plated dish) use it
@@ -92,7 +91,18 @@ function ingredients(recipe: Recipe): HTMLElement {
     const where = document.createElement("span");
     where.className = `where ${rule.cold ? "cold" : ""}`;
     where.append(glyph(rule.cold ? "fridge" : "crate"), rule.cold ? "fridge" : "shelf");
-    li.append(img(foodIcon(kind, "raw")), name, where);
+    where.title = rule.cold ? "from the fridge" : "from the shelf";
+    // what to do with it, so the list alone tells you the prep
+    const state = recipe.items.find((i) => i.kind === kind)?.state;
+    const prep = document.createElement("small");
+    // read from the method, so a potato that's chopped and then fried says both
+    const chops = instructions(recipe).some((step) => step.verb === "Chop" && step.rest.toLowerCase().includes(kind.toLowerCase()));
+    const cooks = state === "cooked";
+    prep.append(chops && cooks ? "Chop, then cook" : chops || state === "chopped" ? "Chop it" : cooks ? "Cook it" : "Use as it is", " · ", where);
+    const label = document.createElement("span");
+    label.className = "ing-name";
+    label.append(name, prep);
+    li.append(img(foodIcon(kind, "raw")), label);
     list.append(li);
   }
   return list;

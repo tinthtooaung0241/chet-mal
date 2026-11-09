@@ -10,9 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@kitchen/shared": "*",
     "@babylonjs/core": "9.31.0",
-    "@babylonjs/loaders": "9.31.0"
+    "@babylonjs/loaders": "9.31.0",
+    "@kitchen/shared": "*",
+    "@sentry/browser": "^11.11.0",
+    "posthog-js": "^1.447.3"
   },
   "devDependencies": {
     "typescript": "7.0.2",

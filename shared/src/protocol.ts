@@ -1,5 +1,7 @@
 // Messages between browser and server. Plain JSON over one WebSocket per player.
 import type { Emote, Role } from "./roles";
+import type { TwistId } from "./twists";
+import type { ChefLook } from "./looks";
 import { rebuildGrid, type Game, type GameEvent } from "./state";
 
 export const MAX_PLAYERS = 3;
@@ -16,12 +18,14 @@ export interface LobbyPlayer {
 export type Action = "interact" | "chopHint" | "ping" | "bell" | "hand" | "sniff";
 
 export type ClientMessage =
-  /** room "" creates a new kitchen; id rejoins after a refresh */
-  | { t: "hello"; name: string; room: string; id?: string }
+  /** room "" creates a new kitchen and "*" joins any open one (Quick Play); id rejoins after a refresh */
+  | { t: "hello"; name: string; room: string; id?: string; look?: ChefLook }
   | { t: "role"; role: Role }
-  | { t: "level"; level: number }
+  /** twist: a daily special's twist (null for a normal shift) */
+  | { t: "level"; level: number; twist?: TwistId | null }
   /** upgrades: the host's restaurant equipment, used for this shift */
-  | { t: "start"; upgrades?: string[] }
+  /** helper: put a porter bot in an empty seat */
+  | { t: "start"; upgrades?: string[]; helper?: boolean }
   /** play again, optionally on another level */
   | { t: "restart"; level?: number; upgrades?: string[] }
   /** own chef's movement: clients move their chef locally and report where it is */
@@ -34,7 +38,7 @@ export type ClientMessage =
 
 export type ServerMessage =
   | { t: "welcome"; you: string; room: string }
-  | { t: "lobby"; players: LobbyPlayer[]; host: string; playing: boolean; level: number }
+  | { t: "lobby"; players: LobbyPlayer[]; host: string; playing: boolean; level: number; twist: TwistId | null }
   | { t: "snap"; game: Game }
   | { t: "events"; events: GameEvent[] }
   | { t: "rtc"; from: string; data: unknown }

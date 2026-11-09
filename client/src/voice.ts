@@ -4,7 +4,18 @@
 // who is where just by listening.
 import { ROLES, findChef, type Chef, type Game, type Role } from "@kitchen/shared";
 
-const ICE: RTCConfiguration = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+// STUN finds a direct route; phones on mobile data often need a TURN relay as well. Set
+// VITE_TURN_URL (one or more, comma-separated), VITE_TURN_USERNAME and VITE_TURN_CREDENTIAL at
+// build time to add one (Cloudflare Calls, Twilio, metered.ca or your own coturn).
+const turn = import.meta.env.VITE_TURN_URL as string | undefined;
+const ICE: RTCConfiguration = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    ...(turn
+      ? [{ urls: turn.split(",").map((u) => u.trim()), username: import.meta.env.VITE_TURN_USERNAME as string | undefined, credential: import.meta.env.VITE_TURN_CREDENTIAL as string | undefined }]
+      : []),
+  ],
+};
 
 type Signal = { sdp: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit };
 
@@ -18,6 +29,16 @@ interface Peer {
 
 export class Voice {
   private peers = new Map<string, Peer>();
+  /** every teammate's voice goes through here (the Voices setting) */
+  private master: GainNode | null = null;
+  private volume = 1;
+
+  /** 0 (off) to 1 (full). */
+  setVolume(volume: number) {
+    this.volume = volume;
+    this.master?.gain.setTargetAtTime(volume, this.master.context.currentTime, 0.05);
+  }
+
   private mic: MediaStream | null = null;
   private me = "";
   private hears = true;
@@ -120,7 +141,11 @@ export class Voice {
     const source = ctx.createMediaStreamSource(stream);
     peer.panner = new PannerNode(ctx, { panningModel: "HRTF", distanceModel: "inverse", refDistance: 1.5, rolloffFactor: 0.5 });
     peer.gain = new GainNode(ctx, { gain: 1 });
-    source.connect(peer.gain).connect(peer.panner).connect(ctx.destination);
+    if (!this.master) {
+      this.master = new GainNode(ctx, { gain: this.volume });
+      this.master.connect(ctx.destination);
+    }
+    source.connect(peer.gain).connect(peer.panner).connect(this.master);
   }
 
   /** A storm drowns voices out too: everyone has to fall back on what they can see. */

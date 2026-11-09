@@ -1,5 +1,6 @@
 // Pure game data: recipes, timings, levels. No rendering or networking.
 import { describeFood, type FoodState } from "./ingredients";
+import type { LayoutId } from "./layout";
 export * from "./ingredients";
 
 export const TILE = 0.85; // metres per kitchen grid cell (stations are ~0.8 m wide)
@@ -17,6 +18,41 @@ export const PERFECT_DELAY = 0.8;
 /** ...and stays open this long. It is only announced by sound (the sizzle peaks). */
 export const PERFECT_WINDOW = 1.6;
 export const PERFECT_BONUS = 10;
+/** dishes served one after another, each within this many seconds of the last, make a combo */
+export const COMBO_WINDOW = 30;
+/** a combo's bonus: this many points for each dish after the first, up to COMBO_MAX a dish */
+export const COMBO_STEP = 5;
+export const COMBO_MAX = 20;
+/** rush hour, halfway through a shift: it lasts this long, orders come RUSH_PACE times as often and pay RUSH_PAY times as much */
+export const RUSH_TIME = 35;
+export const RUSH_PACE = 2;
+export const RUSH_PAY = 1.5;
+/** a food critic (one a shift, from level 4) waits CRITIC_PATIENCE as long as other customers... */
+export const CRITIC_PATIENCE = 0.75;
+/** ...raves about a dish seasoned just right and served before their ticket turns red: bonus points, and a bill paid twice over... */
+export const CRITIC_RAVE = 25;
+export const CRITIC_TIP = 2;
+/** ...and walking out costs this many points instead of EXPIRED_PENALTY */
+export const CRITIC_PENALTY = 20;
+/** washing up (from level 5): the racks start with this many clean plates and bowls, and every dish comes back dirty once it's eaten */
+export const CLEAN_PLATES = 4;
+export const CLEAN_BOWLS = 3;
+/** seconds of scrubbing at the sink (hold the chop key) for each plate or bowl */
+export const WASH_TIME = 1.5;
+/** kitchen mishaps (from level 2): burnt food left on a stove this long catches fire... */
+export const FIRE_AFTER = 8;
+/** ...a fire costs FIRE_PENALTY points, spreads to the next stove after FIRE_SPREAD seconds, and is smothered by holding the chop key at it */
+export const FIRE_PENALTY = 10;
+export const FIRE_SPREAD = 12;
+export const SMOTHER_TIME = 1.5;
+/** spilled oil (from level 6): chefs in it walk at this fraction of their speed until someone mops it up (hold the chop key on it) */
+export const SPILL_RADIUS = 0.5;
+export const SPILL_SLOW = 0.45;
+export const MOP_TIME = 2;
+/** from level 3, this share of customers are kids: the same dish with no seasoning at all */
+export const KID_CHANCE = 0.2;
+/** overtime, after a 3-star shift: the kitchen keeps going until a customer gives up (or this long), getting busier all the time */
+export const OVERTIME_MAX = 120;
 export const PING_TIME = 5;
 export const SICK_PENALTY = 15;
 export const BUMP_COOLDOWN = 0.4;
@@ -173,6 +209,13 @@ export const RECIPES: Recipe[] = [
   { id: "fried-rice", name: "Burmese fried rice", vessel: "plate", items: [item("Rice", "cooked"), post("Egg", "Salt"), item("Onion", "cooked")], reward: 40, time: 90, finish: ["FishSauce"] },
 ];
 
+/** The plain version of a dish, for a kid: nothing seasoned, nothing on top. */
+export const plainRecipe = (recipe: Recipe): Recipe => ({
+  ...recipe,
+  items: recipe.items.map(({ kind, state }) => ({ kind, state })),
+  finish: undefined,
+});
+
 export const recipeById = (id: string): Recipe => {
   const recipe = RECIPES.find((r) => r.id === id);
   if (!recipe) throw new Error(`Unknown recipe ${id}`);
@@ -241,8 +284,18 @@ export interface Level {
   /** how many times longer customers wait than usual */
   patience?: number;
   events: { at: number; kind: KitchenEventKind; duration: number }[];
-  /** points for one, two and three stars */
+  /** points for one, two and three stars (for one or two chefs; bigger crews need more) */
   stars: [number, number, number];
+  /** a rush hour halfway through (default: from level 3 on) */
+  rush?: boolean;
+  /** food critics who visit (default: one, from level 4 on) */
+  critics?: number;
+  /** how the kitchen is laid out (default: the usual one) */
+  layout?: LayoutId;
+  /** plates and bowls come back dirty and need washing (default: from level 5 on) */
+  washing?: boolean;
+  /** oil spills a shift (default: one, from level 6 on) */
+  spills?: number;
 }
 
 const BURMESE = ["mohinga", "lahpet", "shan-noodles", "chicken-curry", "fried-rice"];
@@ -310,6 +363,8 @@ export const LEVELS: Level[] = [
       lines: [
         { icon: "salt", text: "Spices after the flame go on last" },
         { icon: "sparkle", text: "Whistling? Take it off for a bonus" },
+        { icon: "bolt", text: "Serve dish after dish for a combo bonus" },
+        { icon: "flame", text: "Burnt food left on a stove catches fire: hold F at it" },
       ],
     },
     recipes: ["grilled-fish", "steak-fries", "steak-onions", "steak-salad", "soy-fish"],
@@ -330,6 +385,8 @@ export const LEVELS: Level[] = [
       lines: [
         { icon: "knife", text: "Pot: three chopped vegetables" },
         { icon: "phone", text: "Phone orders are heard once. Tell your team!" },
+        { icon: "hurry", text: "Halfway: rush hour! Twice the orders, 1.5× pay" },
+        { icon: "diner", text: "Kids want it plain: no seasoning at all" },
       ],
     },
     recipes: ["tomato-soup", "veg-soup", "salad", "cheese-toastie"],
@@ -342,6 +399,7 @@ export const LEVELS: Level[] = [
   },
   {
     n: 4,
+    layout: "island",
     venue: "street",
     name: "Breakfast rush",
     blurb: "Busy mornings. Cold food now goes off if it sits out of the fridge too long.",
@@ -350,6 +408,7 @@ export const LEVELS: Level[] = [
       lines: [
         { icon: "snow", text: "Fridge food warms up outside" },
         { icon: "bin", text: "Left too long, it goes off" },
+        { icon: "critic", text: "A food critic visits: be quick, season it right" },
       ],
     },
     recipes: ["breakfast", "mushroom-soup", "fish-chips", "stir-fry", "steak-onions"],
@@ -362,6 +421,7 @@ export const LEVELS: Level[] = [
   },
   {
     n: 5,
+    layout: "split",
     venue: "street",
     name: "Bad batch",
     blurb: "Some produce has gone off. Spot the mould, or sniff it (Z). Never serve it!",
@@ -370,6 +430,7 @@ export const LEVELS: Level[] = [
       lines: [
         { icon: "smell", text: "Sniff it with Z" },
         { icon: "sick", text: "Mouldy food makes customers sick" },
+        { icon: "sink", text: "Plates come back dirty: hold F at the sink" },
       ],
     },
     recipes: ALL_RECIPES,
@@ -382,6 +443,7 @@ export const LEVELS: Level[] = [
   },
   {
     n: 6,
+    layout: "corridor",
     venue: "street",
     name: "Storm night",
     blurb: "The power cuts out, then a storm drowns every sound. Talk each other through the dark; follow the deaf chef in the storm.",
@@ -390,6 +452,7 @@ export const LEVELS: Level[] = [
       lines: [
         { icon: "moon", text: "Dark? Say where you are" },
         { icon: "storm", text: "Storm? Watch the deaf chef" },
+        { icon: "warning", text: "Spilled oil slows you down: hold F on it to mop" },
       ],
     },
     recipes: ALL_RECIPES,
@@ -407,6 +470,7 @@ export const LEVELS: Level[] = [
   // --- the Burmese restaurant (opens once the street stand has sold enough) ---
   {
     n: 7,
+    washing: false,
     venue: "burmese",
     name: "Tea shop morning",
     blurb: "Yangon wakes up hungry. Tea leaf salad and shan noodles, crunchy toppings last.",
@@ -430,6 +494,7 @@ export const LEVELS: Level[] = [
   },
   {
     n: 8,
+    layout: "island",
     venue: "burmese",
     name: "Mohinga Monday",
     blurb: "The breakfast soup. Fish, onion and rice noodles go in the pot; the phone rings too.",
@@ -450,6 +515,7 @@ export const LEVELS: Level[] = [
   },
   {
     n: 9,
+    layout: "split",
     venue: "burmese",
     name: "Curry house",
     blurb: "Chicken curry and fried rice for the lunch crowd. Keep the chicken cold!",
@@ -470,6 +536,7 @@ export const LEVELS: Level[] = [
   },
   {
     n: 10,
+    layout: "corridor",
     venue: "burmese",
     name: "Thingyan festival",
     blurb: "The water festival! Full house, a power cut, and a storm of drums. The big night.",
@@ -499,8 +566,31 @@ export const levelsAt = (venue: VenueId): Level[] => LEVELS.filter((l) => l.venu
 
 export const levelByNumber = (n: number): Level => (n === TUTORIAL.n ? TUTORIAL : (LEVELS.find((l) => l.n === n) ?? LEVELS[0]));
 
-export function starsFor(level: Level, score: number): number {
-  return level.stars.filter((s) => score >= s).length;
+export const hasRush = (level: Level) => level.rush ?? (!level.tutorial && level.n >= 3);
+
+export const hasFires = (level: Level) => !level.tutorial && level.n >= 2;
+
+export const spillsAt = (level: Level) => level.spills ?? (!level.tutorial && level.n >= 6 ? 1 : 0);
+
+export const hasWashing = (level: Level) => level.washing ?? (!level.tutorial && level.n >= 5);
+
+export const criticsAt = (level: Level) => level.critics ?? (!level.tutorial && level.n >= 4 ? 1 : 0);
+
+// Three chefs can serve more than one or two, so their kitchen gets busier and its stars cost more.
+const CREW_PACE = [1, 1, 1, 0.85];
+const CREW_GOALS = [1, 1, 1, 1.25];
+
+/** How much more often orders come for a crew this size (1 = the level's own pace). */
+export const crewPace = (crew: number) => CREW_PACE[Math.min(crew, 3)] ?? 1;
+
+/** The points for one, two and three stars, for a crew this size. */
+export function starGoals(level: Level, crew = 1): [number, number, number] {
+  const k = CREW_GOALS[Math.min(crew, 3)] ?? 1;
+  return level.stars.map((s) => Math.round((s * k) / 5) * 5) as [number, number, number];
+}
+
+export function starsFor(level: Level, score: number, crew = 1): number {
+  return starGoals(level, crew).filter((s) => score >= s).length;
 }
 
 /** "tomato soup" when all three are the same, otherwise "vegetable soup" / "mushroom soup". */

@@ -96,11 +96,34 @@ const BURMESE_LEGEND: Record<string, LegendEntry> = {
   S: { kind: "spice", stock: [...BURMESE_SPICES], label: "topping rack" },
 };
 
-/** Each restaurant's kitchen grid (row 0 is the back wall). */
-export const KITCHENS: Record<VenueId, string[]> = {
-  street: KITCHEN,
-  burmese: KITCHEN,
+/**
+ * Other ways to lay out the same room, so each level's routes and teamwork change. The ring of
+ * stations along the walls stays where the room's walls, hood and windows are; the middle changes.
+ */
+export type LayoutId = "standard" | "island" | "split" | "corridor";
+
+export const LAYOUTS: Record<LayoutId, { name: string; blurb: string; grid: string[] }> = {
+  standard: { name: "The usual kitchen", blurb: "Open floor in the middle", grid: KITCHEN },
+  // the chopping boards move onto an island between the stoves and the pass: walk round it
+  island: {
+    name: "Island kitchen",
+    blurb: "Boards on an island: walk round it",
+    grid: ["ZSOOOPKKAHZ", "C.........F", "C..CBBBC..G", "D.........C", "U.........C", "..........C", ".XCWWWCRCCC"],
+  },
+  // a wall of counters splits prep (storage, boards) from cooking (stoves, plates, the pass)
+  split: {
+    name: "Split kitchen",
+    blurb: "A wall splits prep from cooking: pass food over it",
+    grid: ["ZSOOOPKKAHZ", "C.....C...F", "C.....C...G", "D.....C...B", "U.........B", "..........B", ".XCWWWCRCCC"],
+  },
+  // a long counter shuts the stoves into a back corridor, open only at the ends
+  corridor: {
+    name: "Corridor kitchen",
+    blurb: "The stoves are behind a long counter",
+    grid: ["ZSOOOPKKAHZ", "C.........F", "C.........G", "D.CCCBCC..B", "U.........B", "..........B", ".XCWWWCRCCC"],
+  },
 };
+
 
 const LEGENDS: Record<VenueId, Record<string, LegendEntry>> = {
   street: LEGEND,

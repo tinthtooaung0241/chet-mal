@@ -1,13 +1,9 @@
 // Best stars per level, kept in this browser. Purely a convenience: losing it loses nothing else.
+import { readJson, writeJson } from "./storage";
+
 const KEY = "kitchen.stars";
 
-function load(): Record<string, number> {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "{}") as Record<string, number>;
-  } catch {
-    return {};
-  }
-}
+const load = () => readJson<Record<string, number>>(KEY, {});
 
 export function bestStars(level: number): number {
   return load()[level] ?? 0;
@@ -18,11 +14,18 @@ export function recordStars(level: number, stars: number): boolean {
   const all = load();
   if (stars <= (all[level] ?? 0)) return false;
   all[level] = stars;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(all));
-  } catch {
-    // storage unavailable: the result just isn't remembered
-  }
+  writeJson(KEY, all);
+  return true;
+}
+
+const SCORES = "kitchen.scores";
+
+/** Record a level's score; true if it's the best yet (overtime makes it a high-score chase). */
+export function recordScore(level: number, score: number): boolean {
+  const all = readJson<Record<string, number>>(SCORES, {});
+  if (score <= (all[level] ?? 0)) return false;
+  all[level] = score;
+  writeJson(SCORES, all);
   return true;
 }
 
