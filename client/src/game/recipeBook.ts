@@ -369,7 +369,7 @@ export class RecipeBook {
       key.append(row);
     }
     title.append(
-      el("p", "cover-eyebrow", "Kitchen Co-op"),
+      el("p", "cover-eyebrow", "Chet Mal"),
       h,
       el("p", "cover-sub", `${this.levelName} · ${this.today.size} dishes today`),
       el("p", "cover-hint", "Pick a dish to open its recipe. Read it out to your team!"),

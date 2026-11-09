@@ -53,6 +53,58 @@ export const MOP_TIME = 2;
 export const KID_CHANCE = 0.2;
 /** overtime, after a 3-star shift: the kitchen keeps going until a customer gives up (or this long), getting busier all the time */
 export const OVERTIME_MAX = 120;
+
+/** How fast a shift runs, chosen with the shift. Cozy is a longer shift with orders coming less
+ *  often (about as many turn up on their own), more time for each one, no fires or spills, and the
+ *  coach's arrow on every step. The star goals stay the same, so stars come easier. Classic is the
+ *  full rush. */
+export type Pace = "cozy" | "classic";
+export interface PaceRules {
+  name: string;
+  blurb: string;
+  /** the shift, rush hour and combo window last this many times as long, and orders come this many times less often */
+  time: number;
+  /** customers wait this many times as long, at the pass and at the till */
+  patience: number;
+  /** cooked food and soup take this many times as long to burn, and cold food to go off */
+  leeway: number;
+  /** one order to start, and one fewer open at once (never under two) */
+  calm: boolean;
+  /** burnt food catches fire, and oil spills */
+  mishaps: boolean;
+  /** the coach's arrow and next step show on every shift, not just in the tutorial */
+  coach: boolean;
+  /** seasoning slips cost nothing (getting it right still earns its bonus) */
+  forgiving: boolean;
+}
+export const PACES: Record<Pace, PaceRules> = {
+  cozy: {
+    name: "Cozy",
+    blurb: "More time for every order, food is slower to burn, no fires or spills, seasoning slips cost nothing, and an arrow shows each next step.",
+    time: 1.5,
+    patience: 1.6,
+    leeway: 2,
+    calm: true,
+    mishaps: false,
+    coach: true,
+    forgiving: true,
+  },
+  classic: {
+    name: "Classic",
+    blurb: "The full rush: tight timings, fires and spills, and no arrow.",
+    time: 1,
+    patience: 1,
+    leeway: 1,
+    calm: false,
+    mishaps: true,
+    coach: false,
+    forgiving: false,
+  },
+};
+/** A pace from the network or storage (anything unknown is classic). */
+export const paceById = (id: unknown): Pace => (id === "cozy" ? "cozy" : "classic");
+/** The pace rules a shift runs at (older games without one are classic). */
+export const paceOf = (g: { pace?: Pace }): PaceRules => PACES[g.pace ?? "classic"];
 export const PING_TIME = 5;
 export const SICK_PENALTY = 15;
 export const BUMP_COOLDOWN = 0.4;
@@ -160,6 +212,7 @@ const soup = (...kinds: string[]): RecipeItem[] => kinds.map((k) => item(k, "cho
 // Seasoned the way each dish really is, at the step it really happens.
 export const RECIPES: Recipe[] = [
   { id: "salad", name: "Salad", vessel: "plate", items: [item("Tomato", "chopped"), item("Lettuce", "chopped")], reward: 20, time: 60, finish: ["OliveOil", "Lemon", "Salt"] },
+  { id: "fried-mushrooms", name: "Fried mushrooms", vessel: "plate", items: [item("Mushroom", "cooked")], reward: 20, time: 60, finish: ["Salt", "Herbs"] },
   { id: "grilled-fish", name: "Grilled fish", vessel: "plate", items: [pre("Fish", "Salt")], reward: 20, time: 60, finish: ["Lemon", "Herbs"] },
   { id: "cheese-toastie", name: "Cheese toastie", vessel: "plate", items: [pre("Bread", "Butter"), item("Cheese", "chopped")], reward: 25, time: 70 },
   { id: "steak-fries", name: "Steak & fries", vessel: "plate", items: [pre("Steak", "Salt", "Pepper"), post("Potato", "Salt")], reward: 35, time: 85 },
@@ -334,16 +387,16 @@ export const LEVELS: Level[] = [
     n: 1,
     venue: "street",
     name: "Opening day",
-    blurb: "The stove opens. Season the fish and the bread before they cook.",
+    blurb: "The stove opens. Chop the mushrooms, fry them, and take them off before they burn.",
     teach: {
       title: "The stove",
       lines: [
+        { icon: "knife", text: "Chop it, then put it on a stove" },
         { icon: "flame", text: "Take food off before it burns" },
-        { icon: "salt", text: "Some seasoning goes on first" },
-        { icon: "ticket", text: "Spices before the flame go first" },
+        { icon: "salt", text: "Finish it on the plate at a spice rack" },
       ],
     },
-    recipes: ["salad", "grilled-fish", "cheese-toastie"],
+    recipes: ["salad", "fried-mushrooms"],
     channels: ["ticket"],
     time: 170,
     spoilChance: 0,
@@ -361,7 +414,7 @@ export const LEVELS: Level[] = [
     teach: {
       title: "The perfect sizzle",
       lines: [
-        { icon: "salt", text: "Spices after the flame go on last" },
+        { icon: "salt", text: "Some spices go on before the flame, some after" },
         { icon: "sparkle", text: "Whistling? Take it off for a bonus" },
         { icon: "bolt", text: "Serve dish after dish for a combo bonus" },
         { icon: "flame", text: "Burnt food left on a stove catches fire: hold F at it" },

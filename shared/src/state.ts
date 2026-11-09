@@ -30,6 +30,8 @@ import {
   COMBO_STEP,
   COMBO_WINDOW,
   OVERTIME_MAX,
+  paceOf,
+  type Pace,
   starGoals,
   CLEAN_BOWLS,
   CLEAN_PLATES,
@@ -467,6 +469,8 @@ export interface Game {
   rushDone: boolean;
   /** a daily special's twist (none on a normal shift) */
   twist?: TwistId;
+  /** how fast the shift runs (see PACES): cozy gives more time and a coach on every step */
+  pace?: Pace;
   /** clean and dirty plates and bowls, on shifts with washing up (null: the racks never run out) */
   dishes: { plates: number; bowls: number; dirtyPlates: number; dirtyBowls: number } | null;
   /** seconds of overtime played after a 3-star shift (0: none), and the score when it began */
@@ -543,26 +547,45 @@ export function findChef(g: Game, id: string | null | undefined): Chef | undefin
 /** Whether the restaurant owns this upgrade. */
 export const hasUpgrade = (g: Game, id: string) => g.upgrades?.includes(id) ?? false;
 
-/** Seconds a cooked food takes to burn (heavy pans give more leeway). */
-export const burnTimeFor = (g: Game, kind: string) => (FOOD_RULES[kind]?.burnTime ?? 6) * (hasUpgrade(g, "pans") ? 1.5 : 1);
+/** Seconds a cooked food takes to burn (heavy pans and a cozy pace give more leeway). */
+export const burnTimeFor = (g: Game, kind: string) => (FOOD_RULES[kind]?.burnTime ?? 6) * (hasUpgrade(g, "pans") ? 1.5 : 1) * paceOf(g).leeway;
 
-/** @param upgrades equipment the restaurant has bought (unknown ids are ignored) */
+/** Seconds a ready soup takes to boil dry. */
+export const soupBurnFor = (g: Game) => SOUP_BURN * paceOf(g).leeway;
+
+/** How long the shift lasts before the bell (a cozy pace makes it longer). */
+export const shiftTime = (g: Game) => levelByNumber(g.level).time * paceOf(g).time;
+
+/** Most orders open at once: one fewer at a cozy pace, but never under two (the tutorial keeps its one). */
+export function maxOrdersFor(g: Game) {
+  const most = levelByNumber(g.level).maxOrders ?? MAX_ORDERS;
+  return paceOf(g).calm ? Math.max(Math.min(most, 2), most - 1) : most;
+}
+
 /** The twist of a daily special, or nothing on a normal shift. */
 export const twistOf = (g: Game): Twist | undefined => twistById(g.twist);
 
 /** How long a combo waits for the next dish (a daily twist can stretch it). */
-export const comboWindow = (g: Game) => COMBO_WINDOW * (twistOf(g)?.combo ?? 1);
+export const comboWindow = (g: Game) => COMBO_WINDOW * (twistOf(g)?.combo ?? 1) * paceOf(g).time;
 
-/** The level's power cuts and storms, with the daily twist's one among them. */
+/** The level's power cuts and storms, with the daily twist's one among them (later in a longer, cozy shift). */
 function kitchenEvents(g: Game) {
   const level = levelByNumber(g.level);
   const extra = twistOf(g)?.event;
-  if (!extra) return level.events;
-  return [...level.events, { ...extra, at: Math.round(extra.at * level.time) }].sort((a, b) => a.at - b.at);
+  const stretch = paceOf(g).time;
+  const events = stretch === 1 ? level.events : level.events.map((e) => ({ ...e, at: Math.round(e.at * stretch) }));
+  if (!extra) return events;
+  return [...events, { ...extra, at: Math.round(extra.at * shiftTime(g)) }].sort((a, b) => a.at - b.at);
 }
 
-export function createGame(levelNumber = 1, upgrades: string[] = [], twist?: TwistId): Game {
+/**
+ * @param upgrades equipment the restaurant has bought (unknown ids are ignored)
+ * @param pace how fast the shift runs (the tutorial always keeps its own gentle pace)
+ */
+export function createGame(levelNumber = 1, upgrades: string[] = [], twist?: TwistId, pace: Pace = "classic"): Game {
   const level = levelByNumber(levelNumber);
+  if (level.tutorial) pace = "classic";
+  const stretch = paceOf({ pace }).time;
   const layout: LayoutId = level.layout ?? "standard";
   const kitchen = LAYOUTS[layout].grid;
   const rows = kitchen.length;
@@ -581,7 +604,7 @@ export function createGame(levelNumber = 1, upgrades: string[] = [], twist?: Twi
     score: 0,
     served: 0,
     perfects: 0,
-    timeLeft: level.time,
+    timeLeft: level.time * stretch,
     charmWait: 0,
     crew: 0,
     combo: 0,
@@ -589,6 +612,7 @@ export function createGame(levelNumber = 1, upgrades: string[] = [], twist?: Twi
     rush: 0,
     rushDone: false,
     ...(twistById(twist) ? { twist } : {}),
+    pace,
     dishes: hasWashing(level) ? { plates: CLEAN_PLATES, bowls: CLEAN_BOWLS, dirtyPlates: 0, dirtyBowls: 0 } : null,
     overtime: 0,
     overtimeFrom: 0,
@@ -596,7 +620,7 @@ export function createGame(levelNumber = 1, upgrades: string[] = [], twist?: Twi
     spillAt: [],
     criticAt: [],
     tally: noTally(),
-    nextOrderIn: ORDER_INTERVAL,
+    nextOrderIn: ORDER_INTERVAL * stretch,
     phase: "playing",
     events: [],
     level: level.n,
@@ -633,9 +657,10 @@ export function createGame(levelNumber = 1, upgrades: string[] = [], twist?: Twi
 
   // the critics come at a random moment in the middle of the shift, spread out if there are two
   const critics = twistOf(g)?.critics ?? criticsAt(level);
-  const spills = spillsAt(level);
-  for (let i = 0; i < spills; i++) g.spillAt.push(Math.round(level.time * (0.25 + (0.55 * (i + Math.random())) / spills)));
-  for (let i = 0; i < critics; i++) g.criticAt.push(Math.round(level.time * (0.2 + (0.5 * (i + Math.random())) / critics)));
+  const spills = paceOf(g).mishaps ? spillsAt(level) : 0;
+  const shift = shiftTime(g);
+  for (let i = 0; i < spills; i++) g.spillAt.push(Math.round(shift * (0.25 + (0.55 * (i + Math.random())) / spills)));
+  for (let i = 0; i < critics; i++) g.criticAt.push(Math.round(shift * (0.2 + (0.5 * (i + Math.random())) / critics)));
 
   // Turn every station to face the walkable floor next to it.
   const isFloor = (row: number, col: number) => inGrid(g, row, col) && kitchen[row][col] === ".";
@@ -661,9 +686,9 @@ export function createGame(levelNumber = 1, upgrades: string[] = [], twist?: Twi
     }
   }
 
-  // two orders to start (one in the guided shift); with phones, one of each channel so every chef has something to do
+  // two orders to start (one in the guided shift, and at a cozy pace); with phones, one of each channel so every chef has something to do
   addOrder(g, recipeById(level.recipes[0]), "ticket");
-  if ((level.maxOrders ?? MAX_ORDERS) > 1) addOrder(g, recipeById(level.recipes[1] ?? level.recipes[0]), level.channels.includes("phone") ? "phone" : "ticket");
+  if (maxOrdersFor(g) > 1 && !paceOf(g).calm) addOrder(g, recipeById(level.recipes[1] ?? level.recipes[0]), level.channels.includes("phone") ? "phone" : "ticket");
   return g;
 }
 
@@ -1002,17 +1027,17 @@ export function stepWorld(g: Game, dt: number) {
     } else if (pot.state === "done" && !pot.perfectCued && pot.cook >= SOUP_TIME + PERFECT_DELAY) {
       pot.perfectCued = true;
       emit(g, "perfect", `The ${name} bubbles just right. Ladle it now for a perfect bowl!`, s, HEARD);
-    } else if (pot.state === "done" && !pot.warned && pot.cook >= SOUP_TIME + SOUP_BURN * 0.5) {
+    } else if (pot.state === "done" && !pot.warned && pot.cook >= SOUP_TIME + soupBurnFor(g) * 0.5) {
       pot.warned = true;
       emit(g, "smoking", `The ${name} is boiling dry!`, s, SEEN_HEARD, undefined, true);
-    } else if (pot.state === "done" && pot.cook >= SOUP_TIME + SOUP_BURN) {
+    } else if (pot.state === "done" && pot.cook >= SOUP_TIME + soupBurnFor(g)) {
       pot.state = "burnt";
       emit(g, "burnt", `The ${name} burnt to the bottom of the pot.`, s, SEEN_HEARD, undefined, true);
     }
   }
 
   // kitchen mishaps: burnt food left on a stove catches fire, and a fire spreads along the stoves
-  if (hasFires(levelByNumber(g.level))) {
+  if (hasFires(levelByNumber(g.level)) && paceOf(g).mishaps) {
     for (const s of g.stations) {
       if (s.kind !== "stove") continue;
       if (s.fire) {
@@ -1069,24 +1094,25 @@ export function stepWorld(g: Game, dt: number) {
     }
   }
   // a food critic comes in as soon as there's room for their order
-  const maxOrders = levelByNumber(g.level).maxOrders ?? MAX_ORDERS;
+  const maxOrders = maxOrdersFor(g);
   if (g.criticAt.length && g.elapsed >= g.criticAt[0] && g.orders.length < maxOrders) {
     g.criticAt.shift();
     addOrder(g, undefined, undefined, true);
   }
   g.nextOrderIn -= dt * (g.rush > 0 ? RUSH_PACE : 1) * (twistOf(g)?.pace ?? 1) * (1 + g.overtime / 40);
   if (g.nextOrderIn <= 0) {
-    g.nextOrderIn = ORDER_INTERVAL * crewPace(g.crew);
+    g.nextOrderIn = ORDER_INTERVAL * crewPace(g.crew) * paceOf(g).time;
     if (g.orders.length < maxOrders) addOrder(g);
   }
 
   // rush hour: once a shift, from halfway, when no power cut or storm is on and there's time for it
   const level = levelByNumber(g.level);
-  if (!g.rushDone && hasRush(level) && g.elapsed >= level.time * 0.45 && !g.blackout && !g.storm && g.timeLeft > RUSH_TIME + 10) {
+  const rushTime = Math.round(RUSH_TIME * paceOf(g).time);
+  if (!g.rushDone && hasRush(level) && g.elapsed >= shiftTime(g) * 0.45 && !g.blackout && !g.storm && g.timeLeft > rushTime + 10) {
     g.rushDone = true;
-    g.rush = RUSH_TIME;
+    g.rush = rushTime;
     g.nextOrderIn = Math.min(g.nextOrderIn, 1.5);
-    emit(g, "rush", `Rush hour! Orders come twice as fast for ${RUSH_TIME} seconds, and every dish pays 50% more.`, pass, EVERYONE, g.chefs.map((c) => c.id), true);
+    emit(g, "rush", `Rush hour! Orders come twice as fast for ${rushTime} seconds, and every dish pays 50% more.`, pass, EVERYONE, g.chefs.map((c) => c.id), true);
   } else if (g.rush > 0 && (g.rush -= dt) <= 0) {
     g.rush = 0;
     emit(g, "rush", "Rush hour is over. Breathe!", pass, EVERYONE, g.chefs.map((c) => c.id));
@@ -1253,7 +1279,7 @@ function addOrder(g: Game, recipe?: Recipe, channel?: OrderChannel, critic = fal
   const id = g.nextId++;
   const kid = !critic && !level.tutorial && level.n >= 3 && Math.random() < KID_CHANCE;
   if (kid) recipe = plainRecipe(recipe);
-  const wait = recipe.time * (level.patience ?? 1) * (twistOf(g)?.patience ?? 1) * (hasUpgrade(g, "sign") ? 1.25 : 1) * (critic ? CRITIC_PATIENCE : 1);
+  const wait = recipe.time * (level.patience ?? 1) * (twistOf(g)?.patience ?? 1) * paceOf(g).patience * (hasUpgrade(g, "sign") ? 1.25 : 1) * (critic ? CRITIC_PATIENCE : 1);
   g.orders.push({ id, recipe: { ...recipe, time: wait }, timeLeft: wait, channel, warned: false, ...(critic ? { critic } : {}), ...(kid ? { kid } : {}) });
   addDiner(g, id, kid);
   const pass = g.stations.find((s) => s.kind === "serve") ?? { x: 0, z: 0 };
@@ -1342,11 +1368,11 @@ function serve(g: Game, chef: Chef, dish: Plate | Bowl, at: Station) {
   const bonus = perfect.length * PERFECT_BONUS;
   const taste = tasteDish(order.recipe, dish);
   const speed = Math.ceil((order.timeLeft / order.recipe.time) * 10);
-  // picky eaters: every seasoning mistake costs more
-  const seasoning = taste.points < 0 ? taste.points * (twistOf(g)?.picky ?? 1) : taste.points;
+  // picky eaters: every seasoning mistake costs more; at a cozy pace, slips cost nothing
+  const seasoning = taste.points >= 0 ? taste.points : paceOf(g).forgiving ? 0 : taste.points * (twistOf(g)?.picky ?? 1);
   const earned = Math.max(5, order.recipe.reward + speed + bonus + seasoning);
   // a critic raves about a dish with nothing wrong with its seasoning, served before their ticket turns red
-  const rave = !!order.critic && seasoning >= 0 && order.timeLeft >= order.recipe.time * 0.25;
+  const rave = !!order.critic && taste.points >= 0 && order.timeLeft >= order.recipe.time * 0.25;
   const pay = (g.rush > 0 ? RUSH_PAY : 1) * (twistOf(g)?.pay ?? 1);
   const points = Math.round(earned * pay) + (rave ? CRITIC_RAVE : 0);
   const t = g.tally;
@@ -1550,7 +1576,7 @@ function warmUp(g: Game, dt: number) {
     // you can see it sweating, and whoever holds it can feel it's no longer cold
     const senses: Sense[] = holder ? ["sight", "touch"] : ["sight"];
     const actors = holder ? [holder.id] : undefined;
-    const limit = hasUpgrade(g, "fridge") ? 2 : 1;
+    const limit = (hasUpgrade(g, "fridge") ? 2 : 1) * paceOf(g).leeway;
     if (food.out >= COLD_LIMIT * limit) {
       food.spoiled = true;
       emit(g, "warm", `The ${kind} sat out of the fridge too long and has gone off. Bin it!`, at, senses, actors, true);

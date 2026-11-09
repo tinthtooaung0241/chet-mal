@@ -3,13 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Kitchen Co-op</title>
+    <title>Chet Mal</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!-- added to the home screen it opens as an app: full screen, no browser bars -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Kitchen Co-op" />
+    <meta name="apple-mobile-web-app-title" content="Chet Mal" />
     <meta name="theme-color" content="#2a2420" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -136,20 +139,12 @@
 
       <div id="loading" role="status">
         <svg class="load-pot" viewBox="0 0 160 170" aria-hidden="true">
-          <g class="load-steam" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round">
+          <g class="load-steam" transform="translate(0 -26)" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round">
             <path d="M58 44c-8-9 8-14 0-24" />
             <path d="M80 44c-8-9 8-14 0-24" />
             <path d="M102 44c-8-9 8-14 0-24" />
           </g>
-          <g class="load-lid">
-            <circle cx="80" cy="50" r="7" fill="#f8c9ba" stroke="#3b2f27" stroke-width="4" />
-            <path d="M42 70c4-16 72-16 76 0z" fill="#fbe9b7" stroke="#3b2f27" stroke-width="4" stroke-linejoin="round" />
-          </g>
-          <path d="M26 82h-10M134 82h10" stroke="#3b2f27" stroke-width="8" stroke-linecap="round" />
-          <path d="M34 72h92v42a18 18 0 0 1-18 18H52a18 18 0 0 1-18-18z" fill="#f8c9ba" stroke="#3b2f27" stroke-width="4" stroke-linejoin="round" />
-          <circle cx="64" cy="98" r="4" fill="#3b2f27" />
-          <circle cx="96" cy="98" r="4" fill="#3b2f27" />
-          <path d="M72 106c4 5 12 5 16 0" fill="none" stroke="#3b2f27" stroke-width="4" stroke-linecap="round" />
+          <image class="load-chet" href="/chet.svg" x="10" y="-4" width="140" height="140" />
           <g class="load-flames">
             <g class="load-flame">
               <path d="M54 139C57.0 147.64 66 152.5 66 158.71C66 163.84 60.6 166 54 166C47.4 166 42 163.84 42 158.71C42 152.5 51.0 147.64 54 139Z" fill="#e23d28" />
@@ -382,7 +377,7 @@
       <div id="hat-colors" class="hat-colors" role="radiogroup" aria-label="Hat colour"></div>
       <h3 class="shop-section"><i data-icon="flag"></i> Terrace decor</h3>
       <ul id="decor-list" class="shop-list"></ul>
-      <button id="close-shop" type="button" class="primary">Back</button>
+      <div class="shop-foot"><button id="close-shop" type="button" class="primary">Back</button></div>
     </dialog>
 
     <div id="sticker-pop" aria-hidden="true"></div>
@@ -390,7 +385,7 @@
     <dialog id="album" class="card-dialog wide" aria-labelledby="album-title">
       <h2 id="album-title"><i data-icon="sticker"></i> Stickers <small id="album-count"></small></h2>
       <ul id="album-grid" class="album"></ul>
-      <button id="close-album" type="button" class="primary">Back</button>
+      <button id="close-album" type="button">Back</button>
     </dialog>
 
     <dialog id="briefing" class="card-dialog" aria-labelledby="briefing-title">
@@ -414,7 +409,11 @@
     </dialog>
 
     <div id="title-menu" hidden>
-      <h1 class="title-wordmark" aria-label="Kitchen Co-op"><span>Kitchen</span><small>co-op</small></h1>
+      <h1 class="title-wordmark" aria-label="Chet Mal">
+        <img class="title-chet" src="/chet.svg" width="200" height="200" alt="" />
+        <span>Chet <em>Mal!</em></span>
+        <small><span lang="my">ချက်မယ်</span> <b>(let's cook!)</b></small>
+      </h1>
       <nav class="title-card" aria-label="Main menu">
         <button type="button" id="title-play" class="on">Let's Play</button>
         <button type="button" id="title-how">How to Play</button>
@@ -424,7 +423,7 @@
     </div>
 
     <dialog id="lobby" class="play-screen" aria-labelledby="lobby-title">
-      <h1 id="lobby-title" class="visually-hidden">Kitchen Co-op</h1>
+      <h1 id="lobby-title" class="visually-hidden">Chet Mal</h1>
       <button id="lobby-fullscreen" class="round-btn touch-only fs-toggle" type="button" aria-label="Full screen"><i data-icon="expand"></i></button>
 
       <div id="lobby-start" class="title-card play-menu">
@@ -454,14 +453,15 @@
         </p>
         <fieldset id="lobby-roles">
           <legend>Pick your chef</legend>
-          <button type="button" data-role="head" class="chef-card head"><i class="chef-emoji" data-icon="chef" aria-hidden="true"></i><strong>Head chef</strong><span>Sees every order. Calls the shots, plates and serves.</span></button>
-          <button type="button" data-role="deaf" class="chef-card deaf"><i class="chef-emoji" data-icon="ear" aria-hidden="true"></i><strong>Deaf chef</strong><span>Cooks by sight. Reads tickets, can't hear calls.</span></button>
-          <button type="button" data-role="mute" class="chef-card mute"><i class="chef-emoji" data-icon="voice" aria-hidden="true"></i><strong>Mute chef</strong><span>Hears everything. Talks with pings, signs and a bell.</span></button>
+          <button type="button" data-role="head" class="chef-card head"><i class="chef-emoji" data-icon="chef" aria-hidden="true"></i><strong>Head chef</strong><span class="senses" role="img" aria-label="Sees, hears, doesn't cook, talks"><i data-icon="eye" class="yes" title="Sees"></i><i data-icon="ear" class="yes" title="Hears"></i><i data-icon="knife" class="no" title="Doesn't cook"></i><i data-icon="voice" class="yes" title="Talks"></i></span><span>Sees every order. Calls the shots, plates, serves and runs the till.</span></button>
+          <button type="button" data-role="deaf" class="chef-card deaf"><i class="chef-emoji" data-icon="ear" aria-hidden="true"></i><strong>Deaf chef</strong><span class="senses" role="img" aria-label="Sees, can't hear, cooks, talks"><i data-icon="eye" class="yes" title="Sees"></i><i data-icon="ear" class="no" title="Can't hear"></i><i data-icon="knife" class="yes" title="Cooks"></i><i data-icon="voice" class="yes" title="Talks"></i></span><span>Cooks by sight. Reads tickets, can't hear calls.</span></button>
+          <button type="button" data-role="mute" class="chef-card mute"><i class="chef-emoji" data-icon="voice" aria-hidden="true"></i><strong>Mute chef</strong><span class="senses" role="img" aria-label="Sees, hears, cooks, can't talk"><i data-icon="eye" class="yes" title="Sees"></i><i data-icon="ear" class="yes" title="Hears"></i><i data-icon="knife" class="yes" title="Cooks"></i><i data-icon="voice" class="no" title="Can't talk"></i></span><span>Hears everything. Talks with pings, signs and a bell.</span></button>
         </fieldset>
         <h3 class="room-label">Chefs in this kitchen</h3>
         <ul id="lobby-players"></ul>
         <div class="room-actions">
           <button id="room-setup" type="button"><i data-icon="gear"></i> Restaurant &amp; Shift</button>
+          <button id="warm-up" type="button" title="One easy salad together in the tutorial kitchen, with the coach showing each chef their job"><i data-icon="hands"></i> Warm-up</button>
           <button id="start-game" type="button" class="primary big"><i data-icon="flame"></i> Start cooking</button>
         </div>
         <p id="lobby-status" class="muted" role="status"></p>
@@ -482,10 +482,18 @@
       </fieldset>
       <div id="normal-shift">
         <div id="venue-picker" class="venue-picker" role="radiogroup" aria-label="Restaurant"></div>
-        <label class="field" hidden>Shift <select id="level-select"></select></label>
-        <div id="level-map" class="level-map" role="radiogroup" aria-label="Shift"></div>
+        <label class="field">Shift <select id="level-select"></select></label>
+        <div id="level-map" class="level-map" role="radiogroup" aria-label="Shift" hidden></div>
       </div>
       <p id="level-blurb" class="muted"></p>
+      <fieldset class="setting-row" id="pace-setting">
+        <legend><i data-icon="hurry"></i> Pace</legend>
+        <div class="segmented">
+          <label><input type="radio" name="pace" value="cozy" /><span>Cozy</span></label>
+          <label><input type="radio" name="pace" value="classic" /><span>Classic</span></label>
+        </div>
+      </fieldset>
+      <p id="pace-note" class="muted pace-note"></p>
       <fieldset class="setting-row" id="helper-setting">
         <legend><i data-icon="hands"></i> Helper bot</legend>
         <div class="segmented">
@@ -498,6 +506,7 @@
     </dialog>
 
     <dialog id="game-over" class="card-dialog" aria-labelledby="game-over-title">
+      <img id="over-chet" class="over-chet" src="/chet.svg" width="200" height="200" alt="" />
       <h2 id="game-over-title">Time's up!</h2>
       <p id="final-stars" class="stars" aria-hidden="true"></p>
       <p id="final-score"></p>

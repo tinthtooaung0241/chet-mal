@@ -19,7 +19,7 @@ import {
   burnTimeFor,
   pickedItem,
   dinerTable,
-  SOUP_BURN,
+  soupBurnFor,
   SOUP_SIZE,
   SOUP_TIME,
   targetStation,
@@ -1001,7 +1001,7 @@ export class GameView {
       } else if (s.pot && s.pot.state === "cooking") {
         bar.show(s.pot.cook / SOUP_TIME, BAR.cook, visible);
       } else if (s.pot && s.pot.state === "done") {
-        this.showBurnCountdown(bar, 1 - (s.pot.cook - SOUP_TIME) / SOUP_BURN, s.pot.warned, visible);
+        this.showBurnCountdown(bar, 1 - (s.pot.cook - SOUP_TIME) / soupBurnFor(game), s.pot.warned, visible);
       } else {
         bar.hide();
       }

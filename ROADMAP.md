@@ -1,4 +1,4 @@
-# Kitchen Co-op roadmap
+# Chet Mal roadmap
 
 What to build next, in order. Each item is small enough to ship on its own.
 
@@ -135,6 +135,86 @@ memory across shifts).
    Bell, Signs. The chop button now says Hold, since it also washes, mops and puts out fires.
 4. **Production server build.** `npm run build` also bundles the server with esbuild, and
    `npm run start:prod` runs it with plain Node.
+
+## 5. Cozy pace (done)
+
+*Your shift* has a **Pace** choice: **Cozy** (the default) or **Classic** (the original rush).
+Online, the host's choice counts. A Cozy shift:
+
+- lasts 1.5× as long, with orders coming 1.5× less often; rush hour, the combo window and the
+  level's power cuts and storms stretch to match;
+- starts with one order, and keeps one fewer open at once (never under two);
+- gives customers 1.6× as long to wait, at the pass and at the till;
+- gives food and soup twice as long to burn, and cold food twice as long to go off;
+- has no fires or oil spills;
+- shows the tutorial's coach on every shift: the most urgent order's checklist, a "Next" line and
+  an arrow over the station to go to, even with empty hands.
+
+The star goals stay the same, so stars come easier at a Cozy pace. The tutorial keeps its own
+pace. `shift_start` and `shift_end` record the pace, so analytics can compare the two.
+
+## 6. Easy to understand, still fun with friends
+
+**The goal:** a new player understands what to do in their first minute, and a group of friends
+still has to talk to win. Help should teach the job, not play the game for you.
+
+**What already helps:** the tutorial kitchen, one new idea per level, briefing cards with a tip
+for your role, the contextual key prompts (Space, F, 1–8), the dish checklist, the recipe icons on
+tickets, the recipe book, the helper bot, and the Cozy pace with its coach.
+
+**What still confuses people**, biggest first:
+
+1. **The coach doesn't know about teammates.** At a Cozy pace it sends everyone to the most
+   urgent order, so two cooks fetch the same tomato and make the same dish twice. It also gives
+   the head chef steps they can't do (fetch, chop, cook).
+2. **Nobody can see who's doing what.** Friends talk over each other and double up on a ticket,
+   and a deaf or mute player has no quiet way to say "I've got this one".
+3. **The till is a hidden job.** After eating, customers queue to pay, but nothing teaches it:
+   players find out when a table leaves without paying. The head chef's description doesn't
+   mention it either.
+4. **Seasoning has two timings** (before or after cooking), and each slip costs 3 to 5 points.
+   On a Classic shift you have to remember it from the book.
+5. **What each role can't do** is in long sentences, so players learn it by being refused.
+6. **Level 1 teaches two things at once** (the stove, and seasoning before cooking).
+
+**What keeps it fun with friends** (don't lose these): information split by sense, so someone
+always has to tell someone; every role has a job only they can do; short shifts with a clear team
+score; mistakes that are funny rather than punishing.
+
+**Plan**
+
+Now (built):
+
+- **A coach that knows the team** (Cozy, and the tutorial):
+  - cooks are sent to an order nobody else is on, and skip anything a teammate is already
+    carrying;
+  - with a head chef in the kitchen, cooks prepare the food and leave the plating to them;
+  - the head chef is coached through their own job: tell a cook what's needed, plate what's
+    ready, finish and serve, wash up.
+  - The coach still only knows the orders you can perceive: a deaf cook is never sent to a phone
+    order, so the team still has to talk.
+- **The till in the coach:** when a customer is waiting to pay, the head chef (or, without one, the
+  nearest chef with free hands) is told which table, how they pay, and which key to press.
+- **"Who's on it" badges:** each ticket shows a little role badge for every chef working on it,
+  so friends see the split at a glance without saying a word.
+- **Clearer role words:** the head chef's description and briefing now mention the till.
+
+Also built:
+
+- **Cozy forgives seasoning slips:** a missing, extra or mistimed spice costs no points at a Cozy
+  pace; getting it right still earns the bonus (and a critic's rave still needs it right).
+- **Role cards with icons** in the chef picker: sees, hears, cooks and talks, with the one a role
+  can't do crossed out.
+- **Level 1 teaches the stove only:** salad and a new dish, fried mushrooms (chop, fry, finish).
+  Seasoning before cooking now starts on level 2, with the grilled fish and steaks.
+- **Warm-up for crews:** the host of an online kitchen can start a warm-up round in the tutorial
+  kitchen (one salad at a time, the coach on), where each chef does their job once. The shift
+  they chose stays chosen for after.
+
+Later:
+
+- **Team moments:** a shared combo cheer, and a "best teamwork" line on the end screen.
+- **Funny failures:** a burnt dish gets a silly face on the pass instead of only a red toast.
 
 ## Next ideas
 

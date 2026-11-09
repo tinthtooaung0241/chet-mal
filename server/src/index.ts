@@ -1,4 +1,4 @@
-// Kitchen Co-op game server: rooms of up to three chefs over WebSockets.
+// Chet Mal game server: rooms of up to three chefs over WebSockets.
 // The server owns the kitchen (stoves, orders, items, score). Each client moves its own chef
 // and reports the position, so walking feels instant; everything else is decided here.
 import { randomUUID } from "node:crypto";
@@ -22,6 +22,8 @@ import {
   findChef,
   interact,
   makeRoomCode,
+  paceById,
+  TUTORIAL,
   twistById,
   validLook,
   addBot,
@@ -38,6 +40,7 @@ import {
   type ClientMessage,
   type Game,
   type LobbyPlayer,
+  type Pace,
   type Role,
   type ServerMessage,
   type TwistId,
@@ -80,6 +83,8 @@ class Room {
   open = false;
   /** the host wants a helper bot in an empty seat */
   helper = false;
+  /** how fast the host wants the shift to run */
+  pace: Pace = "classic";
 
   constructor(readonly code: string) {}
 
@@ -111,8 +116,9 @@ class Room {
   /** a daily special's twist, chosen by the host with the level */
   twist: TwistId | null = null;
 
-  start() {
-    const g = createGame(this.level, this.upgrades, this.twist ?? undefined);
+  /** @param warmup a round in the tutorial kitchen, where each chef does their job once (the chosen shift stays chosen) */
+  start(warmup = false) {
+    const g = warmup ? createGame(TUTORIAL.n, this.upgrades) : createGame(this.level, this.upgrades, this.twist ?? undefined, this.pace);
     for (const p of this.players.values()) dressChef(addChef(g, p.id, p.role!, `${p.name} (${ROLES[p.role!].name.toLowerCase()})`), p);
     // a porter bot in the empty seat, if the host asked for one
     if (this.helper && this.players.size < MAX_PLAYERS) addBot(g);
@@ -228,7 +234,8 @@ function handle(ws: WebSocket) {
         if ([...room.players.values()].some((p) => !p.role)) return fail("Everyone needs to pick a chef first.");
         if (Array.isArray(msg.upgrades)) room.upgrades = msg.upgrades.filter((u): u is string => typeof u === "string").slice(0, 16);
         room.helper = msg.helper === true;
-        room.start();
+        room.pace = paceById(msg.pace);
+        room.start(msg.warmup === true);
         return;
       case "restart":
         if (room.game?.phase !== "over") return;

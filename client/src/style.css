@@ -1,4 +1,4 @@
-/* Kitchen Co-op — cosy, compact game UI drawn over the 3D kitchen.
+/* Chet Mal — cosy, compact game UI drawn over the 3D kitchen.
    One look everywhere: cream paper cards on a soft brown "lift", pastel accents and a peach
    gingham trim. Change the tokens below rather than individual components. */
 
@@ -2457,10 +2457,9 @@ i[data-img] {
   padding: 8px 18px 8px 8px;
   border-radius: var(--pill);
   color: var(--ink);
-  background: #fde7b4;
-  box-shadow:
-    0 3px 0 var(--honey-edge),
-    0 8px 18px rgba(45, 28, 12, 0.3);
+  background: var(--paper);
+  font-family: "Nunito", sans-serif;
+  font-weight: 800;
   font-size: 0.98rem;
   line-height: 1.25;
 }
@@ -2473,16 +2472,16 @@ i[data-img] {
   animation: coach-in 0.45s cubic-bezier(0.2, 1.5, 0.4, 1);
 }
 
+/* "Next": a soft honey chip, like the role badge's limit chip */
 .coach-step {
   flex: none;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: var(--pill);
   font-family: var(--font-display);
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #4a2d07;
-  background: var(--honey);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--ink);
+  background: #fbe9b7;
 }
 
 @keyframes coach-in {
@@ -4269,15 +4268,58 @@ body.touch #picker.spice .pick .icon-svg {
   color: var(--paper);
   text-shadow: 0 4px 0 var(--honey-edge), 0 10px 22px rgba(45, 28, 12, 0.45);
 }
-.title-wordmark span {
+.title-wordmark {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  align-items: end;
+  column-gap: 0.2em;
+}
+/* Chet, the mascot, bobs beside the name */
+.title-chet {
+  grid-row: 1 / span 2;
+  align-self: center;
+  width: clamp(90px, 15vw, 190px);
+  height: auto;
+  aspect-ratio: 1;
+  overflow: visible;
+  /* a cream sticker edge keeps Chet clear of the dark kitchen behind */
+  filter: drop-shadow(3px 0 0 var(--paper)) drop-shadow(-3px 0 0 var(--paper)) drop-shadow(0 3px 0 var(--paper)) drop-shadow(0 -3px 0 var(--paper));
+  animation: chet-bob 2.6s ease-in-out infinite;
+  transform-origin: 50% 95%;
+}
+.title-wordmark > span {
   display: block;
   font-size: clamp(2.6rem, 8vw, 5.6rem);
+  white-space: nowrap;
+}
+.title-wordmark em {
+  font-style: normal;
+  color: var(--honey);
 }
 .title-wordmark small {
   display: block;
-  margin: 4px 0 0 0.6em;
-  font-size: clamp(1.7rem, 5vw, 3.6rem);
+  margin: 6px 0 0 0.2em;
+  font-family: "Myanmar Sangam MN", "Noto Sans Myanmar", "Padauk", var(--font-display);
+  font-size: clamp(1.1rem, 2.6vw, 1.8rem);
+  line-height: 1.3;
   color: var(--honey);
+  text-shadow: 0 2px 0 var(--honey-edge), 0 6px 14px rgba(45, 28, 12, 0.4);
+}
+.title-wordmark small span {
+  display: inline;
+  font-size: inherit;
+}
+.title-wordmark small b {
+  font-family: "Nunito", system-ui, sans-serif;
+  font-size: 0.62em;
+  font-weight: 800;
+  color: var(--paper);
+  vertical-align: 0.15em;
+}
+@keyframes chet-bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-8px) rotate(3deg); }
 }
 .title-card {
   position: absolute;
@@ -4327,8 +4369,9 @@ body.touch .title-hint {
 }
 /* phones held sideways: wordmark and card side by side */
 @media (max-height: 520px) {
-  .title-wordmark span { font-size: 2.6rem; }
-  .title-wordmark small { font-size: 1.6rem; }
+  .title-wordmark > span { font-size: 2.6rem; }
+  .title-wordmark small { font-size: 1.1rem; }
+  .title-chet { width: 72px; }
   .title-card { top: auto; bottom: 18px; width: 210px; padding: 12px; }
   .title-card button, .title-card button:hover, .title-card button:active { font-size: 1.05rem; padding: 4px 10px; }
 }
@@ -4478,10 +4521,11 @@ body.in-lobby .title-hint {
     top: 10px;
     white-space: nowrap;
   }
-  body.in-lobby .title-wordmark span,
   body.in-lobby .title-wordmark small {
-    display: inline;
-    margin: 0 0 0 6px;
+    display: none;
+  }
+  body.in-lobby .title-chet {
+    display: none;
   }
   .play-menu {
     max-height: calc(100dvh - 84px);
@@ -4574,12 +4618,16 @@ body.in-lobby .title-hint {
   width: 24px;
   height: 24px;
 }
+/* Back: a full-width soft pill at the foot of the card, easy to find and hit */
 .title-card.play-menu #lobby-back {
-  width: auto;
-  justify-self: center;
-  padding: 2px 14px;
-  font-size: 0.86rem;
-  color: var(--ink-soft);
+  width: 100%;
+  justify-self: stretch;
+  min-height: 42px;
+  padding: 6px 14px;
+  border-radius: var(--pill);
+  background: var(--oat);
+  font-size: 1rem;
+  color: var(--ink);
 }
 @media (max-height: 520px) {
   .play-menu {
@@ -4677,8 +4725,7 @@ body.in-lobby .title-hint {
     gap: 6px 10px;
     padding: 14px 18px 10px;
   }
-  body.in-lobby .title-wordmark span,
-  body.in-lobby .title-wordmark small {
+  body.in-lobby .title-wordmark > span {
     font-size: 1.5rem;
   }
 }
@@ -4687,6 +4734,7 @@ body.in-lobby .title-hint {
 #lobby .title-card.play-menu {
   transform: translate(-50%, -50%);
 }
+
 
 /* the room and shift cards: flat and soft, like the play menu */
 #lobby-room button,
@@ -4721,7 +4769,6 @@ body.in-lobby .title-hint {
 #lobby-room button,
 #setup button {
   box-shadow: none !important;
-  border-bottom-width: 0;
 }
 #lobby #lobby-room:not([hidden]) {
   top: 50%;
@@ -4812,8 +4859,16 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
   margin: 0;
   border-radius: var(--pill);
 }
-#lobby-room #start-game[hidden] {
+#lobby-room #start-game[hidden],
+#lobby-room #warm-up[hidden] {
   display: none;
+}
+/* the host's row: Restaurant & Shift and Warm-up side by side, Start cooking across the bottom */
+#lobby-room .room-actions:has(#warm-up:not([hidden])) {
+  grid-template-columns: 1fr 1fr;
+}
+#lobby-room #start-game {
+  grid-column: 1 / -1;
 }
 #lobby-room #lobby-status {
   margin: 0;
@@ -5228,13 +5283,10 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
   white-space: nowrap;
 }
 
-/* Back is a quiet text link: hover underlines it, with no colour behind it */
 #lobby .title-card.play-menu #lobby-back:hover,
-#lobby .title-card.play-menu #lobby-back:focus {
-  background: transparent;
+#lobby .title-card.play-menu #lobby-back:focus-visible {
+  background: var(--peach-soft);
   color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 /* the role badge: a cute icon on the role's pastel */
@@ -5368,6 +5420,17 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 }
 #settings #settings-done:hover {
   background: #f5b9a6;
+}
+
+/* Chet tops the end card: cheering, or worried after a shift with no stars */
+.over-chet {
+  display: block;
+  width: 68px;
+  height: auto;
+  margin: -12px auto -2px;
+  animation: chet-bob 2.6s ease-in-out infinite;
+  transform-origin: 50% 95%;
+  pointer-events: none;
 }
 
 /* the remaining dialogs share the flat, dashed pastel card (the recipe book keeps its leather) */
@@ -6171,11 +6234,6 @@ body.touch #emote-wheel button {
   }
 }
 
-/* an older "#setup button" rule removes bottom borders: the select keeps its full edge */
-#setup .dropdown .dd-face {
-  border-bottom-width: 2px;
-}
-
 /* the select and name field are soft cream shapes with no border at all */
 #setup .dropdown .dd-face,
 #setup .dropdown .dd-face:hover,
@@ -6891,9 +6949,8 @@ body.touch #help .key-groups {
   #restart, #next-level, #lobby-room .room-actions button, #how-close {
     min-height: 46px;
   }
-  /* small but still comfortable to hit */
   #lobby .title-card.play-menu #lobby-back {
-    min-height: 36px;
+    min-height: 44px;
   }
   #lobby .title-card.play-menu #join-form button,
   #lobby #room-code {
@@ -7979,6 +8036,9 @@ html.reduce-motion *::after {
   display: none;
 }
 
+.level-map[hidden] {
+  display: none;
+}
 .level-map {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
@@ -8096,8 +8156,343 @@ body.touch [data-label]::after {
   height: 20px;
 }
 
+/* scrollbars on cards: a slim rounded honey-paper thumb, no track */
+@supports not selector(::-webkit-scrollbar) {
+  .card-dialog,
+  .title-card,
+  #settings,
+  #setup {
+    scrollbar-width: thin;
+    scrollbar-color: var(--paper-shadow) transparent;
+  }
+}
+/* Chrome and Safari: a wide clear gutter with a slim thumb in the middle, so the bar sits
+   inside the card's dashed edge rather than on its rim */
+:is(.card-dialog, .title-card, #settings, #setup, .album)::-webkit-scrollbar {
+  width: 22px;
+}
+:is(.card-dialog, .title-card, #settings, #setup, .album)::-webkit-scrollbar-track {
+  margin: 28px 0;
+  background: transparent;
+}
+:is(.card-dialog, .title-card, #settings, #setup, .album)::-webkit-scrollbar-thumb {
+  border: 7px solid transparent;
+  border-right-width: 11px;
+  background-clip: padding-box;
+  border-radius: var(--pill);
+  background: var(--paper-shadow) padding-box;
+}
+:is(.card-dialog, .title-card, #settings, #setup, .album)::-webkit-scrollbar-thumb:hover {
+  background: var(--honey) padding-box;
+}
+
+/* the shop is long: Back stays pinned at the bottom of the card while the list scrolls */
+#shop .shop-foot {
+  position: sticky;
+  bottom: -26px;
+  z-index: 1;
+  margin: 14px -12px 0;
+  padding: 12px 12px 4px;
+  background: var(--paper);
+}
+#shop #close-shop {
+  display: block;
+  width: min(260px, 100%);
+  margin: 0 auto;
+}
+#shop .shop-section {
+  margin-top: 22px;
+}
+
+/* the play menu on laptops and up: a roomy two-column card in the middle; the logo stays put */
+@media (min-width: 760px) and (min-height: 521px) {
+  #lobby #lobby-start.play-menu {
+    width: min(640px, calc(100vw - 48px));
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "solo create"
+      "quick join"
+      "setup daily"
+      "tools tools"
+      "back back";
+    gap: 14px 16px;
+    padding: 28px 28px 22px;
+  }
+  #lobby #lobby-start > #play-solo { grid-area: solo; }
+  #lobby #lobby-start > #create-room { grid-area: create; }
+  #lobby #lobby-start > #quick-play { grid-area: quick; }
+  #lobby #lobby-start > #join-form { grid-area: join; }
+  #lobby #lobby-start > #open-setup { grid-area: setup; }
+  #lobby #lobby-start > #play-daily { grid-area: daily; }
+  #lobby #lobby-start > .play-tools { grid-area: tools; }
+  #lobby #lobby-start > #lobby-back {
+    grid-area: back;
+    justify-self: center;
+    width: min(280px, 100%);
+  }
+  /* the same soft tiles as the pause menu: a honey pill to start, oat tiles for the rest */
+  #lobby #lobby-start button {
+    border-radius: var(--r-md);
+    background: var(--oat);
+  }
+  #lobby #lobby-start button:hover {
+    background: #fbdfd6;
+  }
+  #lobby #lobby-start > #play-solo,
+  #lobby #lobby-start > #play-solo:hover {
+    min-height: 56px;
+    border-radius: var(--pill);
+    background: #fbe9b7;
+  }
+  #lobby #lobby-start > #play-solo:hover {
+    background: #f9e09a;
+  }
+  #lobby #lobby-start > #create-room {
+    min-height: 56px;
+  }
+  #lobby #lobby-start > #open-setup {
+    background: var(--lilac-soft);
+  }
+  #lobby #lobby-start > #play-daily {
+    background: #fbe9b7;
+  }
+  #lobby #lobby-start #join-form button {
+    border-radius: var(--pill);
+    background: var(--lilac-soft);
+  }
+  #lobby #lobby-start .play-tools {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+  }
+  #lobby #lobby-start .play-tools button {
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 4px 10px;
+    font-size: 0.95rem;
+  }
+  #lobby #lobby-start .play-tools .icon-svg,
+  #lobby #lobby-start .play-tools .icon-img {
+    width: 34px;
+    height: 34px;
+  }
+  #lobby #lobby-start > #lobby-back,
+  #lobby #lobby-start > #lobby-back:hover {
+    border-radius: var(--pill);
+    background: var(--peach-soft);
+  }
+  #lobby #lobby-start > #lobby-back:hover {
+    background: #fbdfd6;
+  }
+}
+
+/* Your shift: the play menu steps aside while it's open */
+body:has(#setup[open]) #lobby-start {
+  visibility: hidden;
+}
+#setup #player-name {
+  background: #fff;
+  border-color: var(--paper-shadow);
+}
+
+/* ---------------- the sticker album: a flat pastel card like the other menus ---------------- */
+#album {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 28px 28px 22px;
+  border: none;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--lift);
+  outline: 2px dashed var(--paper-shadow);
+  outline-offset: -8px;
+}
+#album::before {
+  display: none;
+}
+#album::backdrop {
+  background: rgba(45, 28, 12, 0.18);
+  backdrop-filter: none;
+}
+#album h2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  font-size: 1.6rem;
+}
+#album h2 small {
+  padding: 2px 10px;
+  border-radius: var(--pill);
+  background: #fbe9b7;
+  font-family: "Nunito", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+#album .album {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  max-height: min(58vh, 520px);
+  margin: 0 0 18px;
+  padding: 6px 4px;
+}
+/* each sticker sits on a soft tile; earned ones take their sticker's pastel */
+#album .album li {
+  gap: 6px;
+  padding: 14px 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--oat);
+}
+#album .album li.got {
+  background: color-mix(in srgb, var(--tint-bg, #fbe09a) 30%, var(--paper));
+}
+#album .album strong {
+  font-size: 0.95rem;
+}
+#album .album small {
+  font-size: 0.76rem;
+}
+#album #close-album,
+#album #close-album:hover,
+#album #close-album:active {
+  display: block;
+  width: min(280px, 100%);
+  margin: 0 auto;
+  border-radius: var(--pill);
+  background: #f8c9ba;
+  box-shadow: none;
+  transform: none;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+#album #close-album:hover {
+  background: #f5b9a6;
+}
+
+/* stickers: a die-cut white edge with a thin ink line, a pastel face, a little shine, a tilt */
+.sticker-face {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border: 4px solid #fff;
+  background: var(--tint, var(--oat));
+  box-shadow: 0 0 0 2px var(--ink);
+}
+.sticker-face::after {
+  content: "";
+  position: absolute;
+  top: 9%;
+  left: 18%;
+  width: 26%;
+  height: 14%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75);
+  transform: rotate(-30deg);
+}
+.sticker-face .icon-svg {
+  width: 36px;
+  height: 36px;
+}
+.sticker-face.shape-0 { border-radius: 50%; }
+.sticker-face.shape-1 { border-radius: 42% 58% 46% 54% / 54% 44% 56% 46%; }
+.sticker-face.shape-2 { border-radius: 30%; }
+.sticker-face.shape-3 { border-radius: 60% 40% 55% 45% / 45% 55% 45% 55%; }
+.album li.got .sticker-face {
+  animation: sticker-wiggle 3.2s ease-in-out infinite;
+  animation-delay: calc(var(--tilt) * 0.2s);
+}
+.album li.got:hover .sticker-face {
+  transform: rotate(0deg) scale(1.1);
+  animation: none;
+}
+@keyframes sticker-wiggle {
+  0%, 100% { transform: rotate(var(--tilt)); }
+  50% { transform: rotate(calc(var(--tilt) * -1)) translateY(-2px); }
+}
+/* not earned yet: a dashed outline where the sticker will go, the picture faint inside */
+.album li.locked .sticker-face {
+  border: 2px dashed var(--ink-faint);
+  background: var(--paper);
+  box-shadow: none;
+  transform: none;
+}
+.album li.locked .sticker-face::after {
+  display: none;
+}
+
+/* who's on a ticket: a little role badge per chef, hanging off the ticket's top-left corner
+   like the phone and critic badges */
+.order-crew {
+  position: absolute;
+  top: -10px;
+  left: -6px;
+  display: flex;
+  gap: 2px;
+}
+.crew-chip {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--role-color);
+  animation: crew-in 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.crew-chip.me {
+  border-color: var(--ink);
+}
+.crew-chip .icon-svg {
+  width: 14px;
+  height: 14px;
+}
+@keyframes crew-in {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* the chef picker: what each role can do, as four icons (crossed out when they can't) */
+.chef-card .senses {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 4px 0 2px;
+}
+.chef-card .senses i {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--paper);
+}
+.chef-card .senses .icon-svg {
+  width: 17px;
+  height: 17px;
+}
+.chef-card .senses i.no {
+  background: transparent;
+  opacity: 0.45;
+}
+.chef-card .senses i.no::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 50%;
+  height: 2.5px;
+  border-radius: 2px;
+  background: var(--tomato);
+  transform: rotate(-40deg);
+}
+
 /* no ring until someone actually navigates with Tab or the arrow keys */
 body:not(.keyboard-nav) :focus-visible,
 body:not(.keyboard-nav) input:focus-visible + span {
   outline: none !important;
 }
+

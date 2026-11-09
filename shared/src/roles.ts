@@ -36,7 +36,7 @@ export const ROLES: Record<Role, RoleInfo> = {
   head: {
     name: "Head chef",
     summary:
-      "You run the pass: you see every ticket, hear every phone order and can see how each dish is coming along. You don't cook: plate, finish and serve, and tell your cooks what to make next.",
+      "You run the pass: you see every ticket, hear every phone order and can see how each dish is coming along. You don't cook: tell your cooks what to make next, then plate, finish and serve, and ring up the till.",
     sees: true,
     hears: true,
     signals: true,

@@ -13,6 +13,7 @@ import {
   describeItem,
   describePot,
   levelByNumber,
+  shiftTime,
   levelsAt,
   venueById,
   comboWindow,
@@ -26,6 +27,7 @@ import {
   type Spice,
   type Station,
   type Guide,
+  guideFor,
   orderProgress,
 } from "@kitchen/shared";
 import { glyph, img, renderedIcon } from "../ui/icons";
@@ -53,7 +55,7 @@ const ROLE_LOOK: Record<Role, { icon: string; color: string }> = {
 /** Each role's one limit (icon, words) and a short hint on working around it. */
 const ROLE_LIMITS: Record<Role, [string, string, string]> = {
   full: ["star", "No limits", "Practice every job"],
-  head: ["cross", "Can't cook", "Guide your team"],
+  head: ["cross", "Can't cook", "Call orders, plate, serve, run the till"],
   deaf: ["ear", "Can't hear", "Watch for pings and signs"],
   mute: ["voice", "Can't speak", "Point and sign. Only you can charm customers"],
 };
@@ -97,6 +99,7 @@ export class Hud {
   private readonly gameOver = $<HTMLDialogElement>("game-over");
   private readonly finalText = $("final-score");
   private readonly finalStars = $("final-stars");
+  private readonly overChet = $<HTMLImageElement>("over-chet");
   private readonly finalStats = $("final-stats");
   private readonly finalAwards = $("final-awards");
   private readonly finalReport = $("final-report");
@@ -122,6 +125,9 @@ export class Hud {
   private bars = new Map<number, HTMLElement>();
   /** ingredient chips of each ticket, in recipe order */
   private ingChips = new Map<number, HTMLElement[]>();
+  /** the "who's on it" badges of each ticket, and who they showed last */
+  private crewEls = new Map<number, HTMLElement>();
+  private crewKeys = new Map<number, string>();
   private lastScore: number | null = null;
   private lastHeld = "";
   private lastPrompts = "";
@@ -176,7 +182,7 @@ export class Hud {
     // overtime counts up instead of down
     this.setText(this.time, game.overtime > 0 ? `+${clock(game.overtime)}` : clock(game.timeLeft));
     this.clockChip.classList.toggle("overtime", game.overtime > 0);
-    this.clockRing.style.setProperty("--left", String(Math.max(0, game.timeLeft / level.time)));
+    this.clockRing.style.setProperty("--left", String(Math.max(0, game.timeLeft / shiftTime(game))));
     this.clockChip.classList.toggle("urgent", game.timeLeft < 30);
     // rush hour and combos only while the shift is on
     const rushing = game.phase === "playing" && game.rush > 0;
@@ -265,12 +271,12 @@ export class Hud {
     this.crosshair.classList.toggle("active", hints.some((h) => h.key));
     this.syncPicker(target?.stock?.length && game.phase === "playing" ? target : null, me);
 
-    this.syncOrders(game, me.role, sees);
+    this.syncOrders(game, me.role, sees, me.id);
   }
 
   /**
-   * The checklist for the dish in hand (or, in the guided shift, the order being made), and the
-   * coach line with the next step.
+   * The checklist for the dish in hand (or, in the guided shift and at a cozy pace, the most
+   * urgent order), and the coach line with the next step.
    */
   syncGuide(game: Game, guide: Guide | null, coach: boolean) {
     const seat = guide ? game.diners.find((d) => d.orderId === guide.order.id)?.seat : undefined;
@@ -375,6 +381,7 @@ export class Hud {
     const next = goals.find((s) => game.score < s);
     const overtime = game.overtime > 0 ? ` Overtime added ${game.score - game.overtimeFrom} points.` : "";
     const goal = (next ? `${next - game.score} more points for the next star.` : "Top marks — three stars!") + overtime;
+    this.overChet.src = stars > 0 ? "/chet.svg" : "/chet-oops.svg";
     this.finalStars.replaceChildren(
       ...[0, 1, 2].map((i) => {
         const s = document.createElement("span");
@@ -443,7 +450,8 @@ export class Hud {
   }
 
   /** Only orders this role could know: printed tickets need sight, phone orders need hearing. */
-  private syncOrders(game: Game, role: Role, sees: boolean) {
+  /** @param me your chef's id, whose badge says "you" */
+  private syncOrders(game: Game, role: Role, sees: boolean, me: string) {
     const { hears } = ROLES[role];
     const known = game.orders.filter((o) => (o.channel === "ticket" ? sees : hears));
     const seated = new Map(game.diners.map((d) => [d.orderId, d.seat]));
@@ -452,6 +460,8 @@ export class Hud {
       this.orderKey = key;
       this.bars.clear();
       this.ingChips.clear();
+      this.crewEls.clear();
+      this.crewKeys.clear();
       this.orders.replaceChildren(
         ...known.map((order) => {
           const li = document.createElement("li");
@@ -474,6 +484,11 @@ export class Hud {
             badge.append(glyph("phone"));
             li.append(badge);
           }
+          // who's working on it: a role badge for every chef carrying or heading for something for it
+          const crew = document.createElement("span");
+          crew.className = "order-crew";
+          this.crewEls.set(order.id, crew);
+          li.append(crew);
           if (order.critic) {
             li.classList.add("critic");
             const badge = document.createElement("span");
@@ -555,6 +570,33 @@ export class Hud {
           return li;
         }),
       );
+    }
+    // who's on which ticket: what each chef carries is for one order, and at a cozy pace the coach
+    // sends empty hands to one (the same rules on every screen, so everyone sees the same split)
+    const on = new Map<number, Chef[]>();
+    for (const chef of game.chefs) {
+      if (chef.bot) continue;
+      const id = guideFor(game, chef)?.order.id;
+      if (id !== undefined) on.set(id, [...(on.get(id) ?? []), chef]);
+    }
+    for (const order of known) {
+      const el = this.crewEls.get(order.id);
+      if (!el) continue;
+      const crew = on.get(order.id) ?? [];
+      const key = crew.map((c) => `${c.id}:${c.role}`).join();
+      if (this.crewKeys.get(order.id) === key) continue;
+      this.crewKeys.set(order.id, key);
+      el.replaceChildren(
+        ...crew.map((c) => {
+          const chip = document.createElement("span");
+          chip.className = c.id === me ? "crew-chip me" : "crew-chip";
+          chip.style.setProperty("--role-color", ROLE_LOOK[c.role].color);
+          chip.title = c.id === me ? "You're on this one" : `${c.name.split(" (")[0]} (${ROLES[c.role].name.toLowerCase()}) is on this one`;
+          chip.append(glyph(ROLE_LOOK[c.role].icon));
+          return chip;
+        }),
+      );
+      el.setAttribute("aria-label", crew.length ? crew.map((c) => (c.id === me ? "you" : c.name.split(" (")[0])).join(", ") + " on this order" : "");
     }
     // the head chef sees how each dish is coming along: a dot on every ingredient
     for (const order of known) {

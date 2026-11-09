@@ -1,4 +1,8 @@
-# Kitchen Co-op
+# Chet Mal
+
+<img src="client/public/chet.svg" alt="Chet, the mascot: a little clay curry pot in a chef's hat" width="120" align="right" />
+
+**Chet Mal** (ချက်မယ်, said "chet-meh") means "let's cook" in Burmese. The mascot is **Chet**, a little clay curry pot in a chef's hat (`client/public/chet.svg`, worried version `chet-oops.svg`; app icon `icon.svg` and PNGs in `client/public/`).
 
 A web co-op cooking game for three friends, won by talking: a **head chef** who runs the pass (sees every order and how each dish is going, but doesn't cook), a **deaf chef** who cooks by sight, and a **mute chef** who cooks and hears everything but talks only with pings, signs and a bell. Nobody has all the information, so the team has to pass it around. How it plays and scores: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md). What's next: [ROADMAP.md](ROADMAP.md).
 

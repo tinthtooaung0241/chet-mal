@@ -3,11 +3,12 @@ import { STICKERS, hasSticker, markStickersSeen, stickerCount, unseenStickers, t
 import { $ } from "./dom";
 import { glyph } from "./icons";
 
-const TINTS = ["var(--lilac-soft)", "var(--sky-soft)", "var(--mint-soft)", "var(--peach-soft)", "#fdf1d4"];
+const TINTS = ["#d9c9f2", "#bfdcf5", "#bfe5c4", "#f8c9ba", "#fbe09a"];
 
 function face(sticker: Sticker, i: number): HTMLElement {
   const el = document.createElement("span");
-  el.className = "sticker-face";
+  // die-cut shapes take turns, like a real sheet of stickers: round, flower, squircle, blob
+  el.className = `sticker-face shape-${i % 4}`;
   el.style.setProperty("--tint", TINTS[i % TINTS.length]);
   el.style.setProperty("--tilt", `${((i * 37) % 9) - 4}deg`);
   el.append(glyph(sticker.icon));
@@ -46,6 +47,7 @@ export class Album {
       ...STICKERS.map((sticker, i) => {
         const li = document.createElement("li");
         li.className = hasSticker(sticker.id) ? "got" : "locked";
+        li.style.setProperty("--tint-bg", TINTS[i % TINTS.length]);
         const name = document.createElement("strong");
         name.textContent = sticker.name;
         const how = document.createElement("small");

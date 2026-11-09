@@ -1,4 +1,4 @@
-# Kitchen Co-op: game design
+# Chet Mal: game design
 
 Up to three friends run one kitchen. The head chef sees and hears everything but doesn't cook.
 The deaf chef cooks by sight. The mute chef sees and hears everything but can only signal. Nobody
@@ -30,7 +30,8 @@ to be talked through) and *Spaceteam* (shouting under pressure).
 | **Only they can** | See every ticket and hear every call, and run the pass | Play through a storm unaffected | Charm the tables (B at the pass: +8 s for every order, then 35 s rest) | — |
 
 Chefs can hand things to each other (use while facing a teammate) and lead each other by the hand
-(H). A ping (G) names what you hold or point at.
+(H). A ping (G) names what you hold or point at. Each ticket shows a little role badge for every
+chef working on it, so the team can see who's on what without a word.
 
 **Helper bot (optional):** a porter that puts out fires, mops spills, washes up, and otherwise fetches
 and chops what the orders need. It never cooks, plates or serves, and doesn't count towards the
@@ -116,6 +117,31 @@ orders about 15% more often.
 
 ## 6. Pressure
 
+**Pace** (chosen in *Your shift*; online, the host's counts):
+
+| | Cozy (default) | Classic |
+|---|---|---|
+| Shift length, gap between orders, rush hour, combo window | 1.5× | as below |
+| Orders at the start / most open at once | 1 / one fewer (at least 2) | 2 / as below |
+| How long customers wait (pass and till) | 1.6× | as below |
+| Time before food or soup burns, and cold food goes off | 2× | as below |
+| Fires and oil spills | none | as below |
+| The coach (checklist, next step and arrow) | every shift | tutorial only |
+| Seasoning slips (missing, extra or mistimed) | cost nothing | −5 / −3 each |
+
+The star goals are the same at either pace, so stars come easier at a Cozy pace.
+
+**The coach** (Cozy, and the tutorial) knows the team. It only sends you to orders you can
+perceive, so a deaf cook still needs to be told about phone orders.
+
+- Cooks are sent to an order nobody else is working on, and skip anything a teammate is
+  already carrying.
+- With a head chef in the kitchen, cooks prepare the food and leave the plating to them.
+- The head chef is coached through their own job: ask a cook for what's missing, plate what's
+  ready, finish, serve and wash up.
+- A customer waiting to pay goes first for whoever runs the till: the head chef, or else the
+  nearest chef with free hands.
+
 - **Patience:** each recipe sets how long its customer waits (60 to 100 s). That time grows on easy
   levels and in the tutorial, and with the neon sign.
 - **Rush hour** (from level 3): once a shift, from 45% of the way in, for 35 s. Orders come twice
@@ -144,7 +170,8 @@ orders about 15% more often.
 - **Levels:**
   - Street food stand: levels 1 to 6.
   - Burmese restaurant: levels 7 to 10. It opens at 500 total sales and a star on Storm night.
-  - A tutorial kitchen, which the very first *Let's Play* opens.
+  - A tutorial kitchen, which the very first *Let's Play* opens. Online, the host can start it as
+    a **warm-up** round for the whole crew before the real shift.
 - **Upgrades** (60 to 120 coins), each in place from the next shift:
   - sharp knives;
   - better fridge seals;
@@ -176,6 +203,7 @@ orders about 15% more often.
 |---|---|
 | Rules (recipes, levels, timings, restaurants, upgrades) | `shared/src/rules.ts` |
 | Kitchen layouts | `shared/src/layout.ts` |
+| Pace (Cozy or Classic) | `PACES` in `shared/src/rules.ts`; the setting in `client/src/pace.ts` |
 | Music | `client/src/music.ts` |
 | Helper bot | `shared/src/bots.ts` |
 | Comfort settings (sound, voices, text, graphics, motion) | `client/src/prefs.ts` |

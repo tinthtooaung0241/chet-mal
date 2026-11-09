@@ -2,7 +2,7 @@
 // waits. When their dish is served at the pass they walk over, collect it, carry it back and
 // eat; if their order runs out they storm off. Pure state, stepped with the world, so every
 // player sees the same diners. Seats and walking lanes match the terrace in Kitchen_Room.glb.
-import { PAY_WAIT, type Payment } from "./rules";
+import { PAY_WAIT, paceOf, type Payment } from "./rules";
 import type { Bowl, Game, Plate } from "./state";
 
 type Point = [number, number];
@@ -248,7 +248,7 @@ export function stepDiners(g: Game, dt: number, news?: (d: Diner, what: DinerNew
         case "checkout":
           d.facing = 0; // facing the till
           d.state = "paying";
-          d.timer = PAY_WAIT;
+          d.timer = PAY_WAIT * paceOf(g).patience;
           news?.(d, "at-till");
           break;
         case "leaving":

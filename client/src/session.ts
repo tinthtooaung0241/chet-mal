@@ -2,6 +2,7 @@
 // The rest of the client only talks to this interface.
 import { helperOn } from "./helper";
 import { myLook } from "./looks";
+import { myPace } from "./pace";
 import {
   SNAPSHOT_HZ,
   addBot,
@@ -63,7 +64,7 @@ export class LocalSession implements Session {
     twist?: TwistId,
     private readonly helper = helperOn(),
   ) {
-    this.game = createGame(level, loadBusiness().upgrades, twist);
+    this.game = createGame(level, loadBusiness().upgrades, twist, myPace());
     this.me = addChef(this.game, "solo", role, "You");
     this.me.look = myLook();
     if (helper) addBot(this.game);
@@ -99,7 +100,7 @@ export class LocalSession implements Session {
     const role = this.me.role;
     // playing again keeps a daily special's twist; another level is a normal shift
     const twist = level === this.game.level ? this.game.twist : undefined;
-    this.game = createGame(level, loadBusiness().upgrades, twist); // anything bought since is in place now
+    this.game = createGame(level, loadBusiness().upgrades, twist, myPace()); // anything bought since is in place now
     this.me = addChef(this.game, "solo", role, "You");
     this.me.look = myLook();
     if (this.helper) addBot(this.game);
@@ -259,8 +260,9 @@ export class NetSession implements Session {
     this.send({ t: "level", level, twist });
   }
 
-  start() {
-    this.send({ t: "start", upgrades: loadBusiness().upgrades, helper: helperOn() });
+  /** @param warmup a round in the tutorial kitchen first */
+  start(warmup = false) {
+    this.send({ t: "start", upgrades: loadBusiness().upgrades, helper: helperOn(), pace: myPace(), warmup });
   }
 
   step(dt: number, input: Input) {

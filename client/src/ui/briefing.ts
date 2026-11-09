@@ -8,7 +8,7 @@ import { glyph } from "./icons";
 /** How each chef plays, read aloud after the briefing when speech is on. */
 const ROLE_TIPS: Record<Role, string> = {
   full: "Practising alone: you see and hear everything. Switch chef with keys 0–3 to try each role.",
-  head: "You run the pass. You see every ticket, hear every phone order, and your tickets show how each dish is coming along. You don't cook: tell your cooks what to make, then plate, finish and serve.",
+  head: "You run the pass. You see every ticket, hear every phone order, and your tickets show how each dish is coming along. You don't cook: tell your cooks what to make, then plate, finish and serve, and ring customers up at the till.",
   deaf: "You can't hear. Watch tickets, bars, smoke and your teammates' signs. Phone orders only reach the others.",
   mute: "You can't talk. Point with G, ring the bell with B, and hold T, then move the mouse to a sign and let go. Only you can charm customers: press B at the pass to wave, and every table waits a little longer.",
 };
@@ -16,7 +16,7 @@ const ROLE_TIPS: Record<Role, string> = {
 /** The short version of each chef's job, on the card. */
 const BRIEF_ROLE: Record<Role, [string, string]> = {
   full: ["star", "All senses: practise every job"],
-  head: ["chef", "Head chef: call orders, plate and serve"],
+  head: ["chef", "Head chef: call orders, plate, serve, run the till"],
   deaf: ["ear", "Deaf chef: watch tickets and signs"],
   mute: ["voice", "Mute chef: point, sign, charm customers"],
 };

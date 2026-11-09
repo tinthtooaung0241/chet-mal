@@ -1,6 +1,7 @@
 // Messages between browser and server. Plain JSON over one WebSocket per player.
 import type { Emote, Role } from "./roles";
 import type { TwistId } from "./twists";
+import type { Pace } from "./rules";
 import type { ChefLook } from "./looks";
 import { rebuildGrid, type Game, type GameEvent } from "./state";
 
@@ -24,8 +25,8 @@ export type ClientMessage =
   /** twist: a daily special's twist (null for a normal shift) */
   | { t: "level"; level: number; twist?: TwistId | null }
   /** upgrades: the host's restaurant equipment, used for this shift */
-  /** helper: put a porter bot in an empty seat */
-  | { t: "start"; upgrades?: string[]; helper?: boolean }
+  /** helper: put a porter bot in an empty seat; pace: how fast the shift runs; warmup: a round in the tutorial kitchen first */
+  | { t: "start"; upgrades?: string[]; helper?: boolean; pace?: Pace; warmup?: boolean }
   /** play again, optionally on another level */
   | { t: "restart"; level?: number; upgrades?: string[] }
   /** own chef's movement: clients move their chef locally and report where it is */

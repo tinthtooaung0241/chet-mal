@@ -7,6 +7,7 @@ import {
   describeSurroundings,
   guideFor,
   levelByNumber,
+  paceOf,
   payingDiners,
   TUTORIAL,
   targetStation,
@@ -288,7 +289,7 @@ function beginRound() {
   setFirstPerson(viewPref() === "fpp");
   canvas.focus();
   lastCoach = null;
-  track("shift_start", { level: game.level, role: me.role, players: game.chefs.length });
+  track("shift_start", { level: game.level, role: me.role, players: game.chefs.length, pace: game.pace ?? "classic" });
   showBriefing();
 }
 
@@ -392,6 +393,9 @@ const lobby = new Lobby({
   },
   chooseLevel(level, twist) {
     if (session instanceof NetSession) session.chooseLevel(level, twist);
+  },
+  warmup() {
+    if (session instanceof NetSession) session.start(true);
   },
   start() {
     if (session instanceof NetSession) session.start();
@@ -749,7 +753,7 @@ scene.onBeforeRenderObservable.add(() => {
     shownGameOver = true;
     addTakings(game.coins ?? 0); // the shift's takings go into the restaurant's money
     const stars = hud.showGameOver(game, me.id);
-    track("shift_end", { level: game.level, stars, coins: game.coins ?? 0, players: game.chefs.length, twist: game.twist ?? null });
+    track("shift_end", { level: game.level, stars, coins: game.coins ?? 0, players: game.chefs.length, twist: game.twist ?? null, pace: game.pace ?? "classic" });
     if (game.twist) {
       // a daily special stands alone: no level stars, and no "next level"
       const daily = finishDaily(game.score, stars);
@@ -783,12 +787,12 @@ scene.onBeforeRenderObservable.add(() => {
   const faced = game.phase === "playing" ? targetStation(game, me) : null;
   hud.update(game, me, pov.active, faced ? view.barState(faced.id) : null);
 
-  // the coach: a checklist for what's in hand; in the guided first shift, the next step with an arrow
+  // the coach: a checklist for what's in hand; in the guided first shift and at a cozy pace, the next step with an arrow
   const guide = guideFor(game, me);
-  const tutorial = !!levelByNumber(game.level).tutorial;
-  hud.syncGuide(game, guide, tutorial);
-  view.setGuideTarget(tutorial ? (guide?.target ?? null) : null);
-  if (tutorial && guide?.next && guide.next !== lastCoach && !briefing.open) {
+  const coached = !!levelByNumber(game.level).tutorial || paceOf(game).coach;
+  hud.syncGuide(game, guide, coached);
+  view.setGuideTarget(coached ? (guide?.target ?? null) : null);
+  if (coached && guide?.next && guide.next !== lastCoach && !briefing.open) {
     lastCoach = guide.next;
     feedback.coach(guide.next);
   }
@@ -816,6 +820,7 @@ function fitCamera() {
 setupMenuKeys();
 $("title-play").addEventListener("click", () => {
   feedback.unlock();
+  shoutName();
   if (touchMode()) goFullscreen();
   // the very first time, straight into the tutorial kitchen (unless a friend's invite is waiting)
   if (firstVisit()) {
@@ -825,6 +830,18 @@ $("title-play").addEventListener("click", () => {
   }
   lobby.show();
 });
+
+/** Chet calls the game's name as you start: "Chet Mal!" (said "chet-meh", let's cook in Burmese) */
+function shoutName() {
+  const volume = level(pref("sound"));
+  if (!volume || !("speechSynthesis" in window)) return;
+  const shout = new SpeechSynthesisUtterance("Chet meh!");
+  shout.volume = volume;
+  shout.pitch = 1.5;
+  shout.rate = 1.05;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(shout);
+}
 
 const WELCOMED_KEY = "kitchen.welcomed";
 

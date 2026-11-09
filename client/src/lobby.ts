@@ -1,10 +1,11 @@
 // The start screen: practice solo, or create/join a kitchen and pick a chef.
-import { LAYOUTS, ROLES, VENUES, levelByNumber, levelsAt, type Role, type TwistId, type VenueId } from "@kitchen/shared";
+import { LAYOUTS, PACES, ROLES, VENUES, levelByNumber, levelsAt, paceById, type Role, type TwistId, type VenueId } from "@kitchen/shared";
 import { loadBusiness, venueLock } from "./business";
 import { bestStars, starText } from "./progress";
 import type { LobbyState } from "./session";
 import { dailyStatus, todaysSpecial } from "./daily";
 import { helperOn, setHelper } from "./helper";
+import { myPace, setPace } from "./pace";
 import { readText, writeText } from "./storage";
 import { glyph } from "./ui/icons";
 import { enhanceSelect } from "./ui/dropdown";
@@ -21,6 +22,8 @@ export interface LobbyHandlers {
   chooseRole(role: Role): void;
   chooseLevel(level: number, twist: TwistId | null): void;
   start(): void;
+  /** a warm-up round in the tutorial kitchen for the whole crew */
+  warmup(): void;
 }
 
 export class Lobby {
@@ -62,6 +65,16 @@ export class Lobby {
       });
     }
     $("setup-done").addEventListener("click", () => setup.close());
+    // the pace: cozy (more time, an arrow for every step) or classic; online, the host's counts
+    const paces = setup.querySelectorAll<HTMLInputElement>('input[name="pace"]');
+    for (const radio of paces) {
+      radio.checked = radio.value === myPace();
+      radio.addEventListener("change", () => {
+        setPace(paceById(radio.value));
+        this.showPaceNote();
+      });
+    }
+    this.showPaceNote();
     // the helper bot: solo, or in an empty seat of a kitchen you host
     const helpers = setup.querySelectorAll<HTMLInputElement>('input[name="helper"]');
     for (const radio of helpers) {
@@ -97,6 +110,7 @@ export class Lobby {
       button.addEventListener("click", () => handlers.chooseRole(button.dataset.role as Role));
     }
     this.startButton.addEventListener("click", () => handlers.start());
+    $("warm-up").addEventListener("click", () => handlers.warmup());
     $("copy-link").addEventListener("click", () => {
       const link = `${location.origin}${location.pathname}?room=${this.roomCode}`;
       void navigator.clipboard?.writeText(link).then(
@@ -245,11 +259,15 @@ export class Lobby {
     $("level-blurb").textContent = twist ? `${twist.name}: ${twist.blurb.toLowerCase()}. Today's shift is ${level.name}.` : level.blurb;
   }
 
+  private showPaceNote() {
+    $("pace-note").textContent = PACES[myPace()].blurb;
+  }
+
   /** The chosen shift, under the play menu's Restaurant & Shift button. */
   private showSummary() {
     const name = this.levelSelect.selectedOptions[0]?.textContent ?? "";
     const shift = this.daily ? `Daily special · ${todaysSpecial().twist.name}` : name.replace(/[☆★\s]+$/, "");
-    $("setup-summary").textContent = helperOn() ? `${shift} · helper bot` : shift;
+    $("setup-summary").textContent = [shift, PACES[myPace()].name, ...(helperOn() ? ["helper bot"] : [])].join(" · ");
   }
 
   show() {
@@ -308,6 +326,9 @@ export class Lobby {
     const everyoneReady = state.players.length > 0 && state.players.every((p) => p.role);
     this.startButton.hidden = !isHost;
     this.startButton.disabled = !everyoneReady;
+    const warmUp = $<HTMLButtonElement>("warm-up");
+    warmUp.hidden = !isHost;
+    warmUp.disabled = !everyoneReady;
     $("lobby-status").textContent = isHost
       ? everyoneReady
         ? state.players.length < 3

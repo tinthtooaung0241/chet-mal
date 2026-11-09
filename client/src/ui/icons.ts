@@ -1,4 +1,4 @@
-// Kitchen Co-op icon set.
+// Chet Mal icon set.
 //  - Rendered icons: our own Blender models (food in every state, tools, soups, chef portraits),
 //    shot with a cartoon outline. Generated into assets/icons by the IconStudio scene in
 //    assets/kitchen_assets.blend, so they always match the 3D kitchen.
