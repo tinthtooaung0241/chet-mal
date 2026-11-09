@@ -12,6 +12,7 @@
     "build": "npm --workspace client run build && npm --workspace server run build",
     "start": "npm --workspace server run start",
     "typecheck": "npm --workspace client run typecheck && npm --workspace server run typecheck",
-    "start:prod": "npm --workspace server run start:prod"
+    "start:prod": "npm --workspace server run start:prod",
+    "test:coach": "tsx shared/test/autoplay.ts"
   }
 }

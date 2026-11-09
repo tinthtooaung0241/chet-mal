@@ -1,5 +1,5 @@
 // Helper bots: a kitchen porter that fills an empty seat, solo or online. It does the support
-// jobs first (smother a fire, mop a spill, wash up) and otherwise keeps the boards stocked: it
+// jobs first (smother a fire, mop a spill, bring dirty dishes in from the pass, wash up) and otherwise keeps the boards stocked: it
 // fetches an ingredient an order needs, chops it and leaves it on the board for the cooks. It
 // never plates, cooks or serves, so the real chefs still run the kitchen.
 import { FOOD_RULES, TILE } from "./rules";
@@ -84,6 +84,13 @@ function goalFor(g: Game, bot: Chef): Goal | null {
   if (fire) return { cells: besides(g, fire), face: [fire], hold: true };
   const spill = !held && g.spills[0];
   if (spill) return { cells: [[rowOf(g, spill.z), colOf(g, spill.x)]], hold: true };
+  // dirty dishes customers left on the pass: carry them to the sink
+  if (held && held.type !== "food" && held.dirty) {
+    const sink = g.stations.find((s) => s.kind === "sink" && besides(g, s).length);
+    return sink ? { cells: besides(g, sink), face: [sink], use: () => interact(g, bot) } : null;
+  }
+  const returned = !held ? g.stations.find((s) => (s.item?.type === "plate" || s.item?.type === "bowl") && !!s.item.dirty && besides(g, s).length) : undefined;
+  if (returned) return { cells: besides(g, returned), face: [returned], use: () => interact(g, bot) };
   if (!held && g.dishes && g.dishes.dirtyPlates + g.dishes.dirtyBowls >= 2) {
     const sinks = g.stations.filter((s) => s.kind === "sink" && besides(g, s).length);
     if (sinks.length) return { cells: sinks.flatMap((s) => besides(g, s)), face: sinks, hold: true };

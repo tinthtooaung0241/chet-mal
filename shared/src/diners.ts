@@ -273,13 +273,30 @@ export function stepDiners(g: Game, dt: number, news?: (d: Diner, what: DinerNew
   }
 }
 
-/** Where a diner's dish is drawn: on the pass while they come for it, otherwise with them. */
-export function dinerDishSpot(d: Diner): "pass" | "hands" | "table" | null {
+/**
+ * Where a diner's dish is drawn: on the pass while they come for it, in their hands, on their table
+ * while they eat, then "left" on the table, empty, once they've got up to pay and go.
+ */
+export function dinerDishSpot(d: Diner): "pass" | "hands" | "table" | "left" | null {
   if (!d.dish) return null;
   if (d.state === "fetching" || d.state === "arriving" || d.state === "waiting") return "pass";
   if (d.state === "returning") return d.timer > 0 ? "pass" : "hands";
   if (d.state === "eating") return "table";
-  return null;
+  // carrying their dirty dish to the pass on the way to pay (on levels with washing up)
+  if (d.dish.dirty) return "hands";
+  return "left";
+}
+
+/** How much of their dish a diner has eaten: 0 until they start, 1 once they've finished. */
+export function eatenShare(d: Diner): number {
+  if (d.state === "eating") return Math.min(1, Math.max(0, 1 - d.timer / EAT_TIME));
+  return d.state === "checkout" || d.state === "paying" || d.state === "leaving" ? 1 : 0;
+}
+
+/** Where a diner sits (their chair), whether or not they're in it. */
+export function dinerSeat(d: Diner): Point {
+  const s = seatOf(d);
+  return [s.x, s.z];
 }
 
 export function dinerTable(d: Diner): Point {

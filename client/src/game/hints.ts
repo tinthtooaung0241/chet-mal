@@ -121,11 +121,42 @@ export interface Prompt {
 
 const article = (s: string) => (/^[aeiou]/i.test(s) ? `an ${s}` : `a ${s}`);
 
+/** With a spice bottle in hand: what Space would season, or swap or put back at a rack. */
+function spiceHints(g: Game, me: Chef, st: Station | null): Prompt[] {
+  const spice = me.spice!.spice;
+  const name = SPICE_NAMES[spice];
+  const use = (text: string): Prompt => ({ key: "Space", text });
+  if (!st) {
+    const mate = chefInFront(g, me);
+    const who = mate?.name.split(" (")[0];
+    if (mate?.held) return [use(`Season ${who}'s ${mate.held.type === "food" ? mate.held.kind.toLowerCase() : mate.held.type}: ${name}`)];
+    if (mate && !mate.spice) return [use(`Hand the ${name} to ${who}`)];
+    return [{ text: `Take the ${name} to some food or a dish` }];
+  }
+  if (st.kind === "spice") {
+    const chosen = pickedItem(st, me) as Spice;
+    return [use(chosen === spice ? `Put the ${name} back` : `Swap for the ${SPICE_NAMES[chosen]}`), { key: `1–${st.stock!.length}`, text: "choose" }];
+  }
+  const item = st.item;
+  if (!item) return [{ text: "Nothing here to season" }];
+  if (item.type === "food") {
+    const kind = item.kind.toLowerCase();
+    if (!ROLES[me.role].cooks) return [{ text: "Cooks season the ingredients" }];
+    if (item.state === "burnt") return [{ text: "Too late, it's burnt" }];
+    if ((item.season ?? []).some((x) => x.spice === spice)) return [{ text: `The ${kind} already has ${name}` }];
+    return [use(`${item.state === "cooked" ? "Season" : "Season the raw"} ${kind}: ${name}`)];
+  }
+  if (item.type === "plate" ? !item.contents.length : !item.soup) return [{ text: "Put the food in first" }];
+  if (item.season.includes(spice)) return [{ text: `Already has ${name}` }];
+  return [use(`Add ${name}`)];
+}
+
 /** What Space (use) and F (chop) would do for this chef right now. */
 export function actionHints(g: Game, me: Chef): Prompt[] {
   if (g.phase !== "playing") return [];
   const held = me.held;
   const st = targetStation(g, me);
+  if (me.spice) return spiceHints(g, me, st);
   if (!st) {
     if (!held && spillUnder(g, me)) return [{ key: "F", text: "Hold to mop the spill" }];
     const mate = chefInFront(g, me);
@@ -146,6 +177,7 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
     case "plates":
     case "bowls": {
       const thing = st.kind === "plates" ? "plate" : "bowl";
+      if (held && held.type !== "food" && held.dirty) return [{ text: "Dirty: wash it at the sink first" }];
       const clean = g.dishes ? (thing === "plate" ? g.dishes.plates : g.dishes.bowls) : null;
       if (clean === 0 && (!held || (thing === "plate" && held.type === "food"))) return [{ text: `No clean ${thing}s: wash some at the sink` }];
       if (!held) return [use(`Take a ${thing}${clean === null ? "" : ` (${clean} clean)`}`)];
@@ -166,6 +198,7 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
       }
       return [{ text: held?.type === "food" ? "Plate it first" : "Bring a finished dish" }];
     case "sink": {
+      if (held && held.type !== "food" && held.dirty) return [use(`Put the dirty ${held.type} in the sink`)];
       const dirty = g.dishes ? g.dishes.dirtyPlates + g.dishes.dirtyBowls : 0;
       if (!dirty) return [{ text: "Nothing to wash" }];
       return [held ? { text: "Empty hands to wash up" } : { key: "F", text: `Hold to wash (${dirty} dirty)` }];
@@ -177,19 +210,10 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
       return [use(`Take ${payer.bill} coins by ${choice?.toLowerCase()}`), { key: "1–2", text: "cash / card" }];
     }
     case "spice": {
-      const spice = pickedItem(st, me) as Spice;
-      const name = SPICE_NAMES[spice];
-      const choose = { key: `1–${st.stock!.length}`, text: "choose" };
-      if (!held) return [{ text: "Bring food or a dish to season" }, choose];
-      if (held.type === "food") {
-        const kind = held.kind.toLowerCase();
-        if (held.state === "burnt") return [{ text: "Too late, it's burnt" }];
-        if ((held.season ?? []).some((x) => x.spice === spice)) return [{ text: `The ${kind} already has ${name}` }, choose];
-        return [use(`${held.state === "cooked" ? "Season" : "Season the raw"} ${kind}: ${name}`), choose];
-      }
-      if (held.type === "plate" ? !held.contents.length : !held.soup) return [{ text: "Put the food in first" }];
-      if (held.season.includes(spice)) return [{ text: `Already has ${name}` }, choose];
-      return [use(`Add ${name}`), choose];
+      // the bottle goes to the food: take one with free hands
+      const name = SPICE_NAMES[pickedItem(st, me) as Spice];
+      if (held) return [{ text: "Put it down, then bring the spice to it" }];
+      return [use(`Take the ${name}`), { key: `1–${st.stock!.length}`, text: "choose" }];
     }
     case "fridge":
     case "pantry": {
@@ -231,7 +255,7 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
   } else if (held && onTop) {
     const plate = held.type === "plate" ? held : onTop.type === "plate" ? onTop : null;
     if (plate && (held.type === "food" || onTop.type === "food")) {
-      prompts.push(plate.contents.length < MAX_PLATE_ITEMS ? use("Add to the plate") : { text: "Plate is full" });
+      prompts.push(plate.dirty ? { text: "That plate's dirty" } : plate.contents.length < MAX_PLATE_ITEMS ? use("Add to the plate") : { text: "Plate is full" });
     }
     else prompts.push({ text: `${stationName(st)} is taken` });
   }

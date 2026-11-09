@@ -118,7 +118,7 @@ export const SOUP_BURN = 12;
 export const COLD_WARN = 35;
 export const COLD_LIMIT = 50;
 
-// Seasoning from the spice racks (keys 1-8 at a rack): the short things on the front row (1-4),
+// Seasoning from the spice racks (take a bottle with keys 1-8 and carry it to the food): the short things on the front row (1-4),
 // the tall bottles on the raised back step (5-8), each row left to right.
 export const SPICES = ["Salt", "Butter", "Lemon", "Herbs", "Pepper", "OliveOil", "Soy", "Vinegar"] as const;
 /** The Burmese kitchen's rack: toppings and seasonings for noodles, salads and curry. */
@@ -365,7 +365,7 @@ export const TUTORIAL: Level = {
     lines: [
       { icon: "sparkle", text: "Follow the glowing station" },
       { icon: "knife", text: "Chop tomato and lettuce (hold F)" },
-      { icon: "salt", text: "Season at the rack" },
+      { icon: "salt", text: "Take a spice from the rack to the food" },
       { icon: "bell", text: "Serve at the pass" },
     ],
   },
@@ -393,7 +393,7 @@ export const LEVELS: Level[] = [
       lines: [
         { icon: "knife", text: "Chop it, then put it on a stove" },
         { icon: "flame", text: "Take food off before it burns" },
-        { icon: "salt", text: "Finish it on the plate at a spice rack" },
+        { icon: "salt", text: "Bring a spice from the rack to finish the plate" },
       ],
     },
     recipes: ["salad", "fried-mushrooms"],

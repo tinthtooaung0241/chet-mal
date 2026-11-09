@@ -6,7 +6,7 @@
 
 A web co-op cooking game for three friends, won by talking: a **head chef** who runs the pass (sees every order and how each dish is going, but doesn't cook), a **deaf chef** who cooks by sight, and a **mute chef** who cooks and hears everything but talks only with pings, signs and a bell. Nobody has all the information, so the team has to pass it around. How it plays and scores: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md). What's next: [ROADMAP.md](ROADMAP.md).
 
-Cooking works like a real kitchen, sped up: one storage corner holds two reach-in fridges (meat and fish; dairy and greens, which go off if left out too long) and two pantry shelves (root vegetables; bread and tomatoes). Every dish is seasoned the way it really is (grilled fish with salt, lemon and herbs; fish & chips with salt and malt vinegar...) from a spice rack by the stoves holding salt, pepper, olive oil, butter, lemon, fresh herbs, soy sauce and malt vinegar. Customers walk in, sit at a table on the terrace, come to the pass for their dish, eat, then pay at the till on the pass, by cash or card as they ask (1 or 2 at the till), or storm off if their order runs out. What they pay is your restaurant's money, kept between shifts. Spend it on equipment upgrades (sharp knives, better fridge seals, copper pans, a tip jar, a neon sign) at the till or from the title screen.
+Cooking works like a real kitchen, sped up: one storage corner holds two reach-in fridges (meat and fish; dairy and greens, which go off if left out too long) and two pantry shelves (root vegetables; bread and tomatoes). Every dish is seasoned the way it really is (grilled fish with salt, lemon and herbs; fish & chips with salt and malt vinegar...) from a spice rack by the stoves (take a bottle and carry it to the food, wherever it is) holding salt, pepper, olive oil, butter, lemon, fresh herbs, soy sauce and malt vinegar. Customers walk in, sit at a table on the terrace, come to the pass for their dish, eat, then pay at the till on the pass, by cash or card as they ask (1 or 2 at the till), or storm off if their order runs out. What they pay is your restaurant's money, kept between shifts. Spend it on equipment upgrades (sharp knives, better fridge seals, copper pans, a tip jar, a neon sign) at the till or from the title screen.
 
 **Restaurants.** The business grows from a **street food stand** to a **Burmese restaurant** in a Yangon tea-shop kitchen (mohinga, tea leaf salad, shan noodles, chicken curry, fried rice, with a topping rack of lime, peanuts, coriander, chili, garlic oil, fish sauce and turmeric). Each restaurant has its own room, stocked storage and shifts. A restaurant opens once your **total sales** (every coin ever taken at the till; spending on upgrades never lowers it) reach its goal and you've cleared the previous restaurant's last shift (its big night). In development (`npm run dev:client`) every restaurant is open so new kitchens can be tried straight away.
 
@@ -33,6 +33,9 @@ npm run start:prod   # http://localhost:8787 (PORT sets another port)
 
 `npm start` still runs the server from source with tsx.
 
+`npm run test:coach` plays every level with a simulated player that follows the coach (solo, two
+cooks, and a head chef with two cooks, at both paces) and fails on any refused action or loop.
+
 ## Layout
 
 | Folder | What's in it |
@@ -47,7 +50,7 @@ npm run start:prod   # http://localhost:8787 (PORT sets another port)
 
 ## Controls
 
-W/S walk · A/D step sideways · mouse or ←/→ look · Space/E use · 1–8 at a fridge or spice rack (or scroll / [ ] then Space) · hold F chop · H take a teammate's hand · Q describe surroundings · R recipe book · V first-person/overhead · P pause (solo) · 0–4 switch chef (solo).
+W/S walk · A/D step sideways · mouse or ←/→ look · Space/E use · 1–8 at a fridge or spice rack (or scroll / [ ] then Space; a spice bottle goes to the food, and back on the rack) · hold F chop · H take a teammate's hand · Q describe surroundings · R recipe book · V first-person/overhead · P pause (solo) · 0–4 switch chef (solo).
 Mute chef: G ping · B bell · hold T + 1–6 emotes.
 
 ## Going online: domain, CDN, error tracking, analytics

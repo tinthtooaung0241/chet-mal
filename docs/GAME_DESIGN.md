@@ -65,10 +65,12 @@ only the chef who did something.
 3. **Cook the dish.**
    1. Fetch ingredients from crates, fridges or pantry shelves.
    2. Chop on a board (hold F, 1.8 s).
-   3. Season at the rack. Some spices go on before cooking, some straight after.
+   3. Season it: take a spice bottle from the rack (keys 1–8) and carry it to the food, wherever
+      it is (a board, a counter, a stove, or a teammate's hands). Some spices go on before cooking,
+      some straight after. Put the bottle back, or swap it for another, at the rack.
    4. Cook on a stove, or in the soup pot (three chopped ingredients, 10 s).
    5. Plate it, or ladle soup into a bowl.
-   6. Add the finishing spices on top.
+   6. Add the finishing spices on top: put the dish down and bring each bottle to it.
 4. **Serve at the pass.** The customer collects the dish, eats, then queues at the till. Ring them
    up the way they want to pay (1 cash, 2 card). They wait 30 s at the till before leaving
    unpaid.
@@ -159,8 +161,11 @@ perceive, so a deaf cook still needs to be told about phone orders.
   - Hold F at it for 1.5 s to smother it. Anyone can.
 - **Oil spills** (from level 6, once a shift): chefs in the puddle move at 45% speed until someone
   holds F on it for 2 s.
-- **Washing up** (from level 5, except 7): the racks hold 4 plates and 3 bowls. Every eaten or
-  wasted dish comes back dirty; hold F at the sink for 1.5 s to wash one.
+- **Washing up** (from level 5, except 7): the racks hold 4 plates and 3 bowls. Nothing washes
+  itself: a customer who's eaten carries their dirty dish to the till and leaves it on a pass
+  counter, and a wasted dish leaves a dirty plate in your hands. Take each one to the sink (Space),
+  then hold F there for 1.5 s to wash it. Dirty dishes can't be filled, served or put back on a
+  rack.
 - **Kids** (from level 3): one customer in five wants the dish plain, with no seasoning at all.
 - **Layouts:** levels 4 to 6 and 8 to 10 each rearrange the middle of the room: an island,
   a split kitchen, or a corridor behind the stoves.

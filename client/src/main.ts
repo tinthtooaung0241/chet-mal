@@ -546,8 +546,11 @@ function setFirstPerson(on: boolean) {
   $("crosshair").hidden = !on;
 }
 
+/** Online, only the host picks what comes next; everyone else waits on the end screen. */
+const guestOnline = () => session instanceof NetSession && !!session.lobby && session.lobby.host !== session.lobby.you;
+
 function restart(level?: number) {
-  if (!session) return;
+  if (!session || guestOnline()) return;
   session.restart(level);
   if (!session.online) {
     beginRound();
@@ -751,6 +754,7 @@ scene.onBeforeRenderObservable.add(() => {
   effects.sync(game);
   if (game.phase === "over" && !shownGameOver) {
     shownGameOver = true;
+    $("next-level").hidden = false; // each end screen decides afresh (a daily special, a locked restaurant or a warm-up hides it)
     addTakings(game.coins ?? 0); // the shift's takings go into the restaurant's money
     const stars = hud.showGameOver(game, me.id);
     track("shift_end", { level: game.level, stars, coins: game.coins ?? 0, players: game.chefs.length, twist: game.twist ?? null, pace: game.pace ?? "classic" });
@@ -768,6 +772,16 @@ scene.onBeforeRenderObservable.add(() => {
     }
     // the next shift may be at a restaurant that isn't open yet
     if (!canPlay(game.level + 1)) $("next-level").hidden = true;
+    // after a warm-up online, the crew goes on to the shift the host chose
+    const warmedUp = session.online && game.level === TUTORIAL.n;
+    $("restart-label").textContent = warmedUp ? "Start the shift" : "Play again";
+    $("restart").classList.toggle("primary", warmedUp);
+    if (warmedUp) $("next-level").hidden = true;
+    // a guest waits for the host's pick
+    const guest = guestOnline();
+    $("restart").hidden = guest;
+    if (guest) $("next-level").hidden = true;
+    $("host-picks").hidden = !guest;
     lobby.refreshLevels(game.level);
     showShiftStickers(finishShift(game, stars));
     album.refreshButton();

@@ -96,9 +96,12 @@ export interface ChefState {
   guiding: boolean;
   /** the station this chef is facing, to glance at */
   look: { x: number; z: number } | null;
-  /** customers: seated at a table, and eating */
+  /** customers: seated at a table, and eating (with a fork, or a spoon for soups and noodles) */
   sitting?: boolean;
   eating?: boolean;
+  utensil?: "fork" | "spoon";
+  /** a spice bottle in the right hand (one-handed, unlike carrying a dish) */
+  bottle?: boolean;
 }
 
 /** Lowers the body onto a chair seat (hips at ~0.48 m) with the legs out under the table. */
@@ -109,6 +112,8 @@ export class ChefModel {
   private readonly bob: TransformNode;
   private readonly joints: Partial<Record<JointName, Joint>> = {};
   private knife: TransformNode | null = null;
+  /** a fork and a spoon for customers, in the right hand while they eat */
+  private cutlery: { fork: TransformNode; spoon: TransformNode } | null = null;
   /** hand bones, on armatures that have them (where carried things and the knife go) */
   private hands: { l: TransformNode; r: TransformNode } | null = null;
   private phase = 0;
@@ -207,6 +212,44 @@ export class ChefModel {
       knife.setEnabled(false);
       this.knife = knife;
     }
+    if (hand) {
+      const steel = new StandardMaterial("cutlery", scene);
+      steel.diffuseColor = new Color3(0.82, 0.84, 0.87);
+      steel.specularColor = new Color3(0.9, 0.9, 0.9);
+      const piece = (name: string) => {
+        const root = new TransformNode(name, scene);
+        root.parent = hand;
+        if (this.hands) root.position.set(0, 0.035, 0.015);
+        else root.position.set(0, -FOREARM + 0.01, 0.02);
+        root.rotation.set(Math.PI / 2, -Math.PI / 2, 0); // pointing out of the fist, like the knife
+        root.setEnabled(false);
+        return root;
+      };
+      const part = (mesh: Mesh, root: TransformNode) => {
+        mesh.material = steel;
+        mesh.parent = root;
+        return mesh;
+      };
+      // a fork: a slim handle, then four tines
+      const fork = piece("fork");
+      part(MeshBuilder.CreateBox("forkHandle", { width: 0.014, height: 0.11, depth: 0.006 }, scene), fork).position.y = 0.055;
+      part(MeshBuilder.CreateBox("forkNeck", { width: 0.022, height: 0.02, depth: 0.005 }, scene), fork).position.y = 0.12;
+      for (let i = 0; i < 4; i++) part(MeshBuilder.CreateBox(`forkTine${i}`, { width: 0.004, height: 0.04, depth: 0.004 }, scene), fork).position.set(-0.009 + i * 0.006, 0.15, 0);
+      // a spoon: a slim handle and a shallow oval bowl
+      const spoon = piece("spoon");
+      part(MeshBuilder.CreateBox("spoonHandle", { width: 0.013, height: 0.11, depth: 0.006 }, scene), spoon).position.y = 0.055;
+      const bowl = part(MeshBuilder.CreateSphere("spoonBowl", { diameter: 0.04, segments: 8 }, scene), spoon);
+      bowl.position.y = 0.13;
+      bowl.scaling.set(0.85, 1.25, 0.35);
+      this.cutlery = { fork, spoon };
+    }
+  }
+
+  /** Where the right hand is (a spice bottle goes here), or null without a character model. */
+  rightHandPoint(): Vector3 | null {
+    if (this.hands) return this.hands.r.getAbsolutePosition().clone();
+    const r = this.joints.foreR?.node;
+    return r ? Vector3.TransformCoordinates(new Vector3(0, -FOREARM, 0.02), r.getWorldMatrix()) : null;
   }
 
   /**
@@ -328,11 +371,29 @@ export class ChefModel {
     foreR.x = FWD * (0.15 + 0.25 * walk + Math.max(0, sin) * 0.3 * walk);
     this.sit = Scalar.Lerp(this.sit, s.sitting ? 1 : 0, Math.min(1, dt * 6));
     if (s.eating) {
-      // fork up to the mouth, chew, back down to the plate
-      const bite = Math.max(0, Math.sin(time * 2.4));
-      armR.x = FWD * (0.45 + 0.55 * bite);
-      foreR.x = FWD * (1.0 + 1.1 * bite);
-      head.x += TILT * (0.2 - 0.15 * bite);
+      // a bite: scoop from the plate, lift to the mouth (leaning in to meet it), chew, and back down.
+      // A spoon goes slower and stays level so the soup doesn't spill.
+      const spoon = s.utensil === "spoon";
+      const cycle = ((time * (spoon ? 0.36 : 0.42)) % 1 + 1) % 1;
+      const ease = (a: number, b: number) => Scalar.SmoothStep(0, 1, Scalar.Clamp((cycle - a) / (b - a), 0, 1));
+      const down = ease(0, 0.18) * (1 - ease(0.28, 0.32)); // reaching into the plate
+      const scoop = Math.sin(Scalar.Clamp((cycle - 0.16) / 0.14, 0, 1) * Math.PI); // a little scoop or twirl
+      const up = ease(0.3, 0.5) * (1 - ease(0.78, 0.98)); // to the mouth and back
+      const chew = cycle > 0.5 && cycle < 0.85 ? Math.sin(time * 14) * 0.5 + 0.5 : 0;
+      armR.x = FWD * (0.5 - 0.12 * down + 0.5 * up);
+      foreR.x = FWD * (1.0 - 0.15 * down + (spoon ? 1.0 : 1.15) * up);
+      foreR.z = (spoon ? 0.05 : 0.15) * scoop;
+      armR.z = -0.08;
+      // the other hand rests at the plate, steadying it (or holding the bowl)
+      armL.x = FWD * (spoon ? 0.62 : 0.5);
+      foreL.x = FWD * (spoon ? 1.15 : 1.0);
+      armL.z = 0.14;
+      torso.x += TILT * (0.08 + 0.06 * down + 0.04 * up);
+      head.x += TILT * (0.22 + 0.08 * down - 0.12 * up) + TILT * chew * 0.03;
+    }
+    if (this.cutlery) {
+      this.cutlery.fork.setEnabled(!!s.eating && s.utensil !== "spoon");
+      this.cutlery.spoon.setEnabled(!!s.eating && s.utensil === "spoon");
     }
     // the head follows where the player is looking (others can see what you look at)
     head.x = TILT * Scalar.Clamp(s.pitch * 0.75, -0.45, 0.6);
@@ -361,6 +422,13 @@ export class ChefModel {
       foreL.x = foreR.x = FWD * 1.05;
       armL.z = 0.16;
       armR.z = -0.16;
+    }
+
+    // --- a spice bottle: held up in the right hand, the left free ---
+    if (s.bottle && !s.holding) {
+      armR.x = FWD * (0.6 + sin * 0.04 * walk);
+      foreR.x = FWD * 1.2;
+      armR.z = -0.12;
     }
 
     // --- stirring the soup pot ---
@@ -405,11 +473,25 @@ export class ChefModel {
           torso.z = wave(2) * 0.05 * env;
           break;
         case "pickup":
-        case "place":
-          torso.x += TILT * 0.35 * env;
-          head.x += TILT * 0.25 * env;
-          both(0.5 + 0.5 * env, 0.6 + 0.3 * env);
+        case "place": {
+          // reach out and down, a beat to grasp (or let go), then draw back: the right hand leads
+          // and the left follows a moment behind, and the head watches the hands
+          const reach = (lag: number) => {
+            const q = Scalar.Clamp((p - lag) / (1 - lag), 0, 1);
+            return q < 0.45 ? Scalar.SmoothStep(0, 1, q / 0.45) : q < 0.6 ? 1 : 1 - Scalar.SmoothStep(0, 1, (q - 0.6) / 0.4);
+          };
+          const r = reach(0);
+          const l = reach(0.12);
+          torso.x += TILT * 0.32 * r;
+          head.x += TILT * (0.2 + 0.2 * r);
+          armR.x = FWD * (0.55 + 0.55 * r);
+          foreR.x = FWD * (1.05 - 0.55 * r);
+          armL.x = FWD * (0.55 + 0.45 * l);
+          foreL.x = FWD * (1.05 - 0.45 * l);
+          // fingers closing (or opening) at the bottom of the reach: a little wrist turn
+          foreR.z = -0.12 * Math.sin(Math.PI * Scalar.Clamp((p - 0.35) / 0.3, 0, 1));
           break;
+        }
         case "trash":
           torso.y += 0.35 * env;
           armR.x = FWD * 1.0 * env;
@@ -506,7 +588,11 @@ export class ChefModel {
     };
     const gaitHip = Scalar.Lerp(lerpLoop(CLIPS.Walk_Loop.hip, gaitT(CLIPS.Walk_Loop)), lerpLoop(CLIPS.Jog_Fwd_Loop.hip, gaitT(CLIPS.Jog_Fwd_Loop)), jog);
     const hip = Scalar.Lerp(lerpLoop(CLIPS.Idle_Loop.hip, idleT), gaitHip, walk);
-    this.bob.position.y = hip * this.hipHeight * (1 - this.sit) - this.sitDrop * this.sit;
+    // a smaller body (a kid, drawn at 70%) lowers less, or even rises, in its own units, so its
+    // hips still land on the chair seat (legs dangling) instead of sinking through it
+    const scale = this.root.scaling.y || 1;
+    const sitDrop = Math.min(this.sitDrop, this.hipHeight - 0.48 / scale);
+    this.bob.position.y = hip * this.hipHeight * (1 - this.sit) - sitDrop * this.sit;
 
     const nod = g?.kind === "yes" || g?.kind === "no";
     const busy = s.holding || s.chopping || s.stirring || s.eating || s.guided || s.guiding || (!!g && !nod);

@@ -135,6 +135,7 @@ function instructions(recipe: Recipe): Instruction[] {
       const rule = FOOD_RULES[item.kind] ?? {};
       const food = `the ${lower(item.kind)}`;
       const chop = item.state === "chopped" || (item.state === "cooked" && rule.cookFrom === "chopped");
+      // the bottle comes from the spice rack to the food, wherever it is
       const season = (when: string): Instruction => ({ icon: spiceIcons(item.season!), verb: "Season", rest: `${food} with ${spices(item.season!)} ${when}`, where: "spice rack", kind: "season" });
       if (chop) out.push({ icon: img(foodIcon(item.kind, "chopped")), verb: "Chop", rest: food, where: "board" });
       if (item.season?.length && item.seasonAt === "before") out.push(season("first"));
@@ -200,7 +201,7 @@ function chefTip(recipe: Recipe): string {
     const rule = FOOD_RULES[cooked.kind] ?? {};
     return `The ${lower(cooked.kind)} is done in ${rule.cookTime}s and burns ${rule.burnTime}s later. Call it out so someone's ready with a plate.`;
   }
-  if (recipe.finish?.length) return "Plate everything first, then add the finishing touch at the spice rack.";
+  if (recipe.finish?.length) return "Plate everything first, then bring the finishing touch from the spice rack to the plate.";
   return "Split the chopping: one chef per ingredient is twice as fast.";
 }
 

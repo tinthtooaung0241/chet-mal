@@ -238,7 +238,8 @@ function handle(ws: WebSocket) {
         room.start(msg.warmup === true);
         return;
       case "restart":
-        if (room.game?.phase !== "over") return;
+        // the host picks what comes next (play again, the next level, or the shift after a warm-up)
+        if (room.game?.phase !== "over" || player.id !== room.host) return;
         if (msg.level) {
           const level = levelByNumber(msg.level).n;
           if (level !== room.level) room.twist = null; // the next shift is a normal one

@@ -6,7 +6,7 @@ import {
   Scalar,
   StandardMaterial,
   TransformNode,
-  type Vector3,
+  Vector3,
   type AbstractMesh,
   type Scene,
   type ShadowGenerator,
@@ -16,6 +16,8 @@ import { ChefModel } from "./chef";
 import {
   FOOD_RULES,
   dinerDishSpot,
+  dinerSeat,
+  eatenShare,
   burnTimeFor,
   pickedItem,
   dinerTable,
@@ -73,6 +75,8 @@ const DINER_MODELS: Record<string, string[]> = {
   burmese: ["Diner_MM_A", "Diner_MM_B", "Diner_MM_C", "Diner_MM_D"],
 };
 const TABLE_TOP = 0.78;
+/** seconds an item takes to glide from where it was to where it goes (a station to the hands, the hands to the pass) */
+const ITEM_GLIDE = 0.22;
 
 const MODEL_SUFFIXES: Record<FoodState, string[]> = {
   raw: [""],
@@ -229,10 +233,13 @@ export class GameView {
   private puddleMat: StandardMaterial | null = null;
   /** plates waiting by each sink, shown as many as there are dirty dishes (up to the stack's size) */
   private readonly dirtyStacks = new Map<number, TransformNode[]>();
-  private readonly items = new Map<number, { node: TransformNode; key: string }>();
+  /** each item's node, the model it shows, where it is (a station, a chef's hands, a diner), and a glide in progress */
+  private readonly items = new Map<number, { node: TransformNode; key: string; spot: string; glide?: { from: Vector3; start: number } }>();
+  /** spice bottles in chefs' hands, cloned from their rack slot */
+  private readonly bottles = new Map<string, { node: TransformNode; key: string; glide: { from: Vector3; start: number } | null }>();
   private readonly chefs = new Map<string, ChefEntry>();
   private readonly racks = new Map<number, { parts: Map<string, { node: TransformNode; restY: number }>; lit: string | null }>();
-  private readonly diners = new Map<number, { model: ChefModel; bubble: { text: string; mesh: Mesh } | null; fade: number }>();
+  private readonly diners = new Map<number, { model: ChefModel; bubble: { text: string; mesh: Mesh } | null; fade: number; glass: Mesh | null }>();
   private readonly potSoup = new Map<number, { mesh: Mesh; mat: StandardMaterial }>();
   /** a chef put a foot down (for positional footstep sounds) */
   onFootstep: ((chefId: string, x: number, z: number) => void) | null = null;
@@ -293,6 +300,7 @@ export class GameView {
           pitch: chef.pitch,
           chopping: chef.chopping,
           holding: !!chef.held,
+          bottle: !!chef.spice,
           gesture: chef.gesture,
           guided: !!chef.guidedBy,
           guiding: game.chefs.some((c) => c.guidedBy === chef.id),
@@ -618,9 +626,9 @@ export class GameView {
   }
 
   private makeItem(item: Item): TransformNode {
-    if (item.type === "plate") return this.lib.spawn("Plate");
+    if (item.type === "plate") return this.grime(this.lib.spawn("Plate"), !!item.dirty);
     if (item.type === "bowl") {
-      const node = this.lib.spawn("Bowl");
+      const node = this.grime(this.lib.spawn("Bowl"), !!item.dirty);
       for (const mesh of meshesOf(node)) this.shadows.addShadowCaster(mesh);
       if (item.soup) {
         // the soup surface, just under the rim (bowl model is 0.07 m tall before scaling)
@@ -654,25 +662,41 @@ export class GameView {
     return node;
   }
 
-  private placeItem(item: Item, x: number, y: number, z: number, yaw: number, scale: number, seen: Set<number>) {
+  /**
+   * @param spot where it is (a station, someone's hands, a diner's table): when that changes, the
+   *   item glides there in a little arc instead of jumping (picking up, putting down, serving)
+   * @param eaten how much of a diner's dish is gone (0 to 1): food goes in bites, soup goes down
+   */
+  private placeItem(item: Item, x: number, y: number, z: number, yaw: number, scale: number, seen: Set<number>, spot: string, eaten = 0) {
     seen.add(item.id);
     const key =
       item.type === "plate"
-        ? "plate"
+        ? `plate:${item.dirty ? "dirty" : ""}`
         : item.type === "bowl"
-          ? `bowl:${item.soup?.join() ?? ""}:${item.spoiled}`
+          ? `bowl:${item.soup?.join() ?? ""}:${item.spoiled}:${item.dirty ? "dirty" : ""}`
           : `${item.kind}:${item.state}:${item.spoiled ? "mould" : ""}`;
     let entry = this.items.get(item.id);
+    const from = entry?.node.position.clone();
     if (!entry || entry.key !== key) {
       entry?.node.dispose();
-      entry = { node: this.makeItem(item), key };
+      entry = { node: this.makeItem(item), key, spot };
       this.items.set(item.id, entry);
     }
-    entry.node.position.set(x, y, z);
+    if (from && entry.spot !== spot && Vector3.Distance(from, new Vector3(x, y, z)) > 0.05) entry.glide = { from, start: this.time };
+    entry.spot = spot;
+    this.glideTo(entry.node, x, y, z, entry);
     entry.node.rotation.y = yaw;
     // plates and bowls follow the same shrink as food when held close to the eye
     const shrink = scale / ITEM_SCALE;
     entry.node.scaling.setAll(item.type === "plate" ? PLATE_SCALE * shrink : item.type === "bowl" ? BOWL_SCALE * shrink : scale);
+    if (item.type === "bowl" && item.soup) {
+      const soup = entry.node.getChildMeshes(false, (m) => m.name === "soup")[0];
+      if (soup) {
+        soup.position.y = 0.055 - eaten * 0.04;
+        soup.scaling.x = soup.scaling.y = 1 - eaten * 0.3; // the bowl narrows towards the bottom
+        soup.setEnabled(eaten < 0.97);
+      }
+    }
     if (item.type === "plate") {
       const slots = PLATE_SLOTS[Math.min(item.contents.length, PLATE_SLOTS.length) - 1] ?? [];
       const cos = Math.cos(yaw);
@@ -682,9 +706,75 @@ export class GameView {
         const [ox, oz] = slots[i % slots.length] ?? [0, 0];
         const dx = ox * cos + oz * sin;
         const dz = -ox * sin + oz * cos;
-        this.placeItem(food, x + dx * shrink, y + PLATE_WELL * shrink, z + dz * shrink, yaw + i * 0.7, ITEM_SCALE * 0.75 * shrink, seen);
+        // eaten one after another, each in three bites
+        const n = item.contents.length;
+        const bites = Math.min(1, Math.max(0, Math.floor((eaten * n - i) * 3) / 3));
+        const left = 1 - bites;
+        this.placeItem(food, x + dx * shrink, y + PLATE_WELL * shrink, z + dz * shrink, yaw + i * 0.7, ITEM_SCALE * 0.75 * shrink * Math.max(left, 0.01), seen, `${spot}/plate`);
+        this.items.get(food.id)?.node.setEnabled(left > 0);
       });
     }
+  }
+
+  /** Put a node at its spot, or partway along its glide there: an eased arc lasting ITEM_GLIDE. */
+  private glideTo(node: TransformNode, x: number, y: number, z: number, entry: { glide?: { from: Vector3; start: number } | null }) {
+    const glide = entry.glide;
+    if (!glide) {
+      node.position.set(x, y, z);
+      return;
+    }
+    const p = Math.min(1, (this.time - glide.start) / ITEM_GLIDE);
+    const e = 1 - (1 - p) ** 3;
+    node.position.set(glide.from.x + (x - glide.from.x) * e, glide.from.y + (y - glide.from.y) * e + Math.sin(Math.PI * p) * 0.08, glide.from.z + (z - glide.from.z) * e);
+    if (p >= 1) entry.glide = undefined;
+  }
+
+  /**
+   * Spice bottles: a chef holding one carries a copy of it from the rack (in the right hand, or low
+   * in view in first person), and its slot in the rack stands empty until it goes back.
+   */
+  private syncBottles(game: Game, me: Chef, hand: Vector3 | null) {
+    const held = new Set<string>();
+    for (const chef of game.chefs) {
+      if (!chef.spice) continue;
+      const key = `${chef.spice.rack}:${chef.spice.spice}`;
+      held.add(key);
+      const part = this.racks.get(chef.spice.rack)?.parts.get(chef.spice.spice);
+      let bottle = this.bottles.get(chef.id);
+      if (!bottle || bottle.key !== key) {
+        bottle?.node.dispose(false, true);
+        if (!part) continue;
+        part.node.computeWorldMatrix(true);
+        const node = part.node.instantiateHierarchy(null, { doNotInstantiate: true }) as TransformNode;
+        node.scaling.copyFrom(part.node.absoluteScaling);
+        node.rotation.set(0, 0, 0);
+        node.rotationQuaternion = null;
+        bottle = { node, key, glide: { from: part.node.getAbsolutePosition().clone(), start: this.time } };
+        this.bottles.set(chef.id, bottle);
+      }
+      const model = this.chefs.get(chef.id)?.model;
+      const at = chef.id === me.id && hand ? hand.add(new Vector3(0.05, 0.04, 0)) : model?.rightHandPoint() ?? new Vector3(chef.x, 1.0, chef.z);
+      this.glideTo(bottle.node, at.x, at.y, at.z, bottle);
+      bottle.node.rotation.y = chef.facing;
+    }
+    for (const [id, bottle] of this.bottles) {
+      const chef = game.chefs.find((c) => c.id === id);
+      if (chef?.spice && bottle.key === `${chef.spice.rack}:${chef.spice.spice}`) continue;
+      bottle.node.dispose(false, true);
+      this.bottles.delete(id);
+    }
+    for (const [id, rack] of this.racks) for (const [spice, part] of rack.parts) part.node.setEnabled(!held.has(`${id}:${spice}`));
+  }
+
+  /** A dirty plate or bowl: a soft brown smear over it, so it reads as eaten off at a glance. */
+  private grime(node: TransformNode, dirty: boolean): TransformNode {
+    if (!dirty) return node;
+    for (const mesh of meshesOf(node)) {
+      mesh.renderOverlay = true;
+      mesh.overlayColor = new Color3(0.55, 0.42, 0.28);
+      mesh.overlayAlpha = 0.45;
+    }
+    return node;
   }
 
   /** Remove everything this view built (switching to another restaurant's kitchen). */
@@ -708,6 +798,8 @@ export class GameView {
   clearItems() {
     for (const { node } of this.items.values()) node.dispose();
     this.items.clear();
+    for (const { node } of this.bottles.values()) node.dispose(false, true);
+    this.bottles.clear();
     // and a new round's floor is clean, with no points still floating
     for (const disc of this.puddles.values()) disc.dispose();
     this.puddles.clear();
@@ -720,6 +812,7 @@ export class GameView {
     for (const entry of this.diners.values()) {
       entry.model.root.dispose(false, false);
       entry.bubble?.mesh.dispose(false, true);
+      entry.glass?.dispose(false, true);
     }
     this.diners.clear();
   }
@@ -742,13 +835,13 @@ export class GameView {
     this.syncChefs(game, me, dt);
     const seen = new Set<number>();
     for (const s of game.stations) {
-      if (s.item) this.placeItem(s.item, s.x, this.surfaceY.get(s.id)!, s.z, s.facing, ITEM_SCALE, seen);
+      if (s.item) this.placeItem(s.item, s.x, this.surfaceY.get(s.id)!, s.z, s.facing, ITEM_SCALE, seen, `station:${s.id}`);
     }
     for (const chef of game.chefs) {
       if (!chef.held) continue;
       if (chef.id === me.id && hand) {
         // close to the eye, so near real size; the 2x game scale would fill the screen
-        this.placeItem(chef.held, hand.x, hand.y, hand.z, chef.facing, 1, seen);
+        this.placeItem(chef.held, hand.x, hand.y, hand.z, chef.facing, 1, seen, `chef:${chef.id}`);
         continue;
       }
       // carried in the chef model's hands (fallback: in front of it)
@@ -756,13 +849,14 @@ export class GameView {
       const yaw = model?.root.rotation.y ?? chef.facing;
       const palms = model?.carryPoint();
       if (palms) {
-        this.placeItem(chef.held, palms.x, palms.y - 0.03, palms.z, yaw, ITEM_SCALE, seen);
+        this.placeItem(chef.held, palms.x, palms.y - 0.03, palms.z, yaw, ITEM_SCALE, seen, `chef:${chef.id}`);
       } else {
         const x = model?.root.position.x ?? chef.x;
         const z = model?.root.position.z ?? chef.z;
-        this.placeItem(chef.held, x + Math.sin(yaw) * 0.48, 0.98, z + Math.cos(yaw) * 0.48, yaw, ITEM_SCALE, seen);
+        this.placeItem(chef.held, x + Math.sin(yaw) * 0.48, 0.98, z + Math.cos(yaw) * 0.48, yaw, ITEM_SCALE, seen, `chef:${chef.id}`);
       }
     }
+    this.syncBottles(game, me, hand);
     this.syncDiners(game, dt, seen);
     for (const [id, entry] of this.items) {
       if (!seen.has(id)) {
@@ -795,16 +889,20 @@ export class GameView {
         const model = new ChefModel(this.scene, this.shadows, this.lib, "full", APRON.full, looks[d.look % looks.length]);
         model.root.position.set(d.x, 0, d.z);
         model.root.rotation.y = d.facing;
-        entry = { model, bubble: null, fade: 0 };
+        entry = { model, bubble: null, fade: 0, glass: null };
         this.diners.set(d.id, entry);
       }
       const sitting = d.state === "waiting" || d.state === "eating";
       const spot = dinerDishSpot(d);
+      // seated and waiting: they look around the terrace now and then, and fidget once they're hungry
+      const hungry = d.state === "waiting" && !!orders.get(d.orderId)?.warned;
+      const lookAround = d.state === "waiting" ? Math.sin(this.time * 0.55 + d.id * 1.7) * Math.max(0, Math.sin(this.time * 0.23 + d.id)) * 0.45 : 0;
+      const fidget = hungry ? Math.sin(this.time * 7 + d.id) * 0.08 : 0;
       entry.model.update(
         {
           x: d.x,
           z: d.z,
-          facing: d.facing,
+          facing: d.facing + lookAround + fidget,
           pitch: sitting ? 0.25 : 0,
           chopping: false,
           holding: spot === "hands",
@@ -815,6 +913,7 @@ export class GameView {
           look: null,
           sitting,
           eating: d.state === "eating" && d.mood !== "sick",
+          utensil: d.dish?.type === "bowl" || /noodle|mohinga/i.test(orders.get(d.orderId)?.recipe.id ?? d.dish?.type ?? "") ? "spoon" : "fork",
         },
         dt,
         this.time,
@@ -826,17 +925,29 @@ export class GameView {
 
       // their dish: on the pass, in their hands, then on the table
       if (d.dish && spot) {
-        const at = entry.model.root.position;
         if (spot === "pass") {
-          this.placeItem(d.dish, d.pickup[0], COUNTER_TOP + 0.12, -2.62, Math.PI, ITEM_SCALE, seen);
+          this.placeItem(d.dish, d.pickup[0], COUNTER_TOP + 0.12, -2.62, Math.PI, ITEM_SCALE, seen, "pass");
         } else if (spot === "hands") {
           const palms = entry.model.carryPoint();
-          if (palms) this.placeItem(d.dish, palms.x, palms.y - 0.03, palms.z, d.facing, ITEM_SCALE, seen);
+          if (palms) this.placeItem(d.dish, palms.x, palms.y - 0.03, palms.z, d.facing, ITEM_SCALE, seen, `diner:${d.id}`);
         } else {
+          // on the table, eaten bite by bite; once they've gone to pay, the empty dish stays at their place
           const [tx, tz] = dinerTable(d);
+          const [sx, sz] = dinerSeat(d);
           const k = 0.55; // most of the way from the chair to the table centre
-          this.placeItem(d.dish, at.x + (tx - at.x) * k, TABLE_TOP, at.z + (tz - at.z) * k, d.facing, ITEM_SCALE, seen);
+          this.placeItem(d.dish, sx + (tx - sx) * k, TABLE_TOP, sz + (tz - sz) * k, Math.atan2(tx - sx, tz - sz), ITEM_SCALE, seen, `table:${d.id}`, eatenShare(d));
         }
+      }
+
+      // a glass of water at their place from when they sit down until they leave the terrace
+      if (!entry.glass && sitting) entry.glass = this.makeGlass(d.id);
+      if (entry.glass) {
+        const [tx, tz] = dinerTable(d);
+        const [sx, sz] = dinerSeat(d);
+        const len = Math.hypot(tx - sx, tz - sz) || 1;
+        const [ux, uz] = [(tx - sx) / len, (tz - sz) / len];
+        // beside the plate, a little to the diner's right
+        entry.glass.position.set(sx + (tx - sx) * 0.42 - uz * 0.17, TABLE_TOP, sz + (tz - sz) * 0.42 + ux * 0.17);
       }
 
       // a little speech bubble for how they feel
@@ -869,8 +980,30 @@ export class GameView {
       if (live.has(id)) continue;
       entry.model.root.dispose(false, false);
       entry.bubble?.mesh.dispose(false, true);
+      entry.glass?.dispose(false, true);
       this.diners.delete(id);
     }
+  }
+
+  /** A tumbler of water: clear glass with water two-thirds up. */
+  private makeGlass(id: number): Mesh {
+    const glass = MeshBuilder.CreateCylinder(`glass-${id}`, { height: 0.11, diameterTop: 0.07, diameterBottom: 0.06, tessellation: 14 }, this.scene);
+    glass.position.y = 0.055;
+    const glassMat = new StandardMaterial(`glassMat-${id}`, this.scene);
+    glassMat.diffuseColor = new Color3(0.86, 0.94, 0.98);
+    glassMat.alpha = 0.35;
+    glassMat.specularColor = new Color3(0.6, 0.6, 0.6);
+    glass.material = glassMat;
+    const water = MeshBuilder.CreateCylinder(`water-${id}`, { height: 0.07, diameterTop: 0.058, diameterBottom: 0.054, tessellation: 14 }, this.scene);
+    water.position.y = -0.016;
+    const waterMat = new StandardMaterial(`waterMat-${id}`, this.scene);
+    waterMat.diffuseColor = new Color3(0.62, 0.82, 0.95);
+    waterMat.alpha = 0.6;
+    water.material = waterMat;
+    water.parent = glass;
+    const root = new Mesh(`glassRoot-${id}`, this.scene);
+    glass.parent = root;
+    return root;
   }
 
   /** The seasoning you've chosen glows and lifts out of its slot, so the number bar matches the rack. */

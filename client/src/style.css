@@ -4256,24 +4256,45 @@ body.touch #picker.spice .pick .icon-svg {
 #title-menu[hidden] {
   display: none;
 }
+/* the logo: floating over the kitchen, flat like the rest of the UI (no lip under the letters).
+   Every word wears the same thin cream edge as Chet, so it reads over the busy kitchen. */
 .title-wordmark {
   position: absolute;
   left: clamp(24px, 8vw, 120px);
   top: clamp(14px, 9vh, 90px);
   margin: 0;
-  transform: rotate(-4deg);
-  font-family: var(--font-display);
-  font-weight: 700;
-  line-height: 0.9;
-  color: var(--paper);
-  text-shadow: 0 4px 0 var(--honey-edge), 0 10px 22px rgba(45, 28, 12, 0.45);
-}
-.title-wordmark {
   display: grid;
   grid-template-columns: auto auto;
   justify-content: start;
   align-items: end;
   column-gap: 0.2em;
+  transform: rotate(-4deg);
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 0.95;
+  color: var(--ink);
+}
+/* the cream edge: copies of each letter in a ring 3px out, all round (smooth on curves and thin
+   strokes, unlike four straight shifts) */
+.title-wordmark > span,
+.title-wordmark small {
+  text-shadow:
+    3px 0 0.6px var(--paper),
+    2.77px 1.15px 0.6px var(--paper),
+    2.12px 2.12px 0.6px var(--paper),
+    1.15px 2.77px 0.6px var(--paper),
+    0 3px 0.6px var(--paper),
+    -1.15px 2.77px 0.6px var(--paper),
+    -2.12px 2.12px 0.6px var(--paper),
+    -2.77px 1.15px 0.6px var(--paper),
+    -3px 0 0.6px var(--paper),
+    -2.77px -1.15px 0.6px var(--paper),
+    -2.12px -2.12px 0.6px var(--paper),
+    -1.15px -2.77px 0.6px var(--paper),
+    0 -3px 0.6px var(--paper),
+    1.15px -2.77px 0.6px var(--paper),
+    2.12px -2.12px 0.6px var(--paper),
+    2.77px -1.15px 0.6px var(--paper);
 }
 /* Chet, the mascot, bobs beside the name */
 .title-chet {
@@ -4283,28 +4304,31 @@ body.touch #picker.spice .pick .icon-svg {
   height: auto;
   aspect-ratio: 1;
   overflow: visible;
-  /* a cream sticker edge keeps Chet clear of the dark kitchen behind */
-  filter: drop-shadow(3px 0 0 var(--paper)) drop-shadow(-3px 0 0 var(--paper)) drop-shadow(0 3px 0 var(--paper)) drop-shadow(0 -3px 0 var(--paper));
   animation: chet-bob 2.6s ease-in-out infinite;
   transform-origin: 50% 95%;
 }
+/* Chet spans both rows and stretches them; the name hugs the bottom of its row and the tagline
+   the top of its own, so the two stay together */
 .title-wordmark > span {
   display: block;
+  align-self: end;
   font-size: clamp(2.6rem, 8vw, 5.6rem);
+  line-height: 0.95;
   white-space: nowrap;
 }
 .title-wordmark em {
   font-style: normal;
-  color: var(--honey);
+  color: var(--honey-strong);
 }
+/* "let's cook" in Burmese, with the English after it */
 .title-wordmark small {
   display: block;
-  margin: 6px 0 0 0.2em;
+  align-self: start;
+  margin: 8px 0 0 0.2em;
   font-family: "Myanmar Sangam MN", "Noto Sans Myanmar", "Padauk", var(--font-display);
   font-size: clamp(1.1rem, 2.6vw, 1.8rem);
-  line-height: 1.3;
-  color: var(--honey);
-  text-shadow: 0 2px 0 var(--honey-edge), 0 6px 14px rgba(45, 28, 12, 0.4);
+  line-height: 1.25;
+  color: var(--honey-strong);
 }
 .title-wordmark small span {
   display: inline;
@@ -4314,7 +4338,7 @@ body.touch #picker.spice .pick .icon-svg {
   font-family: "Nunito", system-ui, sans-serif;
   font-size: 0.62em;
   font-weight: 800;
-  color: var(--paper);
+  color: var(--ink);
   vertical-align: 0.15em;
 }
 @keyframes chet-bob {

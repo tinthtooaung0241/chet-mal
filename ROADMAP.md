@@ -216,6 +216,83 @@ Later:
 - **Team moments:** a shared combo cheer, and a "best teamwork" line on the end screen.
 - **Funny failures:** a burnt dish gets a silly face on the pass instead of only a red toast.
 
+## 7. Polish pass: every shift plays through
+
+**How it was checked:** a simulated player that does whatever the coach says (stepping straight
+to each station) played every level, at both paces, solo, as two cooks, and as a head chef with
+two cooks. Every "you can't do that" message and every loop it ran into is a gap in the rules or
+the coach. `npm run test:coach` runs it again.
+
+**Found and fixed (the coach led players into dead ends):**
+
+1. Half-done food lying around (chopped but still to fry, raw food on a board for the soup) wasn't
+   recognised. The coach sent players for a fresh one, then told them to use a board that was
+   already full. Most levels stalled after the first dish.
+2. Spoiled or burnt food in your hands made the coach go quiet, so nobody was told to bin it, and
+   customers left the till unpaid meanwhile.
+3. "Add it to the plate" pointed at any plate, even a full one or one for another dish.
+4. At a Cozy pace (no fires), burnt food was never cleared, so the stoves filled up for good.
+5. With a head chef, cooks left chopped food on the boards, and the boards ran out.
+6. "Put it in the soup pot" was said while the pot was full, boiling or burnt; and a cook holding
+   a bowl was sent to fetch vegetables with full hands.
+7. Holding an empty bowl while the soup boiled, the coach said to fetch a bowl, so players put it
+   back and took it again.
+8. With a head chef, finished food waiting on counters filled every counter when the head chef fell
+   behind. Now, when no counter is free, the pass is backed up and the cooks plate too; empty
+   bowls and plates go back on their racks; and when there's truly no space, the coach says so.
+
+Now every level plays through with no refused actions and no loops, solo and in teams.
+
+**Flow fixes (built):**
+
+- After an online warm-up, the end screen offers **Start the shift** (the one the host chose)
+  instead of a "Play again" that started the real shift and a "Next level" that skipped to
+  level 1.
+- Practising as the head chef alone, the coach explains that the head chef doesn't cook, and how to
+  get cooks (switch chef, or the helper bot), instead of "ask a cook" with nobody to ask.
+- Plural foods read right: "The noodles are cooked. Take them off the stove!"
+- **Next level** comes back on the end screen. Once a daily special, a locked restaurant or a
+  0-star shift hid it, it stayed hidden for every later shift until the page was reloaded.
+
+**Also built:**
+
+- **The till without a dish to guide:** whoever runs the till hears about a customer waiting to
+  pay even when the coach has no dish for them (a deaf cook with only phone orders, a head chef
+  between dishes).
+- **Idle chefs:** with free hands and nothing for them on the tickets, the coach suggests washing
+  up (when there's washing), or says everything's on the go. It only counts orders that chef can
+  perceive, so it never gives a phone order away to a deaf cook.
+- **Online, the host picks what's next:** Play again, Next level and Start the shift are the
+  host's; guests see "Waiting for the host to pick the next shift", and the server ignores a
+  restart from anyone else.
+
+**Still to do:**
+
+- **Balance with real play:** the simulated player steps straight to stations, so its scores are
+  far too high to tune star goals with. Once analytics is on (a PostHog key), compare `shift_end`
+  stars by level and pace, and tune each level's goals.
+
+## 8. A kitchen that feels real (done)
+
+- **Seasoning goes to the food.** Take a spice bottle from the rack (keys 1–8), carry it to the
+  food or dish wherever it is (a board, a counter, a stove, or a teammate's hands) and season it
+  there. Swap it for another or put it back at the rack. The head chef finishes plated dishes but
+  doesn't season raw ingredients. The coach and the key prompts teach the new way, and the rack's
+  slot stands empty while its bottle is out.
+- **Customers eat for real:** the dish they ordered goes from the pass to their hands to the table,
+  then gets eaten bite by bite with a fork (or a spoon for soups and noodles): scoop, lift, chew.
+  The soup goes down in the bowl, and the empty dish stays at their place while they pay and go.
+  Each one gets a glass of water, and they look around while they wait (fidgeting once hungry).
+- **Grabbing looks like grabbing:** things glide in a little arc between a station and the hands
+  (in first person too), and the chef reaches, grasps and draws back, right hand first.
+- **Dirty dishes come back by hand:** after eating, a customer carries their dirty plate or bowl
+  to the till and leaves it on a pass counter (the till call says so). Someone takes it to the
+  sink and washes it; a wasted dish leaves a dirty plate in your hands. Nothing appears in the sink
+  by itself. Dirty dishes look grimy, and the coach and the helper bot collect them.
+- **The coach handles strays:** a plate or ingredient no order wants any more goes back on its rack
+  or shelf, or in the bin; and held food goes to an order it can move on now (not a soup while the
+  pot is busy).
+
 ## Next ideas
 
 - A third restaurant (a new 3D room in Blender).

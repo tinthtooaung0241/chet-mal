@@ -200,21 +200,22 @@ export class Hud {
     // fridge food you're holding: still cold, or warming up (you can feel it, whatever your senses)
     const coldFood = held?.type === "food" && FOOD_RULES[held.kind]?.cold && !held.spoiled && (held.state === "raw" || held.state === "chopped") ? held : null;
     const temp = coldFood ? (coldFood.warm ? " (getting warm!)" : " (cold)") : "";
-    const heldText = held ? `${describeItem(held)}${mouldy ? " (mouldy!)" : temp}` : "nothing";
+    const bottle = me.spice ? SPICE_NAMES[me.spice.spice] : null;
+    const heldText = bottle ? `the ${bottle}` : held ? `${describeItem(held)}${mouldy ? " (mouldy!)" : temp}` : "nothing";
     if (heldText !== this.lastHeld) {
       this.lastHeld = heldText;
       this.held.textContent = heldText;
       this.held.classList.toggle("mouldy", mouldy);
       this.handSlot.classList.toggle("cold", !!coldFood && !coldFood.warm);
       this.handSlot.classList.toggle("warm", !!coldFood?.warm);
-      this.heldIcon.replaceChildren(itemIconNode(held));
-      this.handSlot.classList.toggle("empty", !held);
+      this.heldIcon.replaceChildren(me.spice ? glyph(SPICE_GLYPHS[me.spice.spice]) : itemIconNode(held));
+      this.handSlot.classList.toggle("empty", !held && !me.spice);
       this.handSlot.classList.remove("changed");
       void this.handSlot.offsetWidth; // restart the little bump animation
       this.handSlot.classList.add("changed");
       if (this.touchHeld) {
-        this.touchHeld.hidden = !held;
-        this.touchHeld.replaceChildren(itemIconNode(held));
+        this.touchHeld.hidden = !held && !me.spice;
+        this.touchHeld.replaceChildren(me.spice ? glyph(SPICE_GLYPHS[me.spice.spice]) : itemIconNode(held));
         this.touchHeld.title = heldText;
         this.touchHeld.classList.toggle("mouldy", mouldy);
         this.touchHeld.classList.toggle("cold", !!coldFood && !coldFood.warm);
@@ -279,14 +280,15 @@ export class Hud {
    * urgent order), and the coach line with the next step.
    */
   syncGuide(game: Game, guide: Guide | null, coach: boolean) {
-    const seat = guide ? game.diners.find((d) => d.orderId === guide.order.id)?.seat : undefined;
-    const key = guide ? `${guide.order.id}|${seat}|${guide.next}|${guide.steps.map((s) => `${s.text}${s.done}${s.wrong}${s.current}`).join()}` : "";
+    const order = guide?.order ?? null;
+    const seat = order ? game.diners.find((d) => d.orderId === order.id)?.seat : undefined;
+    const key = guide ? `${order?.id}|${seat}|${guide.next}|${guide.steps.map((s) => `${s.text}${s.done}${s.wrong}${s.current}`).join()}` : "";
     if (key === this.lastGuide) return;
     this.lastGuide = key;
-    this.checklist.hidden = !guide;
+    this.checklist.hidden = !order;
     this.coach.hidden = !(coach && guide?.next);
     if (!guide) return;
-    $("checklist-title").textContent = guide.order.recipe.name;
+    $("checklist-title").textContent = order?.recipe.name ?? "";
     $("checklist-table").textContent = seat === undefined ? "" : `Table ${tableNumber(seat)}`;
     this.checklistSteps.replaceChildren(
       ...guide.steps.map((step) => {
@@ -576,7 +578,7 @@ export class Hud {
     const on = new Map<number, Chef[]>();
     for (const chef of game.chefs) {
       if (chef.bot) continue;
-      const id = guideFor(game, chef)?.order.id;
+      const id = guideFor(game, chef)?.order?.id;
       if (id !== undefined) on.set(id, [...(on.get(id) ?? []), chef]);
     }
     for (const order of known) {
