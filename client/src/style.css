@@ -10042,3 +10042,310 @@ body.touch #checklist:active {
 body.touch #hud:has(#orders .order.open) #checklist {
   top: calc(max(var(--edge), env(safe-area-inset-top)) + 100px);
 }
+
+/* ====================================================================== phone sizes: second pass */
+/* Settings on a phone held sideways: two columns again, with each group's name across both */
+@media (orientation: landscape) and (max-height: 520px) and (min-width: 600px) {
+  #settings[open] {
+    width: min(760px, calc(100vw - 24px));
+  }
+  #settings .setting-group,
+  #settings .reset-progress {
+    grid-column: 1 / -1;
+  }
+  /* Restaurant & Shift: Done sits on a solid strip of card, so the text scrolling under it never shows through */
+  #setup > #setup-done {
+    width: 100%;
+    outline: 12px solid var(--paper);
+  }
+}
+
+/* How to play > Cooking on short screens: the icon beside its title and line, not above the line */
+@media (max-height: 520px) {
+  #help .help-panel[data-tab="cook"] .cook-notes li > i {
+    grid-row: span 2;
+    align-self: center;
+  }
+}
+
+/* the room on a phone held sideways: shorter chef cards (icon beside the name), so all of each
+   card shows above Shift / Warm-up / Start */
+@media (orientation: landscape) and (max-height: 520px) {
+  #lobby-room .chef-card {
+    gap: 6px;
+    padding: 8px;
+  }
+  #lobby-room .chef-card .cc-head {
+    flex-direction: row;
+    justify-content: center;
+    gap: 8px;
+  }
+  #lobby-room .chef-card .cc-name {
+    justify-items: start;
+    text-align: left;
+  }
+  #lobby-room .chef-card .chef-emoji,
+  #lobby-room .chef-card .chef-emoji .icon-svg {
+    width: 32px;
+    height: 32px;
+  }
+  /* nothing scrolls into view under the pinned buttons */
+  #lobby-room .room-actions::after {
+    content: "";
+    position: absolute;
+    inset: 100% 0 auto;
+    height: 24px;
+    background: var(--paper);
+  }
+}
+
+/* the pause menu on short screens: one column of full-width rows (the five actions, the chefs,
+   the switches, then Restart / Leave), so nothing is squeezed into half the card */
+@media (max-height: 520px) {
+  #pause-menu[open] {
+    display: block;
+    width: min(620px, calc(100vw - 16px));
+  }
+  #pause-menu > #role-picker {
+    margin: 8px 0;
+  }
+  #pause-menu > .pause-toggles {
+    justify-content: center;
+  }
+}
+@media (max-height: 520px) {
+  #pause-menu .menu-actions:not(:has(#quit)) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  #pause-menu .menu-actions #resume {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    gap: 8px;
+    padding: 8px;
+  }
+}
+
+/* the end screen on a phone held sideways: each right-hand card spans two rows of the left
+   column, so a tall tip no longer pushes the title, stars and score apart (and off the card) */
+@media (orientation: landscape) and (max-height: 520px) and (min-width: 600px) {
+  #game-over > :is(#final-report, #final-tip, #final-awards, #final-stickers) {
+    grid-row: span 2;
+  }
+  #game-over > #final-stats {
+    margin-top: 4px;
+  }
+}
+
+/* phones held upright */
+@media (max-width: 480px) {
+  /* Restaurant & Shift: no blank space kept for the other kind of shift, and Done stays in reach */
+  #setup .shift-stack > [hidden] {
+    display: none;
+  }
+  #setup > #setup-done {
+    position: sticky;
+    bottom: -6px;
+    z-index: 2;
+    /* a ring of card around it, so the text scrolling under never touches the button */
+    outline: 14px solid var(--paper);
+  }
+}
+
+/* fingers: every choice in a row of choices is a comfortable tap */
+body.touch .segmented span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+}
+
+/* How to play: a page is never wider than the card */
+.help-panels {
+  grid-template-columns: minmax(0, 1fr);
+}
+.help-panels .help-panel {
+  min-width: 0;
+}
+/* phones held upright: only the open page takes room, so the buttons sit right under it */
+@media (max-width: 480px) {
+  #help {
+    padding: 22px 16px 16px;
+  }
+  .help-panels .help-panel[hidden],
+  .help-panels .help-panel[data-tab][hidden] {
+    display: none;
+  }
+  #help .help-tabs {
+    display: flex;
+  }
+  #help .help-tabs label {
+    flex: 1;
+  }
+}
+@media (max-width: 480px) {
+  /* Cooking: the six steps in two rows of three, the reminders as short rows */
+  #help .help-panel[data-tab="cook"] .cook-steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 6px;
+  }
+  #help .help-panel[data-tab="cook"] .cook-steps :is(.icon-svg, .icon-img) {
+    width: 40px;
+    height: 40px;
+  }
+  #help .help-panel[data-tab="cook"] .cook-notes {
+    flex: none;
+  }
+  #help .help-panel[data-tab="cook"] .cook-notes li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 12px;
+    padding: 10px 12px;
+    text-align: left;
+  }
+  #help .help-panel[data-tab="cook"] .cook-notes li > i {
+    grid-row: span 2;
+    align-self: center;
+  }
+  #help .help-panel[data-tab="cook"] .cook-notes .icon-svg {
+    width: 36px;
+    height: 36px;
+    margin: 0;
+  }
+}
+@media (max-width: 480px) {
+  /* cards use the phone's width: less padding at the sides */
+  #shop,
+  #album,
+  #setup,
+  #briefing,
+  #game-over {
+    padding-inline: 16px;
+  }
+  /* stickers two across */
+  #album .album {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* the shop: no row peeks out under the pinned Back */
+#shop .shop-foot::after {
+  content: "";
+  position: absolute;
+  inset: 100% 0 auto;
+  height: 32px;
+  background: var(--paper);
+}
+
+/* the room on an upright phone: Shift / Warm-up / Start stay on screen under the chef cards,
+   as they do sideways */
+@media (max-width: 480px) {
+  #lobby-room .room-actions {
+    position: sticky;
+    bottom: -8px;
+    z-index: 3;
+    padding: 6px 0 4px;
+    background: var(--paper);
+  }
+  #lobby-room .room-actions::after {
+    content: "";
+    position: absolute;
+    inset: 100% 0 auto;
+    height: 24px;
+    background: var(--paper);
+  }
+  #lobby-room .room-actions :is(#room-setup, #warm-up) {
+    flex-direction: row;
+    gap: 6px;
+    padding: 8px 6px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+  #lobby-room .room-actions :is(#room-setup, #warm-up) .icon-svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* the hidden radio inside a row of choices takes no room (in Restaurant & Shift it was as wide as
+   a text field, which let the whole card slide sideways on a phone) */
+#setup .segmented input,
+.segmented input {
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* the end screen sideways: a little smaller at the top, so the score row clears the buttons
+   (Burmese lines run longer and taller) */
+@media (orientation: landscape) and (max-height: 520px) and (min-width: 600px) {
+  #game-over > #over-chet {
+    width: 44px;
+    height: 44px;
+  }
+  #game-over > #final-stars {
+    zoom: 0.75;
+  }
+  html[lang="my"] #game-over > #final-score {
+    font-size: 0.84rem;
+  }
+  html[lang="my"] #game-over #final-stats dt {
+    font-size: 0.6rem;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 480px) {
+  /* How to play's three tabs share the width evenly, long Burmese names included */
+  #help .help-tabs label {
+    min-width: 0;
+  }
+  #help .help-tabs span {
+    padding-inline: 4px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+}
+
+/* the room on an upright phone: one chef per row (icon and name on the left, senses on the
+   right), so long names, Burmese ones above all, aren't squeezed into a third of the screen */
+@media (max-width: 480px) {
+  #lobby-room #lobby-roles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #lobby-room #lobby-roles .chef-card {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 10px;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  #lobby-room .chef-card .cc-head {
+    flex: 1 1 150px;
+    flex-direction: row;
+    gap: 10px;
+  }
+  #lobby-room .chef-card .cc-name {
+    justify-items: start;
+    text-align: left;
+  }
+  #lobby-room .chef-card .chef-emoji,
+  #lobby-room .chef-card .chef-emoji .icon-svg {
+    width: 36px;
+    height: 36px;
+  }
+}
+@media (max-width: 480px) {
+  #lobby-room .chef-card .cc-head {
+    flex: 1 1 110px;
+  }
+  #lobby-room .chef-card .cc-senses {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+}

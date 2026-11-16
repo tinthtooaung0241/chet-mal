@@ -40,8 +40,11 @@ export interface Translator {
 }
 
 const HAS_LETTERS = /[A-Za-z]/;
-/** keys, numbers and symbols stay as they are: "F", "R", "1–8", "Space", "×3", "0:45" */
-const KEEP = /^(?:[A-Z]|F\d+|Space|Enter|Shift|Esc|Tab|[\d\s:+\-–×%./·★☆✓✗…!?()]+)$/;
+/**
+ * keys, numbers and symbols stay as they are: "F", "R", "1–8", "Space", "×3", "0:45". Not "Shift":
+ * on its own that's a kitchen shift (the key is always inside <kbd>, which is never translated).
+ */
+const KEEP = /^(?:[A-Z]|F\d+|Space|Enter|Esc|Tab|[\d\s:+\-–×%./·★☆✓✗…!?()]+)$/;
 
 /**
  * The sentences in a text: split after . ! ? or … and a space, before a capital, a digit or a quote,

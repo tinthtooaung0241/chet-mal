@@ -685,3 +685,30 @@ a quick double tap could zoom the browser in on a menu.
   - Each chef gets an award at the end of a shift.
 - **Daily special.** One shift a day with a twist. The first finish pays bonus coins, more for a
   streak.
+
+### Phone sizes pass (every screen at 667×375 sideways and 360×640 upright)
+
+Checked in a phone-sized preview: title, play menu, Restaurant & Shift, How to play (3 pages),
+Settings, Shop, Stickers, the room, the HUD, pause menu, level tips, end screen, rotate card.
+
+Fixed:
+- **Settings sideways:** group names sat in a column cell and the card was 500px wide; now two
+  columns at full width with each group's name across both.
+- **How to play upright:** pages were wider than the card and the buttons were off screen; now
+  only the open page takes room. Cooking page: steps three across, reminders as short rows.
+- **How to play > Cooking sideways:** reminder icons sat above the wrong line.
+- **Pause menu sideways:** squeezed into half the card with a blank gap; now full-width rows, no scroll.
+- **End screen sideways:** a tall tip pushed the score off the card; now fits with no scroll.
+- **The room:** shorter chef cards sideways; Shift / Warm-up / Start pinned upright too.
+- **Restaurant & Shift:** Done pinned on phones; the blank gap upright is gone.
+- **Shop:** opened scrolled halfway down; now opens at the top.
+- **Stickers upright:** two across. Cards use 16px side padding on narrow phones.
+- **Rows of choices** are 36px tall on touch.
+
+Not checked: Burmese at these sizes (longer words), real devices with notches, tablets.
+
+Burmese at the same two sizes, checked after: fixed the How to play tabs running off the card
+upright, the end screen's score hiding under its buttons sideways, the room's chef names squeezed
+into thirds upright (now one chef per row, both languages), the word "Shift" staying English in
+Restaurant & Shift, and a hidden radio that let that card slide sideways (both languages).
+Still not checked: real devices with notches, tablets.

@@ -37,7 +37,11 @@ export class Shop {
 
   open() {
     this.render();
-    if (!this.dialog.open) this.dialog.showModal();
+    if (!this.dialog.open) {
+      this.dialog.showModal();
+      // opening focuses the first thing you can buy or wear, which may be far down: start at the top
+      this.dialog.scrollTop = 0;
+    }
   }
 
   private render() {
