@@ -2,6 +2,7 @@
 // it; this class only delivers what the local role could perceive, in the forms that role uses:
 //   - hearing roles: 3D sound placed around the chef, live stove sizzles, spoken phone orders
 //   - everyone: text in the log and screen-reader announcements for perceived events
+import { buzzFor } from "../ui/buzz";
 import {
   EMOTES,
   FOOD_RULES,
@@ -20,6 +21,8 @@ import {
 } from "@kitchen/shared";
 import { glyph, img } from "../ui/icons";
 import { foodIcon } from "./hints";
+import { forControls } from "../ui/words";
+import { utterance } from "../i18n";
 import { dishImage } from "./recipeBook";
 
 type Wave = OscillatorType;
@@ -112,6 +115,8 @@ const TICK = [n(1760, 0, 0.04, "square", 0.06)];
 const TICK_HIGH = [n(2349, 0, 0.06, "square", 0.08)];
 
 // a new sticker: a little sparkle up the scale
+const PERFECT_PINCH_SOUND = [n(1319, 0, 0.06, "sine", 0.14), n(1760, 0.05, 0.14, "sine", 0.12)];
+const HEAVY_PINCH_SOUND = [n(196, 0, 0.16, "triangle", 0.16)];
 const STICKER_SOUND = [n(1047, 0, 0.09, "sine", 0.18), n(1319, 0.08, 0.09, "sine", 0.18), n(1568, 0.16, 0.09, "sine", 0.18), n(2093, 0.24, 0.3, "sine", 0.16)];
 
 const TOAST_ICONS: Partial<Record<EventKind | "info", string>> = {
@@ -156,7 +161,7 @@ const TOAST_ICONS: Partial<Record<EventKind | "info", string>> = {
 const TOAST_WORDS: [RegExp, string][] = [
   [/^You are now the (.+?)\. .*/, "You're the $1"],
   [/^Kitchen open! You are the (.+?)\. .*/, "Kitchen open: $1"],
-  [/^Practice kitchen open!.*/, "Kitchen open!"],
+  [/^Solo kitchen open!.*/, "Kitchen open!"],
   [/^You can talk, so.*/, "Only the mute chef signals"],
   [/^New ticket: (.+), kid's, no seasoning\.$/, "$1 for a kid: plain"],
   [/^New ticket: (.+)\.$/, "$1"],
@@ -240,7 +245,7 @@ function toastPicture(text: string, kind: EventKind | "info"): HTMLElement | nul
   return img(foodIcon(food, state));
 }
 
-function toastWords(text: string): string {
+export function toastWords(text: string): string {
   for (const [pattern, words] of TOAST_WORDS) {
     if (pattern.test(text)) return text.replace(pattern, words).replace(/^Look: $/, "Look here").replace(/^./, (c) => c.toUpperCase());
   }
@@ -310,6 +315,8 @@ export class Feedback {
   handle(event: GameEvent, me: Chef, game: Game) {
     const isActor = event.actors?.includes(me.id) ?? false;
     if (!perceivesEvent(game, me, event)) return;
+    // what you did yourself is felt in the hand; a fire, by everyone
+    if (isActor || event.kind === "fire") buzzFor(event.kind);
     const hearsNow = currentSenses(game, me).hears;
     const notes = event.kind === "emote" ? EMOTE_SOUNDS[event.text?.match(/signals: (\w+)/)?.[1] ?? ""] : SOUNDS[event.kind];
     const audible = event.senses.includes("sound") || (isActor && event.senses.includes("touch"));
@@ -346,13 +353,21 @@ export class Feedback {
    * The coach's next step (guided shift): to the screen reader, and spoken for the blind chef (or
    * anyone with speech on). No toast: the coach banner shows it.
    */
+  /** How a pour at the meter went: a bright little chime for a perfect pinch, a low thud for too much. */
+  pinch(result: "perfect" | "good" | "heavy" | "light") {
+    if (!this.hears || result === "good" || result === "light") return;
+    this.chime(result === "perfect" ? PERFECT_PINCH_SOUND : HEAVY_PINCH_SOUND);
+  }
+
   coach(text: string) {
+    text = forControls(text);
     this.announce(`Next: ${text}`, false);
     if (this.speak) this.speakAloud(text, true);
   }
 
   /** Text message: toast + screen reader (+ speech if enabled). */
   say(text: string, urgent = false, speech = true, kind: EventKind | "info" = "info") {
+    text = forControls(text);
     this.announce(text, urgent);
     this.addLog(text, urgent);
     this.toast(text, urgent, kind);
@@ -595,7 +610,7 @@ export class Feedback {
   private speakAloud(text: string, interrupt: boolean) {
     if (!("speechSynthesis" in window)) return;
     if (interrupt) speechSynthesis.cancel();
-    speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    speechSynthesis.speak(utterance(text));
   }
 
   private announce(text: string, urgent: boolean) {

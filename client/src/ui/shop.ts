@@ -24,6 +24,17 @@ export class Shop {
     $("close-shop").addEventListener("click", () => this.dialog.close());
   }
 
+  /** Something here costs no more than the coins in the till. */
+  affordable(): boolean {
+    const { coins, upgrades } = loadBusiness();
+    const decor = ownedDecor();
+    return (
+      UPGRADES.some((up) => !upgrades.includes(up.id) && up.cost <= coins) ||
+      HATS.some((hat) => !hat.stickers && !hasHat(hat) && hat.cost <= coins) ||
+      DECOR.some((d) => !decor.includes(d.id) && d.cost <= coins)
+    );
+  }
+
   open() {
     this.render();
     if (!this.dialog.open) this.dialog.showModal();

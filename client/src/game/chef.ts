@@ -98,6 +98,8 @@ export interface ChefState {
   look: { x: number; z: number } | null;
   /** customers: seated at a table, and eating (with a fork, or a spoon for soups and noodles) */
   sitting?: boolean;
+  /** how far above the chair seat they sit (a kid on a booster seat) */
+  seatLift?: number;
   eating?: boolean;
   utensil?: "fork" | "spoon";
   /** a spice bottle in the right hand (one-handed, unlike carrying a dish) */
@@ -199,6 +201,7 @@ export class ChefModel {
     const handL = handNodes.find((n) => n.name.endsWith("_HandL"));
     const handR = handNodes.find((n) => n.name.endsWith("_HandR"));
     if (handL && handR) this.hands = { l: handL, r: handR };
+
 
     // a knife that appears in the right hand while chopping
     const hand = this.hands?.r ?? this.joints.foreR?.node;
@@ -591,7 +594,9 @@ export class ChefModel {
     // a smaller body (a kid, drawn at 70%) lowers less, or even rises, in its own units, so its
     // hips still land on the chair seat (legs dangling) instead of sinking through it
     const scale = this.root.scaling.y || 1;
-    const sitDrop = Math.min(this.sitDrop, this.hipHeight - 0.48 / scale);
+    // (plus a little lift for a kid's thighs, which would otherwise poke through the seat)
+    const seat = (scale < 0.9 ? 0.56 : 0.48) + (s.seatLift ?? 0);
+    const sitDrop = Math.min(this.sitDrop, this.hipHeight - seat / scale);
     this.bob.position.y = hip * this.hipHeight * (1 - this.sit) - sitDrop * this.sit;
 
     const nod = g?.kind === "yes" || g?.kind === "no";

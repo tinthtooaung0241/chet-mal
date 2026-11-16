@@ -2,6 +2,9 @@
 // the customers walk).
 import { Color3, DynamicTexture, MeshBuilder, StandardMaterial, TransformNode, type Mesh, type Scene } from "@babylonjs/core";
 import type { DecorId } from "../decor";
+import { tr } from "../i18n";
+
+const FONTS = `system-ui, "Noto Sans Myanmar", "Myanmar Text", "Myanmar Sangam MN", sans-serif`;
 
 function mat(scene: Scene, name: string, hex: string, glow = false): StandardMaterial {
   const m = new StandardMaterial(`decor-${name}`, scene);
@@ -71,12 +74,12 @@ export function buildTerrace(scene: Scene, owned: DecorId[]): TransformNode {
     ctx.fillRect(0, 0, 256, 320);
     ctx.fillStyle = "#fffaf0";
     ctx.textAlign = "center";
-    ctx.font = "bold 64px system-ui, sans-serif";
-    ctx.fillText("Open!", 128, 130);
-    ctx.font = "bold 34px system-ui, sans-serif";
+    ctx.font = `bold 64px ${FONTS}`;
+    ctx.fillText(tr("Open!"), 128, 130);
+    ctx.font = `bold 34px ${FONTS}`;
     ctx.fillStyle = "#ffd257";
-    ctx.fillText("Today's", 128, 210);
-    ctx.fillText("special ★", 128, 254);
+    ctx.fillText(tr("Today's"), 128, 210);
+    ctx.fillText(tr("special ★"), 128, 254);
     tex.update();
     board.diffuseTexture = tex;
     board.emissiveColor = new Color3(0.35, 0.35, 0.35);

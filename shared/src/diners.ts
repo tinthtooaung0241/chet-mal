@@ -50,7 +50,7 @@ const SPEED = 1.3;
 const STORM_OFF_SPEED = 1.9;
 const EAT_TIME = 9;
 
-export type DinerState = "arriving" | "waiting" | "fetching" | "returning" | "eating" | "checkout" | "paying" | "leaving";
+export type DinerState = "arriving" | "standing" | "booster" | "waiting" | "fetching" | "returning" | "eating" | "checkout" | "paying" | "leaving";
 
 export interface Diner {
   id: number;
@@ -77,6 +77,11 @@ export interface Diner {
   slot: number;
   /** a kid (drawn smaller) */
   kid?: boolean;
+  /**
+   * A kid's booster seat (on later shifts): needed until someone sets one out on the pass, then
+   * waiting there, carried back by the kid, and on the chair once they sit on it.
+   */
+  booster?: "needed" | "pass" | "carried" | "chair";
 }
 
 /** Tables on the terrace, numbered left to right (as on the tickets). */
@@ -115,7 +120,7 @@ function seatToExit(s: Seat): Point[] {
 }
 
 /** A new order brings a customer to a free chair (none if the terrace is full). */
-export function addDiner(g: Game, orderId: number, kid = false) {
+export function addDiner(g: Game, orderId: number, kid = false, booster = false) {
   const taken = new Set(g.diners.map((d) => d.seat));
   const free = SEATS.map((_, i) => i).filter((i) => !taken.has(i));
   if (!free.length) return;
@@ -140,6 +145,7 @@ export function addDiner(g: Game, orderId: number, kid = false) {
     bill: 0,
     slot: 0,
     ...(kid ? { kid } : {}),
+    ...(kid && booster ? { booster: "needed" as const } : {}),
   });
 }
 
@@ -159,11 +165,43 @@ export function dinerServed(g: Game, orderId: number, dish: Plate | Bowl, sick: 
 export function dinerGivesUp(g: Game, orderId: number) {
   const d = g.diners.find((x) => x.orderId === orderId);
   if (!d) return;
-  const seated = d.state === "waiting";
+  const seated = d.state === "waiting" || d.state === "standing";
   d.mood = "angry";
   d.dish = null;
   d.state = "leaving";
   d.path = seated ? seatToExit(seatOf(d)) : [HUB, ENTRANCE];
+}
+
+/** The kid nearest to needing a booster seat set out on the pass (standing by their chair first). */
+export function boosterWanted(g: Game): Diner | null {
+  const kids = g.diners.filter((d) => d.booster === "needed" && d.mood !== "angry");
+  return kids.find((d) => d.state === "standing") ?? kids[0] ?? null;
+}
+
+/** A booster seat is out on the pass: the kid comes for it (or picks it up once they reach their chair). */
+export function boosterOut(d: Diner) {
+  d.booster = "pass";
+  if (d.state === "standing") fetchBooster(d);
+}
+
+function fetchBooster(d: Diner) {
+  d.state = "booster";
+  d.path = seatToPass(seatOf(d), d.pickup);
+}
+
+/** At the chair: a kid without a booster seat yet stands beside it, waiting. */
+function reachChair(d: Diner) {
+  if (d.booster === "needed") {
+    const s = seatOf(d);
+    d.facing = facingTo(s.x, s.z, [0, FRONT]);
+    d.state = "standing";
+  } else if (d.booster === "pass") fetchBooster(d);
+  else {
+    sitDown(d);
+    if (d.booster === "carried") d.booster = "chair";
+    if (d.dish) startFetching(d);
+    else d.state = "waiting";
+  }
 }
 
 function startFetching(d: Diner) {
@@ -231,9 +269,15 @@ export function stepDiners(g: Game, dt: number, news?: (d: Diner, what: DinerNew
       // arrived somewhere
       switch (d.state) {
         case "arriving":
-          sitDown(d);
-          if (d.dish) startFetching(d);
-          else d.state = "waiting";
+          reachChair(d);
+          break;
+        case "booster":
+          if (d.booster === "pass") {
+            // at the pass: pick the seat up, then carry it back
+            d.facing = 0;
+            d.booster = "carried";
+            d.timer = 0.6;
+          } else reachChair(d);
           break;
         case "fetching":
           d.facing = 0; // facing the pass while picking up
@@ -264,7 +308,9 @@ export function stepDiners(g: Game, dt: number, news?: (d: Diner, what: DinerNew
       news?.(d, "left-unpaid");
       continue;
     }
-    if (d.state === "returning" && d.timer > 0 && (d.timer -= dt) <= 0) {
+    if (d.state === "booster" && d.booster === "carried" && d.timer > 0 && (d.timer -= dt) <= 0) {
+      d.path = passToSeat(seatOf(d), d.pickup);
+    } else if (d.state === "returning" && d.timer > 0 && (d.timer -= dt) <= 0) {
       d.path = passToSeat(seatOf(d), d.pickup);
     } else if (d.state === "eating" && (d.timer -= dt) <= 0) {
       news?.(d, "finished");
@@ -279,7 +325,7 @@ export function stepDiners(g: Game, dt: number, news?: (d: Diner, what: DinerNew
  */
 export function dinerDishSpot(d: Diner): "pass" | "hands" | "table" | "left" | null {
   if (!d.dish) return null;
-  if (d.state === "fetching" || d.state === "arriving" || d.state === "waiting") return "pass";
+  if (d.state === "fetching" || d.state === "arriving" || d.state === "waiting" || d.state === "standing" || d.state === "booster") return "pass";
   if (d.state === "returning") return d.timer > 0 ? "pass" : "hands";
   if (d.state === "eating") return "table";
   // carrying their dirty dish to the pass on the way to pay (on levels with washing up)

@@ -44,6 +44,12 @@ export function dailyStatus(): { playedToday: boolean; best: number; streak: num
   return { playedToday: today, best: today ? r.best : 0, streak: today || r.day === yesterday() ? r.streak : 0 };
 }
 
+/** The coins the next first finish with a star would pay today (more with a streak), or 0 once it's been played today. */
+export function nextDailyBonus(): number {
+  const { playedToday, streak } = dailyStatus();
+  return playedToday ? 0 : DAILY_BONUS + STREAK_BONUS * Math.min(streak, 5);
+}
+
 /** A daily special finished: the bonus coins it earned (only the first each day), a new best? and the streak. */
 export function finishDaily(score: number, stars: number): { bonus: number; best: boolean; streak: number } {
   const r = record();

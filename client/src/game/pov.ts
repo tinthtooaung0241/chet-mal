@@ -24,10 +24,13 @@ export class PovController {
 
     document.addEventListener("mousemove", (e) => {
       if (document.pointerLockElement !== canvas || this.frozen) return;
-      this.yaw += e.movementX * MOUSE_SENSITIVITY;
-      this.pitch = Scalar.Clamp(this.pitch + e.movementY * MOUSE_SENSITIVITY, MIN_PITCH, MAX_PITCH);
+      this.yaw += e.movementX * MOUSE_SENSITIVITY * this.lookSpeed;
+      this.pitch = Scalar.Clamp(this.pitch + e.movementY * MOUSE_SENSITIVITY * this.lookSpeed, MIN_PITCH, MAX_PITCH);
     });
   }
+
+  /** the Look speed setting: 1 is normal */
+  lookSpeed = 1;
 
   /** the mouse is busy elsewhere (choosing a sign): don't turn the view */
   frozen = false;

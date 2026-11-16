@@ -76,6 +76,8 @@ export interface PaceRules {
   coach: boolean;
   /** seasoning slips cost nothing (getting it right still earns its bonus) */
   forgiving: boolean;
+  /** the pour meter's "just right" band is this many times as tall */
+  pourBand: number;
 }
 export const PACES: Record<Pace, PaceRules> = {
   cozy: {
@@ -88,6 +90,7 @@ export const PACES: Record<Pace, PaceRules> = {
     mishaps: false,
     coach: true,
     forgiving: true,
+    pourBand: 1.4,
   },
   classic: {
     name: "Classic",
@@ -99,6 +102,7 @@ export const PACES: Record<Pace, PaceRules> = {
     mishaps: true,
     coach: false,
     forgiving: false,
+    pourBand: 1,
   },
 };
 /** A pace from the network or storage (anything unknown is classic). */
@@ -106,6 +110,8 @@ export const paceById = (id: unknown): Pace => (id === "cozy" ? "cozy" : "classi
 /** The pace rules a shift runs at (older games without one are classic). */
 export const paceOf = (g: { pace?: Pace }): PaceRules => PACES[g.pace ?? "classic"];
 export const PING_TIME = 5;
+/** the mute chef's dash: this much faster, for this long, then a cooldown */
+export const DASH = { speed: 2.2, time: 0.35, cooldown: 4 };
 export const SICK_PENALTY = 15;
 export const BUMP_COOLDOWN = 0.4;
 
@@ -143,6 +149,28 @@ export const SPICE_NAMES: Record<Spice, string> = {
 };
 export const SEASON_BONUS = 5;
 export const SEASON_PENALTY = 5;
+
+/**
+ * How a pinch of seasoning went, from the pour meter: in its sweet spot ("perfect"), in the band
+ * ("good"), or held too long ("heavy"). Letting go too early adds nothing, so you just try again.
+ * Bots, and players with the meter turned off, always pour "good".
+ */
+export type Pinch = "perfect" | "good" | "heavy";
+export const PINCHES: readonly Pinch[] = ["perfect", "good", "heavy"];
+/** a perfect pinch of something the dish wants, at the right step: points on top */
+export const PINCH_BONUS = 2;
+/** too much of a spice: like any seasoning slip (nothing at a cozy pace) */
+export const HEAVY_PENALTY = 3;
+/** the pour meter: seconds to fill from empty to the top, the "just right" band's height (share of
+ *  the meter) and the perfect line's share of the band. Roles and the pace stretch these. */
+export const POUR = { fill: 1.1, band: 0.16, core: 0.35 };
+
+/**
+ * Room for skill at the pass later (a plating or charm mini-game): the head chef's presentation
+ * points and the charm's seconds, by how it went. Nothing sends anything but "good" for now.
+ */
+export const PLATING_POINTS: Record<Pinch, number> = { perfect: 8, good: 5, heavy: 0 };
+export const CHARM_SECONDS: Record<Pinch, number> = { perfect: 12, good: 8, heavy: 0 };
 
 export const spiceList = (spices: readonly string[]) => {
   const names = spices.map((s) => SPICE_NAMES[s as Spice] ?? s.toLowerCase());
@@ -349,6 +377,8 @@ export interface Level {
   washing?: boolean;
   /** oil spills a shift (default: one, from level 6 on) */
   spills?: number;
+  /** kids need a booster seat (default: from level 8 on) */
+  boosters?: boolean;
 }
 
 const BURMESE = ["mohinga", "lahpet", "shan-noodles", "chicken-curry", "fried-rice"];
@@ -556,6 +586,7 @@ export const LEVELS: Level[] = [
       lines: [
         { icon: "knife", text: "Pot: chopped fish, onion and noodles" },
         { icon: "fishsauce", text: "Finish: fish sauce, lime, coriander" },
+        { icon: "booster", text: "Kids need a booster seat: the head chef puts one on the pass" },
       ],
     },
     recipes: ["mohinga", "lahpet", "shan-noodles"],
@@ -624,6 +655,9 @@ export const hasRush = (level: Level) => level.rush ?? (!level.tutorial && level
 export const hasFires = (level: Level) => !level.tutorial && level.n >= 2;
 
 export const spillsAt = (level: Level) => level.spills ?? (!level.tutorial && level.n >= 6 ? 1 : 0);
+
+/** kids need a booster seat set out on the pass before they can sit (a later mission: from level 8 on) */
+export const hasBoosters = (level: Level) => level.boosters ?? (!level.tutorial && level.n >= 8);
 
 export const hasWashing = (level: Level) => level.washing ?? (!level.tutorial && level.n >= 5);
 

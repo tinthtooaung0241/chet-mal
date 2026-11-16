@@ -3,7 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Chet Mal</title>
+    <title>Chet Mal – Free Co-op Cooking Game in Your Browser</title>
+    <meta
+      name="description"
+      content="Cook together in Chet Mal, a free cozy co-op cooking game for 1–3 players in your browser. Each chef senses something different: talk, sign and serve to win."
+    />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="author" content="Chet Mal" />
+    <meta name="application-name" content="Chet Mal" />
+    <!-- link previews (chat apps, social posts); the absolute URLs and image are added at build -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Chet Mal" />
+    <meta property="og:title" content="Chet Mal – Co-op Cooking Game" />
+    <meta property="og:description" content="A cozy co-op kitchen for 1–3 players where every chef senses something different. Free in your browser, on phones too." />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Chet Mal – Co-op Cooking Game" />
+    <meta name="twitter:description" content="A cozy co-op kitchen for 1–3 players where every chef senses something different. Free in your browser." />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -23,6 +40,14 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
+    <noscript>
+      <h1>Chet Mal: a free co-op cooking game</h1>
+      <p>
+        Chet Mal (Burmese for "let's cook!") is a cozy co-op cooking game for one to three players, right in your
+        browser. The head chef runs the pass, the deaf chef cooks by sight and the mute chef talks with signs, so the
+        team has to share what each one notices. Turn on JavaScript to play, or <a href="/about.html">read about the game</a>.
+      </p>
+    </noscript>
     <main id="app">
       <canvas id="scene" aria-label="Kitchen view. Announcements describe what happens; press Q to hear what's around you." tabindex="0"></canvas>
 
@@ -34,9 +59,13 @@
         <div id="touch-joy" aria-hidden="true"><div id="touch-joy-base"><div id="touch-joy-knob"></div></div><span id="touch-joy-hint" hidden>Move</span></div>
         <!-- right thumb: Use in the middle, the other actions in an arc around it -->
         <div id="touch-pad">
-          <button type="button" class="touch-use" data-key="Space" aria-label="Use"><i data-icon="hand"></i><span id="touch-use-label">Use</span><span id="touch-held" hidden></span></button>
-          <button type="button" class="touch-sat touch-chop" data-key="KeyF" style="--a: 172deg" aria-label="Hold to chop, wash, mop or put out a fire"><i data-icon="knife"></i><span>Hold</span></button>
+          <button type="button" class="touch-use" data-key="Space" aria-label="Use"><i data-icon="hand"></i><span id="touch-use-label">Use</span><span id="touch-use-hold" hidden></span><span id="touch-held" hidden></span></button>
+          <button type="button" class="touch-sat touch-chop" data-key="KeyF" style="--a: 172deg" aria-label="Hold to chop, wash, mop or put out a fire"><i data-icon="knife"></i><span id="touch-hold-label">Hold</span></button>
           <button type="button" class="touch-sat" data-key="KeyH" style="--a: 118deg" aria-label="Take a hand" data-label="Hand"><i data-icon="hands"></i></button>
+          <!-- smell what's in hand or in front (spoiled food, even in a power cut): shows up near food -->
+          <button type="button" class="touch-sat touch-sniff" data-key="KeyZ" style="--a: 150deg; --r: 150px" aria-label="Sniff" data-label="Sniff"><i data-icon="smell"></i></button>
+          <!-- the mute chef's dash (shown only for them) -->
+          <button type="button" class="touch-sat touch-dash" data-key="ShiftLeft" style="--a: 76deg" aria-label="Dash" data-label="Dash" hidden><i data-icon="bolt"></i></button>
         </div>
       </div>
       <div id="hud" hidden>
@@ -134,6 +163,13 @@
         </div>
 
         <div id="crosshair" aria-hidden="true" hidden></div>
+        <!-- the pour meter: hold Use by the food with a spice bottle, let go in the band -->
+        <div id="pour" aria-hidden="true" hidden>
+          <span class="pour-name"></span>
+          <div class="pour-bar"><i class="pour-band"><i class="pour-core"></i></i><i class="pour-fill"></i></div>
+          <span class="pour-edge"></span>
+          <b class="pour-say"></b>
+        </div>
         <p id="help-hint" class="corner-hint" aria-hidden="true">Press <kbd>?</kbd> for controls</p>
       </div>
 
@@ -183,20 +219,25 @@
       <p id="pause-note" class="muted"></p>
       <div class="menu-actions">
         <button id="resume" type="button" class="primary big"><i data-icon="play"></i> Resume</button>
-        <button id="open-help" type="button"><i data-icon="gamepad"></i> Keys</button>
+        <button id="open-help" type="button"><i data-icon="gamepad"></i> How to play</button>
         <button id="open-book" type="button"><i data-icon="book"></i> Recipes</button>
         <button id="open-settings" type="button"><i data-icon="gear"></i> Settings</button>
-        <button id="open-briefing" type="button"><i data-icon="flag"></i> Tips</button>
+        <button id="open-briefing" type="button"><i data-icon="flag"></i> Level tips</button>
       </div>
       <fieldset id="role-picker">
-        <legend>Practice as</legend>
+        <legend>Try a chef <small>Feel what each chef can and can't do</small></legend>
         <label><input type="radio" name="role" value="full" /><span><i data-icon="star"></i> All</span></label>
         <label><input type="radio" name="role" value="head" /><span><i data-icon="chef"></i> Head</span></label>
         <label><input type="radio" name="role" value="deaf" /><span><i data-icon="ear"></i> Deaf</span></label>
         <label><input type="radio" name="role" value="mute" /><span><i data-icon="voice"></i> Mute</span></label>
       </fieldset>
-      <label class="toggle"><input type="checkbox" id="speak" /><span>Read aloud</span></label>
+      <div class="pause-toggles">
+        <label class="toggle"><input type="checkbox" id="speak" /><span>Read aloud</span></label>
+        <button type="button" id="toggle-view" class="view-toggle"></button>
+        <label class="toggle" id="mic-toggle" hidden><input type="checkbox" id="mic" /><span>Microphone</span></label>
+      </div>
       <div class="menu-actions">
+        <button id="restart-shift" type="button">Restart shift</button>
         <button id="quit" type="button" class="danger">Leave kitchen</button>
         <a class="muted small" href="/gallery.html">Asset gallery</a>
       </div>
@@ -205,13 +246,64 @@
     <dialog id="settings" class="card-dialog" aria-labelledby="settings-title">
       <h2 id="settings-title">Settings</h2>
       <div class="setting-list">
+        <h3 class="setting-group">Game</h3>
+        <fieldset class="setting-row" id="lang-setting">
+          <legend><i data-icon="signs"></i> Language</legend>
+          <div class="segmented">
+            <label><input type="radio" name="lang" value="en" /><span>English</span></label>
+            <label><input type="radio" name="lang" value="my" /><span lang="my">မြန်မာ</span></label>
+          </div>
+          <p class="setting-note"  id="lang-note">Starts the game again</p>
+        </fieldset>
         <fieldset class="setting-row" id="view-setting">
           <legend><i data-icon="eye"></i> Camera</legend>
           <div class="segmented">
-            <label><input type="radio" name="view" value="fpp" /><span>First</span></label>
-            <label><input type="radio" name="view" value="tpp" /><span>Third</span></label>
+            <label><input type="radio" name="view" value="fpp" /><span>Chef's eyes</span></label>
+            <label><input type="radio" name="view" value="tpp" /><span>From above</span></label>
           </div>
         </fieldset>
+        <fieldset class="setting-row" id="look-setting">
+          <legend><i data-icon="mouse"></i> Look speed</legend>
+          <div class="segmented">
+            <label><input type="radio" name="look" value="slow" /><span>Slow</span></label>
+            <label><input type="radio" name="look" value="normal" /><span>Normal</span></label>
+            <label><input type="radio" name="look" value="fast" /><span>Fast</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="setting-row" id="meter-setting">
+          <legend><i data-icon="salt"></i> Seasoning meter</legend>
+          <div class="segmented">
+            <label><input type="radio" name="meter" value="on" /><span>On</span></label>
+            <label><input type="radio" name="meter" value="off" /><span>Off</span></label>
+          </div>
+          <p class="setting-note">Off: every pinch is just right</p>
+        </fieldset>
+        <h3 class="setting-group touch-setting">Touch buttons</h3>
+        <fieldset class="setting-row touch-setting" id="button-size-setting">
+          <legend><i data-icon="hand"></i> Button size</legend>
+          <div class="segmented">
+            <label><input type="radio" name="buttonSize" value="normal" /><span>Normal</span></label>
+            <label><input type="radio" name="buttonSize" value="large" /><span>Large</span></label>
+          </div>
+          <p class="setting-note">How big the thumb buttons are</p>
+        </fieldset>
+        <fieldset class="setting-row touch-setting" id="hand-setting">
+          <legend><i data-icon="hands"></i> Walk with</legend>
+          <div class="segmented">
+            <label><input type="radio" name="hand" value="right" /><span>Left thumb</span></label>
+            <label><input type="radio" name="hand" value="left" /><span>Right thumb</span></label>
+          </div>
+          <p class="setting-note">Right thumb: the stick and the buttons swap sides</p>
+        </fieldset>
+        <fieldset class="setting-row touch-setting" id="hold-setting">
+          <legend><i data-icon="knife"></i> Hold button</legend>
+          <div class="segmented">
+            <label><input type="radio" name="holdButton" value="off" /><span>Off</span></label>
+            <label><input type="radio" name="holdButton" value="on" /><span>On</span></label>
+          </div>
+          <p class="setting-note">Off: hold Use to chop, wash and mop</p>
+        </fieldset>
+        <h3 class="setting-group">Sound</h3>
         <fieldset class="setting-row" id="music-setting">
           <legend><i data-icon="voice"></i> Music</legend>
           <div class="segmented">
@@ -235,7 +327,25 @@
             <label><input type="radio" name="voices" value="low" /><span>Low</span></label>
             <label><input type="radio" name="voices" value="on" /><span>On</span></label>
           </div>
+          <p class="setting-note">Your teammates' voice chat</p>
         </fieldset>
+        <fieldset class="setting-row" id="mic-setting">
+          <legend><i data-icon="phone"></i> Microphone</legend>
+          <div class="segmented">
+            <label><input type="radio" name="mic" value="on" /><span>On</span></label>
+            <label><input type="radio" name="mic" value="off" /><span>Off</span></label>
+          </div>
+          <p class="setting-note">Off: teammates can't hear you</p>
+        </fieldset>
+        <fieldset class="setting-row" id="speak-setting">
+          <legend><i data-icon="book"></i> Read aloud</legend>
+          <div class="segmented">
+            <label><input type="radio" name="speak" value="off" /><span>Off</span></label>
+            <label><input type="radio" name="speak" value="on" /><span>On</span></label>
+          </div>
+          <p class="setting-note">Says orders and tips out loud</p>
+        </fieldset>
+        <h3 class="setting-group">Screen</h3>
         <fieldset class="setting-row" id="text-setting">
           <legend><i data-icon="book"></i> Text size</legend>
           <div class="segmented">
@@ -250,6 +360,7 @@
             <label><input type="radio" name="graphics" value="low" /><span>Fast</span></label>
             <label><input type="radio" name="graphics" value="high" /><span>Sharp</span></label>
           </div>
+          <p class="setting-note">Fast is best for older phones</p>
         </fieldset>
         <fieldset class="setting-row" id="motion-setting">
           <legend><i data-icon="hurry"></i> Motion</legend>
@@ -257,26 +368,48 @@
             <label><input type="radio" name="motion" value="full" /><span>Full</span></label>
             <label><input type="radio" name="motion" value="reduced" /><span>Less</span></label>
           </div>
+          <p class="setting-note">Less: no shake or bounce</p>
         </fieldset>
+        <fieldset class="setting-row" id="colors-setting">
+          <legend><i data-icon="eye"></i> Colours</legend>
+          <div class="segmented">
+            <label><input type="radio" name="colors" value="normal" /><span>Normal</span></label>
+            <label><input type="radio" name="colors" value="safe" /><span>High contrast</span></label>
+          </div>
+          <p class="setting-note">Timers in blue and orange, with stripes</p>
+        </fieldset>
+        <h3 class="setting-group">Privacy</h3>
         <fieldset class="setting-row" id="stats-setting">
           <legend><i data-icon="chart"></i> Share play stats</legend>
           <div class="segmented">
             <label><input type="radio" name="stats" value="on" /><span>On</span></label>
             <label><input type="radio" name="stats" value="off" /><span>Off</span></label>
           </div>
+          <p class="setting-note">Counts shifts and stars. No names.</p>
         </fieldset>
+        <button id="reset-progress" type="button" class="danger reset-progress">Reset progress</button>
       </div>
       <button id="settings-done" type="button" class="primary">Done</button>
     </dialog>
 
     <dialog id="help" class="card-dialog" aria-labelledby="help-title">
-      <h2 id="help-title">How to cook</h2>
+      <h2 id="help-title">How to play</h2>
       <div class="help-tabs segmented" role="tablist">
-        <label><input type="radio" name="help-tab" value="cook" checked /><span>Cooking</span></label>
+        <label><input type="radio" name="help-tab" value="basics" checked /><span>Basics</span></label>
+        <label><input type="radio" name="help-tab" value="cook" /><span>Cooking</span></label>
         <label><input type="radio" name="help-tab" value="keys" /><span>Controls</span></label>
       </div>
       <div class="help-panels">
-      <section class="help-panel" data-tab="cook">
+      <section class="help-panel" data-tab="basics">
+        <p class="how-lead">Serve every order before time runs out.</p>
+        <ul class="how-row">
+          <li><i data-icon="chef"></i>Head<small>Can't cook</small></li>
+          <li><i data-icon="ear"></i>Deaf<small>Can't hear</small></li>
+          <li><i data-icon="voice"></i>Mute<small>Can't speak</small></li>
+        </ul>
+        <p class="how-lead">Each chef can't do one thing. Help each other.</p>
+      </section>
+      <section class="help-panel" data-tab="cook" hidden>
         <ol class="cook-steps">
         <li><i data-icon="hand"></i>Grab</li>
         <li><i data-icon="knife"></i>Chop</li>
@@ -296,10 +429,11 @@
           <div><h3>Move</h3>
             <p><span><kbd>W</kbd></span>Forward</p>
             <p><span><kbd>A</kbd></span>Left</p>
-            <p><span><kbd>S</kbd></span>Back</p>
+            <p><span><kbd>S</kbd></span>Backward</p>
             <p><span><kbd>D</kbd></span>Right</p>
             <p><span><i data-icon="mouse"></i></span>Look</p>
             <p><span><kbd>V</kbd></span>Change view</p>
+            <p class="wide-key"><span><kbd>Alt</kbd><kbd>0</kbd>–<kbd>3</kbd></span>Switch chef (Solo)</p>
           </div>
           <div><h3>Cook</h3>
             <p><span><kbd>Space</kbd></span>Use</p>
@@ -317,53 +451,20 @@
           </div>
         </div>
         <ul class="key-list touch-text">
-        <li><span><i data-icon="hand"></i></span>Left thumb: walk</li>
-        <li><span><i data-icon="eye"></i></span>Drag: look</li>
-        <li><span><i data-icon="check"></i></span>Big button: use</li>
-        <li><span><i data-icon="knife"></i></span>Hold Chop</li>
-        <li><span><i data-icon="hands"></i></span>Hand: take a hand</li>
-        <li><span><i data-icon="signs"></i></span>Talk: signs</li>
+        <li><span><i data-icon="gamepad"></i></span>Left thumb: walk</li>
+        <li><span><i data-icon="eye"></i></span>Drag: look around</li>
+        <li><span><i data-icon="hand"></i></span>Use: pick up, put down, serve</li>
+        <li><span><i data-icon="knife"></i></span>Hold: chop, wash, mop, put out fires</li>
+        <li><span><i data-icon="smell"></i></span>Sniff: check food is fresh</li>
+        <li><span><i data-icon="hands"></i></span>Hand: lead a teammate</li>
+        <li><span><i data-icon="signs"></i></span>Signs: ping, bell and signs</li>
+        <li><span><i data-icon="book"></i></span>Book: recipes</li>
       </ul>
       </section>
       </div>
-      <button id="close-help" type="button" class="primary">Got it!</button>
-    </dialog>
-
-    <dialog id="how-to-play" class="card-dialog" aria-labelledby="how-title">
-      <section class="how-page">
-        <h2 id="how-title">Cook together</h2>
-        <p class="how-lead">Serve every order before time runs out.</p>
-        <ol class="how-row">
-          <li><i data-icon="hand"></i>Grab</li>
-          <li><i data-icon="knife"></i>Prep</li>
-          <li><i data-icon="salt"></i>Season</li>
-          <li><i data-icon="bell"></i>Serve</li>
-        </ol>
-      </section>
-      <section class="how-page" hidden>
-        <h2>Help each other</h2>
-        <p class="how-lead">Each chef can't do one thing.</p>
-        <ul class="how-row">
-          <li><i data-icon="chef"></i>Head<small>Can't cook</small></li>
-          <li><i data-icon="ear"></i>Deaf<small>Can't hear</small></li>
-          <li><i data-icon="voice"></i>Mute<small>Can't speak</small></li>
-        </ul>
-      </section>
-      <section class="how-page" hidden>
-        <h2>Your keys</h2>
-        <p class="how-lead">That's all you need to start.</p>
-        <ul class="how-row">
-          <li><kbd>Space</kbd>Use</li>
-          <li><kbd>F</kbd>Chop</li>
-          <li><kbd>R</kbd>Recipes</li>
-          <li><kbd>T</kbd>Signs</li>
-        </ul>
-      </section>
-      <div class="how-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
-      <div class="how-actions">
-        <button id="how-close" type="button">Back</button>
-        <button id="how-next" type="button" class="primary big">Next</button>
-        <button id="how-tutorial" type="button" class="primary big" hidden><i data-icon="hands"></i> Try the tutorial</button>
+      <div class="help-actions">
+        <button id="help-tutorial" type="button"><i data-icon="hands"></i> Try the tutorial</button>
+        <button id="close-help" type="button" class="primary">Got it!</button>
       </div>
     </dialog>
 
@@ -394,6 +495,7 @@
       <ul id="briefing-lines" class="briefing-lines"></ul>
       <div id="briefing-role" class="briefing-role"></div>
       <button id="briefing-go" type="button" class="primary big">Let's cook! <kbd>Enter</kbd></button>
+      <button id="briefing-skip" type="button" class="briefing-skip" hidden>Skip the tutorial</button>
     </dialog>
 
     <dialog id="recipe-book" data-own-keys class="card-dialog wide" aria-labelledby="book-title" aria-describedby="book-note">
@@ -409,17 +511,25 @@
     </dialog>
 
     <div id="title-menu" hidden>
-      <h1 class="title-wordmark" aria-label="Chet Mal">
+      <h1 class="title-wordmark" aria-label="Chet Mal" translate="no">
         <img class="title-chet" src="/chet.svg" width="200" height="200" alt="" />
         <span>Chet <em>Mal!</em></span>
         <small><span lang="my">ချက်မယ်</span> <b>(let's cook!)</b></small>
       </h1>
       <nav class="title-card" aria-label="Main menu">
+        <button type="button" id="title-continue" hidden></button>
         <button type="button" id="title-play" class="on">Let's Play</button>
         <button type="button" id="title-how">How to Play</button>
         <button type="button" id="title-settings">Settings</button>
       </nav>
       <p class="title-hint"><kbd>Enter</kbd> Select</p>
+      <div class="title-links">
+        <!-- one tap to the other language (shown in that language, so its readers can find it) -->
+        <button type="button" id="title-lang" class="title-lang"></button>
+        <a class="title-about" href="/about.html">About the game</a>
+      </div>
+      <!-- iPhone: the browser bars stay, unless the game is opened from the home screen -->
+      <p id="ios-tip" class="ios-tip" hidden><i data-icon="expand"></i><span id="ios-tip-text">Full screen: tap <b>Share</b>, then <b>Add to Home Screen</b></span><button type="button" aria-label="Hide this tip">✕</button></p>
     </div>
 
     <dialog id="lobby" class="play-screen" aria-labelledby="lobby-title">
@@ -427,7 +537,7 @@
       <button id="lobby-fullscreen" class="round-btn touch-only fs-toggle" type="button" aria-label="Full screen"><i data-icon="expand"></i></button>
 
       <div id="lobby-start" class="title-card play-menu">
-        <button id="play-solo" type="button" class="on"><i data-icon="chef"></i> Practice Solo</button>
+        <button id="play-solo" type="button" class="on"><i data-icon="chef"></i> Solo Mode</button>
         <button id="create-room" type="button"><i data-img="Pot"></i> Create a Kitchen</button>
         <button id="quick-play" type="button" class="quick-play"><i data-icon="hurry"></i> Quick Play <small>cook with anyone</small></button>
         <form id="join-form">
@@ -437,8 +547,7 @@
         <button id="open-setup" type="button" class="play-setup"><i data-icon="gear"></i><span>Restaurant &amp; Shift<small id="setup-summary"></small></span></button>
         <button id="play-daily" type="button" class="play-setup play-daily"><i id="daily-icon" data-icon="star"></i><span>Daily special<small id="daily-summary"></small></span><b id="daily-streak" class="daily-streak" hidden></b></button>
         <div class="play-tools">
-          <button id="play-tutorial" type="button"><i data-icon="hands"></i>Tutorial</button>
-          <button id="open-how" type="button"><i data-icon="book"></i>Help</button>
+          <button id="open-how" type="button"><i data-icon="book"></i>How to play</button>
           <button id="open-shop" type="button"><i data-icon="coin"></i>Shop</button>
           <button id="open-album" type="button"><i data-icon="sticker"></i>Stickers</button>
           <button id="lobby-settings" type="button"><i data-icon="gear"></i>Settings</button>
@@ -448,17 +557,22 @@
 
       <div id="lobby-room" hidden>
         <p class="room-line">
-          Kitchen code <strong id="room-code-display"></strong>
+          Kitchen code <strong id="room-code-display" translate="no"></strong> <span id="room-count"></span>
           <button id="copy-link" type="button"><i data-icon="link"></i> Copy invite link</button>
+        </p>
+        <p class="room-line room-me">
+          <label class="field room-name">Your name <input id="room-name" maxlength="20" autocomplete="nickname" placeholder="Chef" /></label>
+          <button id="room-how" type="button" aria-label="How to play" title="How to play"><i data-icon="book"></i></button>
+          <button id="room-settings" type="button" aria-label="Settings" title="Settings"><i data-icon="gear"></i></button>
         </p>
         <fieldset id="lobby-roles">
           <legend>Pick your chef</legend>
-          <button type="button" data-role="head" class="chef-card head"><i class="chef-emoji" data-icon="chef" aria-hidden="true"></i><strong>Head chef</strong><span class="senses" role="img" aria-label="Sees, hears, doesn't cook, talks"><i data-icon="eye" class="yes" title="Sees"></i><i data-icon="ear" class="yes" title="Hears"></i><i data-icon="knife" class="no" title="Doesn't cook"></i><i data-icon="voice" class="yes" title="Talks"></i></span><span>Sees every order. Calls the shots, plates, serves and runs the till.</span></button>
-          <button type="button" data-role="deaf" class="chef-card deaf"><i class="chef-emoji" data-icon="ear" aria-hidden="true"></i><strong>Deaf chef</strong><span class="senses" role="img" aria-label="Sees, can't hear, cooks, talks"><i data-icon="eye" class="yes" title="Sees"></i><i data-icon="ear" class="no" title="Can't hear"></i><i data-icon="knife" class="yes" title="Cooks"></i><i data-icon="voice" class="yes" title="Talks"></i></span><span>Cooks by sight. Reads tickets, can't hear calls.</span></button>
-          <button type="button" data-role="mute" class="chef-card mute"><i class="chef-emoji" data-icon="voice" aria-hidden="true"></i><strong>Mute chef</strong><span class="senses" role="img" aria-label="Sees, hears, cooks, can't talk"><i data-icon="eye" class="yes" title="Sees"></i><i data-icon="ear" class="yes" title="Hears"></i><i data-icon="knife" class="yes" title="Cooks"></i><i data-icon="voice" class="no" title="Can't talk"></i></span><span>Hears everything. Talks with pings, signs and a bell.</span></button>
+          <button type="button" data-role="head" class="chef-card head"><span class="cc-badge" hidden></span><span class="cc-head"><i class="chef-emoji" data-icon="chef" aria-hidden="true"></i><span class="cc-name"><strong>Head chef</strong><small>Runs the pass</small></span></span><span class="cc-senses" role="img" aria-label="Sees, Hears, Talks, No cooking"><span class="cc-sense yes" title="Sees"><i data-icon="eye"></i><em>Sees</em></span><span class="cc-sense yes" title="Hears"><i data-icon="ear"></i><em>Hears</em></span><span class="cc-sense yes" title="Talks"><i data-icon="voice"></i><em>Talks</em></span><span class="cc-sense no" title="No cooking"><i data-icon="knife"></i><em>No cooking</em></span></span><span class="cc-job">Calls out orders, plates, serves and runs the till.</span><span class="cc-list"><b>Strengths</b><span><i data-icon="star"></i>+5 points on every dish served</span><span><i data-icon="salt"></i>Bigger “just right” seasoning band</span></span><span class="cc-limit"><i data-icon="cross"></i>Can't touch raw food or cook</span></button>
+          <button type="button" data-role="deaf" class="chef-card deaf"><span class="cc-badge" hidden></span><span class="cc-head"><i class="chef-emoji" data-icon="ear" aria-hidden="true"></i><span class="cc-name"><strong>Deaf chef</strong><small>The eyes</small></span></span><span class="cc-senses" role="img" aria-label="Sees, Can't hear, Talks, Cooks"><span class="cc-sense yes" title="Sees"><i data-icon="eye"></i><em>Sees</em></span><span class="cc-sense no" title="Can't hear"><i data-icon="ear"></i><em>Can't hear</em></span><span class="cc-sense yes" title="Talks"><i data-icon="voice"></i><em>Talks</em></span><span class="cc-sense yes" title="Cooks"><i data-icon="knife"></i><em>Cooks</em></span></span><span class="cc-job">Reads tickets, colours and smoke. Misses phone orders and sound cues.</span><span class="cc-list"><b>Strengths</b><span><i data-icon="knife"></i>Chops 30% faster</span><span><i data-icon="sparkle"></i>Sees the perfect moment</span><span><i data-icon="eye"></i>Spots trouble early</span><span><i data-icon="check"></i>Sees if a dish matches an order</span></span><span class="cc-limit"><i data-icon="cross"></i>Watch the bars and the log, not the beeps</span></button>
+          <button type="button" data-role="mute" class="chef-card mute"><span class="cc-badge" hidden></span><span class="cc-head"><i class="chef-emoji" data-icon="voice" aria-hidden="true"></i><span class="cc-name"><strong>Mute chef</strong><small>The runner</small></span></span><span class="cc-senses" role="img" aria-label="Sees, Hears, Can't talk, Cooks"><span class="cc-sense yes" title="Sees"><i data-icon="eye"></i><em>Sees</em></span><span class="cc-sense yes" title="Hears"><i data-icon="ear"></i><em>Hears</em></span><span class="cc-sense no" title="Can't talk"><i data-icon="voice"></i><em>Can't talk</em></span><span class="cc-sense yes" title="Cooks"><i data-icon="knife"></i><em>Cooks</em></span></span><span class="cc-job">Hears everything and answers with pings (G), signs (T) and the bell (B).</span><span class="cc-list"><b>Strengths</b><span><i data-icon="bolt"></i>Dash with Shift</span><span><i data-icon="hands"></i>Tray: carries two dishes</span><span><i data-icon="sink"></i>Washes up 60% faster</span><span><i data-icon="pin"></i>Pings glow for the team</span></span><span class="cc-limit"><i data-icon="cross"></i>Signal instead of speaking</span></button>
         </fieldset>
-        <h3 class="room-label">Chefs in this kitchen</h3>
-        <ul id="lobby-players"></ul>
+        <!-- the chosen (or hovered) chef's job, strengths and limit -->
+        <div id="chef-detail" aria-live="polite"><div class="cd-pane cd-empty"><p>Tap a chef to see what they do.</p></div></div>
         <div class="room-actions">
           <button id="room-setup" type="button"><i data-icon="gear"></i> Restaurant &amp; Shift</button>
           <button id="warm-up" type="button" title="One easy salad together in the tutorial kitchen, with the coach showing each chef their job"><i data-icon="hands"></i> Warm-up</button>
@@ -471,7 +585,8 @@
     </dialog>
 
     <dialog id="setup" class="card-dialog" aria-labelledby="setup-title">
-      <h2 id="setup-title">Your shift</h2>
+      <h2 id="setup-title">Restaurant &amp; Shift</h2>
+      <div class="setup-col">
       <label class="field">Your name <input id="player-name" maxlength="20" autocomplete="nickname" placeholder="Chef" /></label>
       <fieldset class="setting-row" id="shift-kind">
         <legend><i data-icon="star"></i> Shift</legend>
@@ -480,11 +595,16 @@
           <label><input type="radio" name="shift-kind" value="daily" /><span>Daily special</span></label>
         </div>
       </fieldset>
+      <div class="shift-stack">
       <div id="normal-shift">
         <div id="venue-picker" class="venue-picker" role="radiogroup" aria-label="Restaurant"></div>
         <label class="field">Shift <select id="level-select"></select></label>
         <div id="level-map" class="level-map" role="radiogroup" aria-label="Shift" hidden></div>
       </div>
+      <div id="daily-shift" class="daily-shift" hidden aria-live="polite"></div>
+      </div>
+      </div>
+      <div class="setup-col">
       <p id="level-blurb" class="muted"></p>
       <fieldset class="setting-row" id="pace-setting">
         <legend><i data-icon="hurry"></i> Pace</legend>
@@ -502,6 +622,7 @@
         </div>
       </fieldset>
       <p class="muted helper-note">A porter that chops, washes up, mops and puts out fires. Online, it takes an empty seat.</p>
+      </div>
       <button id="setup-done" type="button" class="primary big">Done</button>
     </dialog>
 
@@ -516,8 +637,11 @@
       <ul id="final-awards" class="awards" aria-label="Awards"></ul>
       <p id="final-stickers" class="final-stickers" hidden></p>
       <div class="menu-actions">
+        <button id="over-menu" type="button"><i data-icon="menu"></i> <span id="over-menu-label">Menu</span></button>
+        <button id="over-shop" type="button" hidden><i data-icon="coin"></i> Shop</button>
         <button id="restart" type="button"><i data-icon="play"></i> <span id="restart-label">Play again</span> <kbd>R</kbd></button>
         <button id="next-level" type="button" class="primary">Next level <kbd>N</kbd></button>
+        <p id="next-locked" class="muted next-locked" hidden><i data-icon="star"></i> Get 1 star to open the next shift</p>
         <p id="host-picks" class="muted" hidden>Waiting for the host to pick the next shift…</p>
       </div>
     </dialog>

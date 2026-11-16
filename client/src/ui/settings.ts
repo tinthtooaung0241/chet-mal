@@ -4,13 +4,19 @@ import { musicLevel, saveMusicLevel, type MusicLevel } from "../music";
 import { PREFS, pref, savePref, type PrefName } from "../prefs";
 import { readText, writeText } from "../storage";
 import { setStatsAllowed, startTelemetry, statsAllowed } from "../telemetry";
+import { wantsTouch } from "../touch";
 import { $ } from "./dom";
 
 export type ViewPref = "fpp" | "tpp";
 const VIEW_KEY = "view";
 
-/** First person unless the player chose the overhead view. */
-export const viewPref = (): ViewPref => (readText(VIEW_KEY) === "tpp" ? "tpp" : "fpp");
+/** The camera the player chose, or the one that suits their device. */
+export const viewPref = (): ViewPref => {
+  const saved = readText(VIEW_KEY);
+  if (saved === "tpp" || saved === "fpp") return saved;
+  // phones start from above: first person there needs two thumbs and the buttons at once
+  return wantsTouch() ? "tpp" : "fpp";
+};
 export const saveViewPref = (view: ViewPref) => writeText(VIEW_KEY, view);
 
 /**

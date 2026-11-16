@@ -36,6 +36,10 @@ npm run start:prod   # http://localhost:8787 (PORT sets another port)
 `npm run test:coach` plays every level with a simulated player that follows the coach (solo, two
 cooks, and a head chef with two cooks, at both paces) and fails on any refused action or loop.
 
+The game is in English and Burmese (Settings → Language). `npm run test:burmese` plays every shift
+and fails if anything the game says has no Burmese yet; the words and style are in
+[docs/BURMESE.md](docs/BURMESE.md).
+
 ## Layout
 
 | Folder | What's in it |
@@ -59,6 +63,10 @@ Everything below is off until you add keys, so local play needs none of it.
 
 1. **Domain.** Buy one (Cloudflare Registrar or Namecheap) and point it at your game host
    (Render/Railway give you a CNAME target).
+   Then set `SITE_URL` (for example `SITE_URL=https://chetmal.com`) when building the client.
+   It turns on the search and link-preview extras: canonical links, the share image
+   (`og-image.jpg`), and `sitemap.xml` listed in `robots.txt`. After the first deploy, add the
+   site to Google Search Console and submit `/sitemap.xml`.
 2. **CDN.** Add the domain to Cloudflare, proxy it (orange cloud) and turn on WebSockets
    (on by default). The server already sends the right headers: hashed `/assets/*` files are
    cached for a year, `index.html` is never cached, and text files are gzipped.

@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Chet Mal brand assets</title>
+    <!--
+      The source for the game's social image and app icons, in the game's own look: its fonts,
+      colours, glyphs, rendered food icons and Chet. Dev only (not part of the build). Render with
+      `npm run brand` while the dev server runs: ?asset=og (1200×630), maskable (512, from icon.svg).
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800&display=swap" />
+    <style>
+      :root {
+        --paper: #fffaf0;
+        --cream: #fff3df;
+        --oat: #f6ecdc;
+        --ink: #3b2f27;
+        --ink-soft: #7a6552;
+        --honey: #f6c35b;
+        --honey-strong: #f2a541;
+        --peach-soft: #ffe8df;
+        --mint-soft: #e1f2da;
+        --sky-soft: #e4f0fb;
+        --lilac-soft: #ede3f7;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #f3ead9;
+        color: var(--ink);
+        font-family: "Nunito", system-ui, sans-serif;
+      }
+      .asset {
+        position: relative;
+        overflow: hidden;
+        display: none;
+      }
+      body[data-asset="og"] #og,
+      body[data-asset="maskable"] #maskable {
+        display: block;
+      }
+
+      /* --- the social card: Chet in a sunny circle, the name, one line of what it is, the chefs --- */
+      #og {
+        width: 1200px;
+        height: 630px;
+        background: #fff6e6;
+      }
+      /* two soft shapes, the only decoration besides a little food */
+      .corner {
+        position: absolute;
+        right: -120px;
+        bottom: -160px;
+        width: 420px;
+        height: 420px;
+        border-radius: 50%;
+        background: #fdeedd;
+      }
+      /* Chet is the star: big, waving, standing on a soft spot of floor with a few sparkles */
+      .chet-big {
+        position: absolute;
+        left: 66px;
+        top: 62px;
+        width: 450px;
+        height: 450px;
+        transform: rotate(-6deg);
+      }
+      .floor {
+        position: absolute;
+        left: 150px;
+        top: 482px;
+        width: 290px;
+        height: 44px;
+        border-radius: 50%;
+        background: #f5e2c0;
+      }
+      .spark {
+        position: absolute;
+        width: 44px;
+        height: 44px;
+      }
+      .spark .icon-svg {
+        width: 100%;
+        height: 100%;
+      }
+      .float {
+        position: absolute;
+        width: 86px;
+        height: 86px;
+      }
+      .float img {
+        width: 100%;
+        height: 100%;
+      }
+      .right {
+        position: absolute;
+        left: 610px;
+        top: 160px;
+        width: 520px;
+        width: 560px;
+      }
+      .right h1 {
+        margin: 0;
+        white-space: nowrap;
+        font: 700 100px/0.92 "Fredoka", sans-serif;
+        letter-spacing: -1px;
+      }
+      .right h1 em {
+        font-style: normal;
+        color: var(--honey-strong);
+      }
+      .right .burmese {
+        margin: 10px 0 0 4px;
+        font: 700 30px "Fredoka", sans-serif;
+        color: #e0902f;
+      }
+      .right .burmese b {
+        font-size: 24px;
+        color: var(--ink-soft);
+      }
+      .right .tagline {
+        margin: 30px 0 34px 4px;
+        font: 600 30px/1.2 "Fredoka", sans-serif;
+        color: var(--ink);
+      }
+      .foot {
+        margin: 0 0 0 6px;
+        font: 800 21px "Nunito", sans-serif;
+        letter-spacing: 0.5px;
+        color: var(--ink-soft);
+      }
+      .foot span {
+        color: #e0b45a;
+        margin: 0 8px;
+      }
+
+      /* --- the maskable app icon: Android crops it to its own shape, so a full honey square with
+         the game's icon in the middle 80% (the safe zone) --------------------------------- */
+      #maskable {
+        width: 512px;
+        height: 512px;
+        background: #f6c35b;
+      }
+      #maskable img {
+        position: absolute;
+        left: 51px;
+        top: 51px;
+        width: 410px;
+        height: 410px;
+      }
+    </style>
+  </head>
+  <body data-asset="og">
+    <section id="og" class="asset">
+      <span class="corner"></span>
+      <span class="floor"></span>
+      <img class="chet-big" src="/chet.svg" alt="" />
+      <span class="spark" style="left: 92px; top: 92px"><i data-icon="sparkle"></i></span>
+      <span class="spark" style="left: 470px; top: 236px; width: 34px; height: 34px"><i data-icon="sparkle"></i></span>
+      <span class="spark" style="left: 60px; top: 330px; width: 28px; height: 28px"><i data-icon="sparkle"></i></span>
+      <!-- a little food circling Chet, and two in the far corners -->
+      <span class="float" style="left: 470px; top: 64px; transform: rotate(12deg)"><i data-img="Tomato"></i></span>
+      <span class="float" style="left: 22px; top: 196px; width: 74px; height: 74px; transform: rotate(-18deg)"><i data-img="Carrot"></i></span>
+      <span class="float" style="left: 36px; top: 430px; width: 76px; height: 76px; transform: rotate(-10deg)"><i data-img="Mushroom"></i></span>
+      <span class="float" style="left: 486px; top: 410px; width: 78px; height: 78px"><i data-img="Egg_Fried"></i></span>
+      <span class="float" style="left: 1094px; top: 34px; width: 74px; height: 74px; transform: rotate(10deg)"><i data-img="Lettuce"></i></span>
+      <span class="float" style="left: 1086px; top: 520px; width: 84px; height: 84px"><i data-img="Soup_Tomato"></i></span>
+
+      <div class="right">
+        <h1>Chet <em>Mal!</em></h1>
+        <p class="burmese">ချက်မယ် <b>(let's cook!)</b></p>
+        <p class="tagline">A cozy co-op kitchen where every chef senses something different</p>
+        <p class="foot">FREE<span>●</span>1–3 PLAYERS<span>●</span>PLAY IN YOUR BROWSER</p>
+      </div>
+    </section>
+
+    <section id="maskable" class="asset"><img src="/icon.svg" alt="" /></section>
+
+    <script type="module">
+      import { hydrateIcons } from "/src/ui/icons.ts";
+      hydrateIcons();
+      document.body.dataset.asset = new URLSearchParams(location.search).get("asset") ?? "og";
+      document.fonts.ready.then(() => (document.body.dataset.ready = "1"));
+    </script>
+  </body>
+</html>

@@ -89,7 +89,7 @@ function goalFor(g: Game, bot: Chef): Goal | null {
     const sink = g.stations.find((s) => s.kind === "sink" && besides(g, s).length);
     return sink ? { cells: besides(g, sink), face: [sink], use: () => interact(g, bot) } : null;
   }
-  const returned = !held ? g.stations.find((s) => (s.item?.type === "plate" || s.item?.type === "bowl") && !!s.item.dirty && besides(g, s).length) : undefined;
+  const returned = !held ? g.stations.find((s) => ((s.item?.type === "plate" || s.item?.type === "bowl") && !!s.item.dirty || !!(s.returns && s.returns.plates + s.returns.bowls)) && besides(g, s).length) : undefined;
   if (returned) return { cells: besides(g, returned), face: [returned], use: () => interact(g, bot) };
   if (!held && g.dishes && g.dishes.dirtyPlates + g.dishes.dirtyBowls >= 2) {
     const sinks = g.stations.filter((s) => s.kind === "sink" && besides(g, s).length);

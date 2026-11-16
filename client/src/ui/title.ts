@@ -5,7 +5,11 @@ import { $ } from "./dom";
 
 export class TitleScreen {
   private readonly el = $("title-menu");
-  private readonly buttons = [...this.el.querySelectorAll<HTMLButtonElement>("button")];
+  private readonly all = [...this.el.querySelectorAll<HTMLButtonElement>("button")];
+  /** the menu as it stands: Continue is only there once there's progress */
+  private get buttons() {
+    return this.all.filter((b) => !b.hidden);
+  }
   /** where the overhead camera was before the title took it over */
   private saved: { alpha: number; beta: number; target: Vector3 };
 
@@ -18,7 +22,7 @@ export class TitleScreen {
     camera.getScene().onBeforeRenderObservable.add(() => {
       if (this.showing && !document.documentElement.classList.contains("reduce-motion")) camera.alpha = -Math.PI / 2 + Math.sin(performance.now() / 9000) * 0.14;
     });
-    for (const button of this.buttons) {
+    for (const button of this.all) {
       button.addEventListener("pointerenter", () => this.select(button));
       button.addEventListener("focus", () => this.select(button));
     }
@@ -33,6 +37,7 @@ export class TitleScreen {
     const camera = this.camera;
     this.el.hidden = !on;
     if (on) {
+      this.select(this.buttons[0]);
       this.saved = { alpha: camera.alpha, beta: camera.beta, target: camera.target.clone() };
       camera.getScene().activeCamera = camera;
       camera.beta = 1.32;
@@ -47,7 +52,7 @@ export class TitleScreen {
   }
 
   private select(button: HTMLButtonElement) {
-    for (const b of this.buttons) b.classList.toggle("on", b === button);
+    for (const b of this.all) b.classList.toggle("on", b === button);
   }
 
   private key(e: KeyboardEvent) {

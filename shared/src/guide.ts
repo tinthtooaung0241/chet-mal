@@ -5,8 +5,8 @@
 // head chef plates and serves, and whoever runs the till hears about customers waiting to pay.
 import { ROLES } from "./roles";
 import { FOOD_RULES, SPICE_NAMES, levelByNumber, paceOf, spiceList, type RecipeItem, type Spice } from "./rules";
-import { describeItem, stationName, targetStation, type Bowl, type Chef, type Food, type Game, type Order, type Plate, type Station } from "./state";
-import { payingDiners, tableNumber } from "./diners";
+import { describeItem, seatsKids, stationName, targetStation, type Bowl, type Chef, type Food, type Game, type Order, type Plate, type Station } from "./state";
+import { boosterWanted, payingDiners, tableNumber } from "./diners";
 
 export interface CheckStep {
   text: string;
@@ -160,7 +160,7 @@ export function guideFor(g: Game, chef: Chef): Guide | null {
     else if (coachOn(g) || (held.type === "food" && (held.spoiled || held.state === "burnt"))) guide = strayGuide(g, chef);
   } else if (coachOn(g)) guide = nextJob(g, chef);
   if (!coachOn(g)) return guide;
-  guide = withTill(g, chef, guide);
+  guide = withTill(g, chef, withBooster(g, chef, guide));
   return guide?.next ? guide : whenIdle(g, chef, guide);
 }
 
@@ -170,8 +170,8 @@ function whenIdle(g: Game, chef: Chef, guide: Guide | null): Guide | null {
   if (chef.held || chef.spice || !knownOrders(g, chef).length) return guide;
   const keep = { order: guide?.order ?? null, steps: guide?.steps ?? [], pick: null };
   // dirty dishes customers left on the pass go to the sink first, then get washed
-  const waiting = nearest(g, chef, (s) => (s.item?.type === "plate" || s.item?.type === "bowl") && !!s.item.dirty);
-  if (waiting) return { ...keep, next: `Nothing waiting on you: take the dirty ${waiting.item!.type} from the pass to the sink`, target: waiting };
+  const waiting = nearest(g, chef, (s) => ((s.item?.type === "plate" || s.item?.type === "bowl") && !!s.item.dirty) || !!(s.returns && s.returns.plates + s.returns.bowls));
+  if (waiting) return { ...keep, next: `Nothing waiting on you: take the dirty dishes from the ${waiting.returns ? "dirty dish counter" : "pass"} to the sink`, target: waiting };
   const dirty = g.dishes ? g.dishes.dirtyPlates + g.dishes.dirtyBowls : 0;
   const sink = dirty ? nearest(g, chef, (s) => s.kind === "sink") : null;
   const next = sink ? "Nothing waiting on you: wash up at the sink (hold F)" : "Everything's on the go: keep an eye on the tickets";
@@ -274,6 +274,23 @@ function cashier(g: Game): Chef | null {
   return free[0] ?? null;
 }
 
+/** A kid needs a booster seat: whoever seats the kids (the head chef) sets one out on the pass, empty-handed. */
+function withBooster(g: Game, chef: Chef, guide: Guide | null): Guide | null {
+  const kid = boosterWanted(g);
+  if (!kid || chef.held || chef.spice || !seatsKids(g, chef)) return guide;
+  // with no head chef, only the one who'd run the till goes, so the cooks don't all drop everything
+  if (ROLES[chef.role].cooks && cashier(g) !== chef) return guide;
+  const pass = nearest(g, chef, (s) => s.kind === "serve");
+  if (!pass) return guide;
+  return {
+    order: guide?.order ?? null,
+    steps: guide?.steps ?? [],
+    next: `The kid at Table ${tableNumber(kid.seat)} needs a booster seat: put one on the pass (empty hands)`,
+    target: pass,
+    pick: null,
+  };
+}
+
 /** A customer waiting to pay comes first for whoever runs the till (even with no dish to guide). */
 function withTill(g: Game, chef: Chef, guide: Guide | null): Guide | null {
   const payer = payingDiners(g)[0];
@@ -344,9 +361,9 @@ function orderGuide(g: Game, chef: Chef, order: Order): Guide {
   /** out of clean ones: wash what's in the sink, else bring a dirty one in from the pass, else wait */
   const noClean = (what: "plate" | "bowl") => {
     const inSink = g.dishes ? g.dishes.dirtyPlates + g.dishes.dirtyBowls : 0;
-    const waiting = nearest(g, chef, (s) => (s.item?.type === "plate" || s.item?.type === "bowl") && !!s.item.dirty);
+    const waiting = nearest(g, chef, (s) => ((s.item?.type === "plate" || s.item?.type === "bowl") && !!s.item.dirty) || !!(s.returns && s.returns.plates + s.returns.bowls));
     if (inSink) go(`No clean ${what}s: hold F at the sink to wash one`, sink());
-    else if (waiting && !held) go(`No clean ${what}s: take the dirty ${waiting.item!.type} from the pass to the sink`, waiting);
+    else if (waiting && !held) go(`No clean ${what}s: take a dirty ${what} from the ${waiting.returns ? "dirty dish counter" : "pass"} to the sink`, waiting);
     else go(`No clean ${what}s: wait for a customer to bring one back`, null);
   };
 

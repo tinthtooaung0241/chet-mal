@@ -6,9 +6,12 @@ import {
   createGame,
   describeSurroundings,
   guideFor,
+  LEVELS,
   levelByNumber,
   paceOf,
   payingDiners,
+  seasonTarget,
+  type Pinch,
   TUTORIAL,
   targetStation,
   type Action,
@@ -19,6 +22,7 @@ import {
   type Role,
   type Station,
   venueById,
+  VENUES,
   currentSenses,
   perceivesEvent,
 } from "@kitchen/shared";
@@ -36,32 +40,41 @@ import { GameView } from "./game/view";
 import { addTakings, canPlay } from "./business";
 import { finishDaily, todaysSpecial } from "./daily";
 import { Lobby } from "./lobby";
-import { recordScore, recordStars } from "./progress";
+import { bestStars, recordScore, recordStars } from "./progress";
 import { LocalSession, NetSession, type Session } from "./session";
+import { clearSolo, saveSolo, savedSolo, seatedRoom, setSeatedRoom } from "./resume";
+import { PourMeter, type PourResult } from "./ui/pour";
 import { Music } from "./music";
-import { PREFS, level, pref, type PrefName } from "./prefs";
+import { PREFS, level, lookSpeed, pref, resetProgress, savePref, type PrefName } from "./prefs";
 import { ownedDecor } from "./decor";
 import { buildTerrace } from "./game/terrace";
 import { checkLive, checkProgress, finishShift, hasSticker, startShift, type Sticker } from "./stickers";
 import { readText, writeText } from "./storage";
 import { startTelemetry, track } from "./telemetry";
-import { TouchControls, canFullscreen, canTouch, goFullscreen, isFullscreen, toggleFullscreen, wantsTouch } from "./touch";
+import { TouchControls, canFullscreen, canTouch, goFullscreen, isFullscreen, keepAwake, toggleFullscreen, wantsTouch } from "./touch";
 import { Album, StickerPop, showShiftStickers } from "./ui/album";
 import { Briefing } from "./ui/briefing";
 import { $, releasePointer } from "./ui/dom";
-import { setupHowToPlay } from "./ui/howToPlay";
 import { hydrateIcons } from "./ui/icons";
 import { setupMenuKeys } from "./ui/keyboard";
 import { saveViewPref, setupSettings, viewPref } from "./ui/settings";
 import { Shop } from "./ui/shop";
 import { TitleScreen } from "./ui/title";
 import { Voice } from "./voice";
+import { LANG, LANG_NAMES, setLang, utterance } from "./i18n";
+import { localizePage } from "./i18n/dom";
 const canvas = $<HTMLCanvasElement>("scene");
 void startTelemetry();
 hydrateIcons(); // fill every data-icon / data-img placeholder in the page
+localizePage(); // the page in the player's language (Burmese is translated as it's shown)
 
 const engine = new Engine(canvas, true, { stencil: true });
 const scene = new Scene(engine);
+// nothing in the kitchen reacts to the mouse hovering or clicking a mesh (aiming uses its own ray),
+// so skip Babylon's picking on every pointer event: hundreds of meshes, every move
+scene.skipPointerMovePicking = true;
+scene.skipPointerDownPicking = true;
+scene.skipPointerUpPicking = true;
 
 // Overhead view (V): looks at the whole floating restaurant from the terrace side.
 const camera = new ArcRotateCamera("camera", -Math.PI / 2, 0.85, 12, new Vector3(0, 0, -1.1), scene);
@@ -78,9 +91,13 @@ const title = new TitleScreen(camera, fitCamera);
 
 const hud = new Hud();
 const feedback = new Feedback($("announce-polite"), $("announce-urgent"), $<HTMLOListElement>("log"));
-$<HTMLInputElement>("speak").addEventListener("change", (e) => {
-  feedback.speak = (e.target as HTMLInputElement).checked;
-});
+// read aloud and the microphone: in Settings, and one tap away in the pause menu
+for (const name of ["speak", "mic"] as const) {
+  $<HTMLInputElement>(name).addEventListener("change", (e) => {
+    savePref(name, (e.target as HTMLInputElement).checked ? "on" : "off");
+    applyPref(name);
+  });
+}
 
 let session: Session | null = null;
 let view: GameView | null = null;
@@ -135,12 +152,35 @@ function maySignal(me: Chef): boolean {
   return false;
 }
 
-function act(action: Action) {
+/** @param pinch with a spice bottle by the food: how the pour went at the meter */
+function act(action: Action, pinch?: Pinch) {
   const me = meNow();
   if (!session || !me || paused) return;
   if ((action === "ping" || action === "bell") && !maySignal(me)) return;
-  session.act(action, action === "ping" ? crosshairSpot() : undefined);
+  session.act(action, action === "ping" ? crosshairSpot() : undefined, pinch);
 }
+
+// --- the pour meter: hold Use with a spice bottle by the food, let go in the band -------------
+const pour = new PourMeter();
+
+/** Use pressed: with a spice bottle by something to season, start pouring instead of using. */
+function startPour(): boolean {
+  if (pour.active) return true; // already pouring (Space and E both held)
+  const me = meNow();
+  const game = session?.game;
+  if (!me?.spice || !game || paused || pref("meter") === "off" || !seasonTarget(game, me)) return false;
+  pour.begin(me.spice.spice, me.role, game.pace ?? "classic");
+  return true;
+}
+
+/** Use let go (or the pour ran over): season, unless it was too little to count. */
+function finishPour(result: PourResult | null) {
+  if (!result) return;
+  feedback.pinch(result);
+  if (result !== "light") act("interact", result);
+}
+
+
 
 function sendEmote(word: Emote) {
   const me = meNow();
@@ -170,6 +210,13 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("#signals [dat
 // --- pausing: solo, the kitchen waits while a menu, the recipe book, the keys, the shop or a
 // briefing is open; online it keeps going, since your friends are still cooking
 
+/** A phone held upright: the "turn sideways" card is over the kitchen, so a solo shift waits. */
+const upright = () => document.body.classList.contains("touch") && matchMedia("(orientation: portrait)").matches;
+matchMedia("(orientation: portrait)").addEventListener("change", () => {
+  if (upright()) holdKitchen();
+  else if (releaseKitchen()) canvas.focus();
+});
+
 /** The dialogs that hold a solo kitchen still (listed once they all exist, below). */
 const holding: HTMLDialogElement[] = [];
 
@@ -181,7 +228,7 @@ function holdKitchen() {
 
 /** Starts the kitchen again once the last of those dialogs has closed; true if it did. */
 function releaseKitchen(): boolean {
-  if (!paused || holding.some((d) => d.open)) return false;
+  if (!paused || holding.some((d) => d.open) || upright()) return false;
   paused = false;
   feedback.setPaused(false);
   return true;
@@ -220,15 +267,19 @@ $("menu-button").addEventListener("click", () => {
 
 const book = new RecipeBook();
 
-function openBook() {
+function openBook(recipeId?: string) {
   const game = session?.game;
   const me = meNow();
   if (!game || !me || game.phase !== "playing" || book.open) return;
   releasePointer();
   closeMenu();
   holdKitchen();
-  book.show(game, me.role);
+  book.show(game, me.role, recipeId);
 }
+hud.onRecipe = (recipeId) => {
+  feedback.unlock();
+  openBook(recipeId);
+};
 
 book.dialog.addEventListener("close", () => {
   releaseKitchen();
@@ -238,14 +289,23 @@ $("book-button").addEventListener("click", () => {
   feedback.unlock();
   openBook();
 });
-$("open-book").addEventListener("click", openBook);
+$("open-book").addEventListener("click", () => openBook());
 
+/** How to play: Basics, Cooking and Controls. In a shift it opens on the controls. */
 function openHelp() {
-  releasePointer();
-  holdKitchen();
+  const playing = !!session?.game;
+  if (playing) {
+    releasePointer();
+    holdKitchen();
+  }
+  $("help-tutorial").hidden = playing || !!session;
+  const tab = helpCard.querySelector<HTMLInputElement>(`input[name=help-tab][value=${playing ? "keys" : "basics"}]`)!;
+  tab.checked = true;
+  tab.dispatchEvent(new Event("change"));
   helpCard.showModal();
 }
-$("open-help").addEventListener("click", openHelp);
+for (const id of ["open-help", "open-how", "title-how", "room-how"]) $(id).addEventListener("click", openHelp);
+$("help-tutorial").addEventListener("click", () => startTutorial());
 $("close-help").addEventListener("click", () => helpCard.close());
 for (const tab of helpCard.querySelectorAll<HTMLInputElement>("input[name=help-tab]")) {
   tab.addEventListener("change", () => {
@@ -256,9 +316,94 @@ helpCard.addEventListener("close", () => {
   releaseKitchen();
   if (!pauseMenu.open) canvas.focus();
 });
-$("quit").addEventListener("click", () => {
-  // back to the title screen (the server keeps an online seat for a while if you return)
+/** Back to the title screen (the server keeps an online seat for a while if you return). */
+function leaveKitchen() {
+  leaving = true; // so the page going away doesn't save the shift again
+  clearSolo();
+  setSeatedRoom(null);
   location.href = location.pathname;
+}
+// Leave asks twice: a stray tap mid-shift would throw the shift away
+let leaveArmed: ReturnType<typeof setTimeout> | null = null;
+$("quit").addEventListener("click", () => {
+  if (leaveArmed) return leaveKitchen();
+  const button = $("quit");
+  const words = button.textContent;
+  button.textContent = session?.online ? "Tap again to leave" : "Tap again: this shift ends";
+  button.classList.add("armed");
+  leaveArmed = setTimeout(() => {
+    leaveArmed = null;
+    button.textContent = words;
+    button.classList.remove("armed");
+  }, 3000);
+});
+
+/** A solo shift is over (or skipped): back to the play menu, without loading the page again. */
+function backToMenu() {
+  clearSolo();
+  session = null;
+  hud.hideGameOver();
+  $("hud").hidden = true;
+  setFirstPerson(false);
+  view?.clearItems();
+  showContinue();
+  keepAwake(false);
+  title.show(true);
+  lobby.show();
+}
+
+// the end screen's way out: solo, straight back to the play menu; online, leave the kitchen
+$("over-menu").addEventListener("click", () => {
+  if (!session || session.online) return leaveKitchen();
+  backToMenu();
+});
+
+// Restart shift (solo): asks twice, like Leave
+{
+  const button = $<HTMLButtonElement>("restart-shift");
+  let armed: ReturnType<typeof setTimeout> | null = null;
+  const disarm = () => {
+    if (armed) clearTimeout(armed);
+    armed = null;
+    button.textContent = "Restart shift";
+  };
+  button.addEventListener("click", () => {
+    if (!armed) {
+      button.textContent = "Tap again to start over";
+      armed = setTimeout(disarm, 3000);
+      return;
+    }
+    disarm();
+    closeMenu();
+    restart();
+  });
+  pauseMenu.addEventListener("close", disarm);
+}
+
+
+/** The title's Continue: straight into the next shift, once there are stars to continue from. */
+let continueLevel = 0;
+function showContinue() {
+  const done = LEVELS.filter((l) => bestStars(l.n) > 0).map((l) => l.n);
+  const last = Math.max(0, ...done);
+  continueLevel = last && canPlay(last + 1) ? last + 1 : last;
+  const button = $<HTMLButtonElement>("title-continue");
+  button.hidden = !continueLevel;
+  if (continueLevel) button.textContent = `Continue · ${levelByNumber(continueLevel).name}`;
+}
+$("title-continue").addEventListener("click", () => {
+  feedback.unlock();
+  if (touchMode()) goFullscreen();
+  title.show(false);
+  session = new LocalSession(soloRole, continueLevel);
+  beginRound();
+});
+
+// the tutorial's card has a way out for players who know this kind of game
+$("briefing-skip").addEventListener("click", () => {
+  writeText(WELCOMED_KEY, "1");
+  briefing.dialog.close();
+  backToMenu();
 });
 
 // --- sessions -----------------------------------------------------------------------
@@ -269,11 +414,12 @@ const voice = new Voice(
   (message) => feedback.say(message),
 );
 
-function beginRound() {
+/** @param resumed carrying on a shift from before a reload: no fresh start, no briefing */
+function beginRound(resumed = false) {
   const me = meNow();
   const game = session?.game;
   if (!me || !game) return;
-  startShift();
+  if (!resumed) startShift();
   lobby.hide();
   if (title.showing) title.show(false);
   view?.clearItems();
@@ -283,15 +429,40 @@ function beginRound() {
   hud.reset();
   feedback.clearLog();
   $("hud").hidden = false;
+  keepAwake(true);
+  if (upright()) holdKitchen();
   presentRole(me.role);
   $("role-picker").hidden = session?.online ?? false;
+  $("mic-toggle").hidden = !session?.online;
+  $("restart-shift").hidden = !!session?.online;
+  $("toggle-view").textContent = pov.active ? "View: chef's eyes" : "View: from above";
   // the camera from Settings (phones default to third person: one thumb walks)
   setFirstPerson(viewPref() === "fpp");
   canvas.focus();
   lastCoach = null;
+  if (resumed) return;
   track("shift_start", { level: game.level, role: me.role, players: game.chefs.length, pace: game.pace ?? "classic" });
   showBriefing();
 }
+
+/** A solo shift saved before a reload: back where it was, paused, so nothing happens behind the loading screen. */
+function resumeSolo(): boolean {
+  const saved = savedSolo();
+  if (!saved) return false;
+  session = LocalSession.resume(saved.game, saved.me, saved.helper);
+  beginRound(true);
+  openMenu();
+  $("pause-note").textContent = "Welcome back! Your shift is just as you left it.";
+  return true;
+}
+
+// save a solo shift now and then, and as the page goes, so a reload can carry on
+let lastSave = 0;
+let leaving = false;
+function saveNow() {
+  if (!leaving && session instanceof LocalSession) saveSolo(session.game, session.me.id, session.hasHelper);
+}
+window.addEventListener("pagehide", saveNow);
 
 // --- shift briefing: what's new on this level, and how your chef plays ---------------------
 
@@ -305,6 +476,7 @@ function showBriefing(force = false) {
   releasePointer();
   holdKitchen(); // solo waits while you read; online the kitchen keeps going
   briefing.open(game.level, me.role, feedback.speak, game.twist);
+  $("briefing-skip").hidden = force || session!.online || game.level !== TUTORIAL.n;
 }
 
 briefing.dialog.addEventListener("close", () => {
@@ -344,6 +516,9 @@ function openShop() {
 }
 
 $("open-shop").addEventListener("click", openShop);
+// the end screen's Shop: there when the till can buy something, the moment players want to spend
+$("over-shop").addEventListener("click", openShop);
+shop.dialog.addEventListener("close", () => ($("over-shop").hidden = !shop.affordable()));
 shop.dialog.addEventListener("close", () => {
   releaseKitchen();
   if (session?.game) canvas.focus();
@@ -353,26 +528,21 @@ holding.push(pauseMenu, helpCard, book.dialog, briefing.dialog, shop.dialog);
 
 // --- learning: the How to play guide and the tutorial kitchen (both from the title screen) ---
 
-const how = setupHowToPlay(startTutorial);
-
 function startTutorial() {
-  how.close();
+  if (helpCard.open) helpCard.close();
   if (title.showing) title.show(false);
   feedback.unlock();
   session = new LocalSession(soloRole, TUTORIAL.n);
   beginRound();
 }
 
-$("open-how").addEventListener("click", how.open);
-$("title-how").addEventListener("click", how.open);
-$("play-tutorial").addEventListener("click", startTutorial);
 
 const lobby = new Lobby({
   solo() {
     feedback.unlock();
     session = new LocalSession(soloRole, lobby.level, lobby.twist ?? undefined);
     beginRound();
-    feedback.say("Practice kitchen open! Keys 0–3 switch chefs. Press Q any time to hear what's around you.");
+    feedback.say("Solo kitchen open! Switch chefs from the menu. Press Q any time to hear what's around you.");
   },
   daily() {
     feedback.unlock();
@@ -387,6 +557,9 @@ const lobby = new Lobby({
   join(name, code) {
     feedback.unlock();
     connect(name, code);
+  },
+  rename(name) {
+    if (session instanceof NetSession) session.rename(name);
   },
   chooseRole(role) {
     if (session instanceof NetSession) session.chooseRole(role);
@@ -403,9 +576,11 @@ const lobby = new Lobby({
 });
 
 function connect(name: string, code: string) {
+  clearSolo(); // online now: a solo shift from before isn't coming back
   const net = new NetSession(name, code);
   session = net;
   net.onLobby = (state) => {
+    keepAwake(true); // waiting for friends: the phone shouldn't lock in the meantime
     if (!state.playing || !net.game) lobby.showRoom(state);
   };
   net.onError = (message) => {
@@ -431,7 +606,7 @@ function connect(name: string, code: string) {
   };
   net.onClose = () => {
     voice.stop();
-    if (net.game) feedback.say("Couldn't get back to the kitchen. Refresh to try again.", true);
+    if (net.game) feedback.say("Couldn't get back to the kitchen. It tries again when your connection is back, or refresh.", true);
     else lobby.setError("Couldn't reach the kitchen server. Is it running?");
   };
 }
@@ -440,9 +615,9 @@ function connect(name: string, code: string) {
 
 const keys = new Set<string>();
 const GAME_KEYS = new Set([
-  "KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+  "KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "ShiftLeft", "ShiftRight",
   "Space", "KeyE", "KeyF", "KeyQ", "KeyP", "Escape", "KeyR", "KeyV", "KeyH",
-  "KeyG", "KeyB", "KeyT", "KeyZ", "KeyN", "Slash", "F1", "Digit0", "Digit1", "Digit2", "Digit3", "Digit5", "Digit6",
+  "KeyG", "KeyB", "KeyT", "KeyZ", "KeyN", "Slash", "F1", "Digit0", "Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6",
   "Digit7", "Digit8", "BracketLeft", "BracketRight",
 ]);
 
@@ -456,11 +631,19 @@ const touch = canTouch()
       release: (code) => window.dispatchEvent(new KeyboardEvent("keyup", { code })),
       look: (dx, dy) => {
         if (!pov.active) return;
-        pov.yaw += dx * 0.006;
-        pov.pitch = Math.min(1.1, Math.max(-0.6, pov.pitch + dy * 0.006));
+        pov.yaw += dx * 0.006 * pov.lookSpeed;
+        pov.pitch = Math.min(1.1, Math.max(-0.6, pov.pitch + dy * 0.006 * pov.lookSpeed));
+      },
+      pinch: (scale) => {
+        if (pov.active) return;
+        pinchZoom = Math.min(1.6, Math.max(0.7, pinchZoom / scale));
+        writeText("kitchen.zoom", pinchZoom.toFixed(2));
+        fitCamera();
       },
     }, wantsTouch())
   : null;
+/** phones, from above: how far a pinch has pulled the camera back (1 = the usual framing) */
+let pinchZoom = Math.min(1.6, Math.max(0.7, Number(readText("kitchen.zoom")) || 1));
 /** the touch layout is showing right now */
 const touchMode = () => !!touch?.active;
 
@@ -479,15 +662,71 @@ function applyPref(name: PrefName) {
   else if (name === "voices") voice.setVolume(level(pref("voices")));
   else if (name === "text") root.classList.toggle("large-text", pref("text") === "large");
   else if (name === "motion") root.classList.toggle("reduce-motion", pref("motion") === "reduced");
-  else if (name === "graphics") {
+  else if (name === "colors") root.classList.toggle("safe-colors", pref("colors") === "safe");
+  else if (name === "holdButton" || name === "buttonSize" || name === "hand") {
+    document.body.classList.toggle("hold-button", pref("holdButton") === "on");
+    document.body.classList.toggle("big-buttons", pref("buttonSize") === "large");
+    document.body.classList.toggle("left-handed", pref("hand") === "left");
+    touch?.refresh();
+  }
+  else if (name === "look") pov.lookSpeed = lookSpeed();
+  else if (name === "speak") {
+    feedback.speak = pref("speak") === "on";
+    $<HTMLInputElement>("speak").checked = feedback.speak;
+  } else if (name === "mic") {
+    voice.setMicOn(pref("mic") === "on");
+    $<HTMLInputElement>("mic").checked = pref("mic") === "on";
+  } else if (name === "graphics") {
     // phones get the fast setting unless told otherwise: fewer pixels and no shadows
     const fast = pref("graphics") === "low" || (pref("graphics") === "auto" && matchMedia("(pointer: coarse)").matches);
     engine.setHardwareScalingLevel(fast ? 1.5 : 1);
     scene.shadowsEnabled = !fast;
+    look.setFast(fast);
   }
 }
 for (const name of Object.keys(PREFS) as PrefName[]) applyPref(name);
-for (const id of ["open-settings", "lobby-settings", "title-settings"]) $(id).addEventListener("click", openSettings);
+for (const id of ["open-settings", "lobby-settings", "title-settings", "room-settings"]) {
+  $(id).addEventListener("click", () => {
+    // a new language starts the page again, which would drop you from an online kitchen mid-shift
+    const busy = !!session?.online && !!session.game;
+    for (const radio of document.querySelectorAll<HTMLInputElement>("input[name=lang]")) radio.disabled = busy;
+    $("lang-note").textContent = busy ? "Change it from the menu, after the shift" : "Starts the game again";
+    $("reset-progress").hidden = !!session?.game;
+    openSettings();
+  });
+}
+
+// Reset progress: asks once more on the button itself, then starts the game fresh
+{
+  const reset = $<HTMLButtonElement>("reset-progress");
+  let sure = false;
+  reset.addEventListener("click", () => {
+    if (!sure) {
+      sure = true;
+      reset.textContent = "Tap again to erase stars, coins and stickers";
+      return;
+    }
+    resetProgress();
+    location.reload();
+  });
+  $<HTMLDialogElement>("settings").addEventListener("close", () => {
+    sure = false;
+    reset.textContent = "Reset progress";
+  });
+}
+
+// the language: in Settings, and one tap away on the title screen (named in the other language,
+// so its readers can find it); either starts the page again in it
+for (const radio of document.querySelectorAll<HTMLInputElement>("input[name=lang]")) {
+  radio.checked = radio.value === LANG;
+  radio.addEventListener("change", () => setLang(radio.value as typeof LANG));
+}
+const otherLang = LANG === "my" ? "en" : "my";
+const langButton = $("title-lang");
+langButton.textContent = LANG_NAMES[otherLang];
+langButton.lang = otherLang;
+langButton.setAttribute("translate", "no");
+langButton.addEventListener("click", () => setLang(otherLang));
 
 if (touch) {
   hud.onHints = (hints) => touch.setHints(hints);
@@ -508,6 +747,14 @@ if (touch) {
   document.addEventListener("fullscreenchange", showFs);
   document.addEventListener("webkitfullscreenchange", showFs);
   showFs();
+  // iPhone Safari can't hide its bars for a page: once, say how to get the game full screen
+  const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const tip = $("ios-tip");
+  tip.hidden = !(iOS && !canFullscreen() && !isFullscreen() && readText("kitchen.iosTip") !== "1");
+  tip.querySelector("button")?.addEventListener("click", () => {
+    tip.hidden = true;
+    writeText("kitchen.iosTip", "1");
+  });
   // switching between fingers and keyboard / mouse: reframe the overhead camera for that layout
   touch.onChange = () => fitCamera();
 }
@@ -524,18 +771,40 @@ $("picker").addEventListener("click", (e) => {
 
 function readInput(): Input {
   const chop = held("KeyF");
+  const dash = held("ShiftLeft", "ShiftRight");
   const stick = touchMode() && (touch!.move.x || touch!.move.y) ? touch!.move : null;
   const forward = stick ? stick.y : axis(["KeyW", "ArrowUp"], ["KeyS", "ArrowDown"]);
   if (!pov.active) {
     // overhead: screen-relative movement, chef turns to where it walks
-    return { moveX: stick ? stick.x : axis(["KeyD", "ArrowRight"], ["KeyA", "ArrowLeft"]), moveZ: forward, chop };
+    return { moveX: stick ? stick.x : axis(["KeyD", "ArrowRight"], ["KeyA", "ArrowLeft"]), moveZ: forward, chop, dash };
   }
   // first person: W/S walk where you look, A/D strafe (arrow left/right turn, see the loop)
   const strafe = stick ? stick.x : axis(["KeyD"], ["KeyA"]);
   const sin = Math.sin(pov.yaw);
   const cos = Math.cos(pov.yaw);
-  return { moveX: sin * forward + cos * strafe, moveZ: cos * forward - sin * strafe, chop, facing: pov.yaw, pitch: pov.pitch };
+  return { moveX: sin * forward + cos * strafe, moveZ: cos * forward - sin * strafe, chop, dash, facing: pov.yaw, pitch: pov.pitch };
 }
+
+/** Where you are and the next step (Q, or a tap on the checklist). */
+function whatsNext() {
+  const game = session?.game;
+  const me = meNow();
+  if (!game || !me) return;
+  const next = guideFor(game, me)?.next;
+  feedback.say(`${describeSurroundings(game, me)}${next ? ` Next: ${next}.` : ""}`);
+}
+hud.onNext = whatsNext;
+
+/** The other camera (V, or the pause menu's View button), remembered. */
+function switchView() {
+  setFirstPerson(!pov.active);
+  saveViewPref(pov.active ? "fpp" : "tpp");
+  feedback.say(pov.active ? "First-person view." : "Overhead view.");
+}
+$("toggle-view").addEventListener("click", () => {
+  switchView();
+  closeMenu();
+});
 
 function setFirstPerson(on: boolean) {
   const me = meNow();
@@ -577,7 +846,7 @@ window.addEventListener("keydown", (e) => {
       // at the till with nobody waiting to pay, Space opens the upgrades shop
       const st = me && session.game.phase === "playing" ? targetStation(session.game, me) : null;
       if (st?.kind === "register" && payingDiners(session.game).length === 0) openShop();
-      else act("interact");
+      else if (!startPour()) act("interact");
       break;
     }
     case "KeyF":
@@ -599,10 +868,7 @@ window.addEventListener("keydown", (e) => {
       act("bell");
       break;
     case "KeyQ":
-      if (me) {
-        const next = guideFor(session.game, me)?.next;
-        feedback.say(`${describeSurroundings(session.game, me)}${next ? ` Next: ${next}.` : ""}`);
-      }
+      whatsNext();
       break;
     case "KeyP":
     case "Escape":
@@ -627,14 +893,13 @@ window.addEventListener("keydown", (e) => {
       break;
     }
     case "KeyV":
-      setFirstPerson(!pov.active);
-      saveViewPref(pov.active ? "fpp" : "tpp");
-      feedback.say(pov.active ? "First-person view." : "Overhead view.");
+      switchView();
       break;
     default:
       if (e.code.startsWith("Digit")) {
         const digit = Number(e.code.slice(5));
-        // with the wheel open 1-6 sends a sign; otherwise 0-3 picks the chef (solo practice)
+        // with the wheel open 1-6 sends a sign; Alt + 0-3 switches chef (solo practice), so a
+        // number pressed a little off a fridge never turns you into someone else
         const stock = stockStation();
         if (wheel.open || keys.has("KeyT")) {
           const word = EMOTES[digit - 1];
@@ -644,7 +909,7 @@ window.addEventListener("keydown", (e) => {
           // at a fridge or spice rack a number takes (or adds) that item straight away
           choosePick(digit - 1, stock);
           act("interact");
-        } else if (ROLE_KEYS[e.code]) {
+        } else if (e.altKey && ROLE_KEYS[e.code]) {
           setSoloRole(ROLE_KEYS[e.code]);
         }
       }
@@ -701,8 +966,14 @@ canvas.addEventListener(
   { passive: false },
 );
 
-window.addEventListener("keyup", (e) => keys.delete(e.code));
-window.addEventListener("blur", () => keys.clear());
+window.addEventListener("keyup", (e) => {
+  keys.delete(e.code);
+  if ((e.code === "Space" || e.code === "KeyE") && pour.active) finishPour(pour.release());
+});
+window.addEventListener("blur", () => {
+  keys.clear();
+  pour.cancel();
+});
 canvas.addEventListener("pointerdown", (e) => {
   feedback.unlock();
   canvas.focus();
@@ -727,7 +998,8 @@ scene.onBeforeRenderObservable.add(() => {
   const game = session?.game;
   const me = meNow();
   if (!view || !session || !game || !me) return;
-  if (`${game.venue}|${game.layout}` !== kitchenKey) buildKitchen(game); // another restaurant, or another layout
+  // another restaurant, or another layout; its room may still be on its way (the kitchen waits)
+  if (`${game.venue}|${game.layout}` !== kitchenKey && !buildKitchen(game)) return;
   const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);
   // phones: the overhead camera glides after your chef
   if (touchMode() && !pov.active) {
@@ -752,8 +1024,16 @@ scene.onBeforeRenderObservable.add(() => {
   }
   stickerToasts(checkLive(game, me));
   effects.sync(game);
+  // the pour: drawn each frame, over the top on its own, or dropped if you walk off or pause
+  if (pour.active && (paused || game.phase !== "playing" || !seasonTarget(game, me))) pour.cancel();
+  finishPour(pour.update(performance.now()));
+  if (game.phase === "playing" && performance.now() - lastSave > 2000) {
+    lastSave = performance.now();
+    saveNow();
+  }
   if (game.phase === "over" && !shownGameOver) {
     shownGameOver = true;
+    clearSolo();
     $("next-level").hidden = false; // each end screen decides afresh (a daily special, a locked restaurant or a warm-up hides it)
     addTakings(game.coins ?? 0); // the shift's takings go into the restaurant's money
     const stars = hud.showGameOver(game, me.id);
@@ -775,6 +1055,7 @@ scene.onBeforeRenderObservable.add(() => {
     // after a warm-up online, the crew goes on to the shift the host chose
     const warmedUp = session.online && game.level === TUTORIAL.n;
     $("restart-label").textContent = warmedUp ? "Start the shift" : "Play again";
+    $("over-menu-label").textContent = session.online ? "Leave" : "Menu";
     $("restart").classList.toggle("primary", warmedUp);
     if (warmedUp) $("next-level").hidden = true;
     // a guest waits for the host's pick
@@ -782,7 +1063,10 @@ scene.onBeforeRenderObservable.add(() => {
     $("restart").hidden = guest;
     if (guest) $("next-level").hidden = true;
     $("host-picks").hidden = !guest;
+    // no star yet: say why there's no Next level (when there is a next shift to open)
+    $("next-locked").hidden = !(stars === 0 && !game.twist && !guest && !warmedUp && canPlay(game.level + 1));
     lobby.refreshLevels(game.level);
+    $("over-shop").hidden = !shop.affordable();
     showShiftStickers(finishShift(game, stars));
     album.refreshButton();
     releasePointer();
@@ -812,6 +1096,8 @@ scene.onBeforeRenderObservable.add(() => {
   }
 });
 
+// the asset gallery is a tool for building the game, not for players
+if (!import.meta.env.DEV) document.querySelector('#pause-menu a[href="/gallery.html"]')?.remove();
 if (import.meta.env.DEV) Object.assign(window, { getSession: () => session, isPaused: () => paused, scene, pov, voice }); // console debugging
 
 // Footprint of the floating island in Kitchen_Room.glb (metres).
@@ -826,7 +1112,7 @@ function fitCamera() {
   // depth is foreshortened by the camera tilt; add room for the walls and the HUD
   const halfHeight = touchMode() ? 2.6 : (ISLAND.depth / 2) * Math.cos(camera.beta) + 1.8;
   const hFov = 2 * Math.atan(Math.tan(camera.fov / 2) * aspect);
-  camera.radius = Math.max(halfWidth / Math.tan(hFov / 2), halfHeight / Math.tan(camera.fov / 2));
+  camera.radius = Math.max(halfWidth / Math.tan(hFov / 2), halfHeight / Math.tan(camera.fov / 2)) * (touchMode() ? pinchZoom : 1);
 }
 
 // --- the title screen --------------------------------------------------------------
@@ -849,7 +1135,8 @@ $("title-play").addEventListener("click", () => {
 function shoutName() {
   const volume = level(pref("sound"));
   if (!volume || !("speechSynthesis" in window)) return;
-  const shout = new SpeechSynthesisUtterance("Chet meh!");
+  // in Burmese, a Burmese voice says it properly: ချက်မယ်!
+  const shout = utterance("Chet meh!");
   shout.volume = volume;
   shout.pitch = 1.5;
   shout.rate = 1.05;
@@ -883,20 +1170,36 @@ let room: TransformNode | null = null;
 /** the restaurant and layout the 3D kitchen was built for */
 let kitchenKey: string | null = null;
 
-/** Build (or rebuild) the room and stations for the restaurant this game is at. */
-function buildKitchen(game: Game) {
-  if (!library) return;
-  view?.dispose();
-  room?.dispose(false, false);
+/**
+ * Build (or rebuild) the room and stations for the restaurant this game is at. False while that
+ * restaurant's room is still downloading (the loading screen shows until it's in).
+ */
+function buildKitchen(game: Game): boolean {
+  if (!library) return false;
   // The room is modelled in Blender around the station grid; turning it half a circle maps
   // Blender's (x, y) onto the game's (x, z).
   const name = venueById(game.venue).room;
+  if (library.waiting(name)) {
+    const loading = $("loading");
+    if (loading.hidden) {
+      loading.hidden = false;
+      setLoadText("Setting up the restaurant");
+      void library.ensure(name).then(() => (loading.hidden = true));
+    }
+    return false;
+  }
+  view?.dispose();
+  room?.dispose(false, false);
   room = library.spawn(library.has(name) ? name : "Kitchen_Room");
   dressTerrace();
   room.rotation.y = Math.PI;
+  room.computeWorldMatrix(true);
   for (const mesh of room.getChildMeshes()) {
     mesh.receiveShadows = true;
     if (/Terrace|Nature|RangeHood|Shelves|Window|WallDecor|Decor/.test(mesh.name)) shadows.addShadowCaster(mesh);
+    // the room never moves: work out where each part is once, not every frame
+    mesh.freezeWorldMatrix();
+    mesh.doNotSyncBoundingInfo = true;
   }
   // stations never move during a shift, so the game's layout builds the kitchen
   view = new GameView(scene, library, shadows, game);
@@ -905,17 +1208,34 @@ function buildKitchen(game: Game) {
     if (me && session?.game) feedback.footstep(x, z, me, session.game, chefId === me.id);
   };
   kitchenKey = `${game.venue}|${game.layout}`;
+  return true;
 }
 
-AssetLibrary.load(scene)
+function setLoadText(text: string) {
+  const el = document.querySelector("#loading .load-text");
+  if (el) el.textContent = text;
+}
+
+// the first restaurant's room comes with everything else; the others follow once the title is up
+const firstRoom = venueById(createGame().venue).room;
+const laterRooms = VENUES.map((v) => v.room).filter((r) => r !== firstRoom);
+AssetLibrary.load(scene, laterRooms, (done, total) => setLoadText(`Warming up the kitchen ${Math.round((done / total) * 100)}%`))
   .then((lib) => {
     library = lib;
     buildKitchen(createGame());
     $("loading").hidden = true;
     presentRole(soloRole);
+    showContinue();
     title.show(true);
-    // an invite link goes straight to the room code
-    if (new URLSearchParams(location.search).has("room")) lobby.show();
+    setTimeout(() => laterRooms.forEach((r) => void lib.ensure(r)), 3000);
+    // a reload carries on: a solo shift comes back paused, and a seat in an online kitchen is
+    // taken again straight away; an invite link goes to the play menu with its code filled in
+    const room = new URLSearchParams(location.search).get("room")?.toUpperCase();
+    if (room && seatedRoom() === room) {
+      feedback.unlock();
+      connect(readText("kitchen.name") ?? "Chef", room);
+    } else if (room) lobby.show();
+    else resumeSolo();
   })
   .catch((error) => {
     $("loading").textContent = "Could not load the kitchen. See the console for details.";

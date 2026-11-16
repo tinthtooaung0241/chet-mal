@@ -61,15 +61,48 @@ export class AssetLibrary {
     private readonly containers: Map<string, AssetContainer>,
   ) {}
 
-  static async load(scene: Scene): Promise<AssetLibrary> {
+  /**
+   * @param later models to leave out for now (another restaurant's room): `ensure` fetches them
+   * @param progress told as each model arrives (for the loading screen)
+   */
+  static async load(scene: Scene, later: string[] = [], progress?: (done: number, total: number) => void): Promise<AssetLibrary> {
+    const now = ASSET_ENTRIES.filter((e) => !later.includes(e.name));
+    let done = 0;
     const loaded = await Promise.all(
-      ASSET_ENTRIES.map(async (entry) => [entry.name, await loadContainer(entry, scene)] as const),
+      now.map(async (entry) => {
+        const container = await loadContainer(entry, scene);
+        progress?.(++done, now.length);
+        return [entry.name, container] as const;
+      }),
     );
     return new AssetLibrary(scene, new Map(loaded));
   }
 
+  private readonly pending = new Map<string, Promise<void>>();
+
+  /** Load a model left out at the start (once; later calls share the same download). */
+  ensure(name: string): Promise<void> {
+    if (this.containers.has(name)) return Promise.resolve();
+    const entry = ASSET_ENTRIES.find((e) => e.name === name);
+    if (!entry) return Promise.resolve();
+    let job = this.pending.get(name);
+    if (!job) {
+      job = loadContainer(entry, this.scene).then((c) => {
+        this.containers.set(name, c);
+        this.pending.delete(name);
+      });
+      this.pending.set(name, job);
+    }
+    return job;
+  }
+
   has(name: string): boolean {
     return this.containers.has(name);
+  }
+
+  /** A model that exists but hasn't been loaded yet. */
+  waiting(name: string): boolean {
+    return !this.containers.has(name) && ASSET_ENTRIES.some((e) => e.name === name);
   }
 
   spawn(name: string): TransformNode {

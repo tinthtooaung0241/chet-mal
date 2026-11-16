@@ -21,6 +21,27 @@ export interface RoleInfo {
   cooks: boolean;
   /** can wave to the tables from the pass to buy every waiting customer time (the mute chef's gift) */
   charms: boolean;
+  /** each role's strength, so all three pull their weight: how fast they chop and walk (1 = usual),
+   *  the points each dish they serve adds for presentation, and whether they see the perfect moment
+   *  (a golden shimmer) as well as hear it */
+  chopRate: number;
+  walkRate: number;
+  presentation: number;
+  seesPerfect: boolean;
+  /** how fast they wash up (1 = usual) */
+  washRate: number;
+  /** a quick burst of speed on Shift, with a cooldown (see DASH in rules) */
+  dash: boolean;
+  /** carries a second plate or bowl on a tray: two dishes to the pass in one trip */
+  tray: boolean;
+  /** the eyes of the kitchen: early warnings (burning food, leaving customers) and a check mark on
+   *  every plate */
+  eyes: boolean;
+  /** the strength in a few words (role cards, briefing) */
+  strength: string;
+  /** each role's edge at the pour meter, all about the same size: a slower pour (fill), a taller
+   *  "just right" band (band), or a wider perfect line (core); and its name on the meter */
+  pour: { fill: number; band: number; core: number; edge: string | null };
 }
 
 export const ROLES: Record<Role, RoleInfo> = {
@@ -32,6 +53,16 @@ export const ROLES: Record<Role, RoleInfo> = {
     signals: true,
     cooks: true,
     charms: true,
+    chopRate: 1,
+    walkRate: 1,
+    presentation: 0,
+    seesPerfect: false,
+    washRate: 1,
+    dash: false,
+    tray: false,
+    eyes: false,
+    strength: "Every job, one at a time",
+    pour: { fill: 1, band: 1, core: 1, edge: null },
   },
   head: {
     name: "Head chef",
@@ -42,6 +73,17 @@ export const ROLES: Record<Role, RoleInfo> = {
     signals: true,
     cooks: false,
     charms: false,
+    chopRate: 1,
+    walkRate: 1,
+    presentation: 5,
+    seesPerfect: false,
+    washRate: 1,
+    dash: false,
+    tray: false,
+    eyes: false,
+    strength: "Presentation: +5 points on every dish they serve",
+    // the finishing touches are the head chef's job: a generous band for them
+    pour: { fill: 1, band: 1.35, core: 1, edge: "Flourish" },
   },
   deaf: {
     name: "Deaf chef",
@@ -51,6 +93,16 @@ export const ROLES: Record<Role, RoleInfo> = {
     signals: false,
     cooks: true,
     charms: false,
+    chopRate: 1.3,
+    walkRate: 1,
+    presentation: 0,
+    seesPerfect: true,
+    washRate: 1,
+    dash: false,
+    tray: false,
+    eyes: true,
+    strength: "The eyes: chops fast, spots trouble early, checks every plate",
+    pour: { fill: 1, band: 1, core: 1, edge: null },
   },
   mute: {
     name: "Mute chef",
@@ -60,6 +112,17 @@ export const ROLES: Record<Role, RoleInfo> = {
     signals: true,
     cooks: true,
     charms: true,
+    chopRate: 1,
+    walkRate: 1.15,
+    presentation: 0,
+    seesPerfect: false,
+    washRate: 1.6,
+    dash: true,
+    tray: true,
+    eyes: false,
+    strength: "Quick hands: dashes (Shift), carries two dishes on a tray, washes up fast",
+    // steady hands (they talk with them): the pour rises more slowly
+    pour: { fill: 1.3, band: 1, core: 1, edge: "Steady hands" },
   },
 };
 

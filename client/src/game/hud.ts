@@ -2,6 +2,7 @@
 // star meter, a round clock, the hand slot with contextual key prompts, what you're looking at,
 // and a role badge listing your senses. Text stays real DOM so screen readers can use it.
 import {
+  DASH,
   FOOD_RULES,
   LEVELS,
   SEATS,
@@ -33,6 +34,8 @@ import {
 import { glyph, img, renderedIcon } from "../ui/icons";
 import { SPICE_GLYPHS, actionHints, foodIcon, itemIconNode, soupIcon, stationIconNode, stockIconNode, stockName } from "./hints";
 import { $ } from "../ui/dom";
+import { forControls } from "../ui/words";
+import { tr } from "../i18n";
 import { teamAwards } from "./awards";
 import { nextTimeTip, shiftReport } from "./report";
 
@@ -55,9 +58,9 @@ const ROLE_LOOK: Record<Role, { icon: string; color: string }> = {
 /** Each role's one limit (icon, words) and a short hint on working around it. */
 const ROLE_LIMITS: Record<Role, [string, string, string]> = {
   full: ["star", "No limits", "Practice every job"],
-  head: ["cross", "Can't cook", "Call orders, plate, serve, run the till"],
-  deaf: ["ear", "Can't hear", "Watch for pings and signs"],
-  mute: ["voice", "Can't speak", "Point and sign. Only you can charm customers"],
+  head: ["cross", "Can't cook", "Plate and serve: +5 a dish"],
+  deaf: ["ear", "Can't hear", "Watch for flashes and ✓ checks"],
+  mute: ["voice", "Can't speak", "Shift to dash, carries two dishes"],
 };
 
 export class Hud {
@@ -76,6 +79,8 @@ export class Hud {
   private readonly heldIcon = $("held-icon");
   /** phones: what you hold, as an icon bubble on the Use button */
   private readonly touchHeld = document.getElementById("touch-held");
+  private readonly dashButton = document.querySelector<HTMLElement>(".touch-dash");
+  private readonly sniffButton = document.querySelector<HTMLElement>(".touch-sniff");
   private readonly held = $("held");
   private readonly facing = $("facing");
   private readonly prompts = $("prompts");
@@ -83,16 +88,23 @@ export class Hud {
   private readonly openOrders = new Set<number>();
   /** told whenever the action hints change (the touch buttons follow them) */
   onHints?: (hints: { key?: string; text: string }[]) => void;
+  /** the Recipe chip on a ticket was tapped: open the book at that dish */
+  onRecipe?: (recipeId: string) => void;
+  /** the checklist was tapped: say what's next (Q on a keyboard) */
+  onNext?: () => void;
 
   constructor() {
     // on a phone, tap a ticket chip to open the full ticket, tap again to fold it
     this.orders.addEventListener("click", (e) => {
+      const hint = (e.target as Element).closest<HTMLElement>(".book-hint");
+      if (hint?.dataset.recipe) return void this.onRecipe?.(hint.dataset.recipe);
       const li = (e.target as Element).closest<HTMLElement>(".order");
       if (!li?.dataset.id) return;
       const id = Number(li.dataset.id);
       if (!this.openOrders.delete(id)) this.openOrders.add(id);
       li.classList.toggle("open", this.openOrders.has(id));
     });
+    this.checklist.addEventListener("click", () => this.onNext?.());
   }
   private readonly targetTag = $("target-tag");
   private readonly crosshair = $("crosshair");
@@ -112,6 +124,8 @@ export class Hud {
   private lastCombo = 0;
   private readonly nextLevel = $<HTMLButtonElement>("next-level");
   private readonly signals = $("signals");
+  /** the deaf chef: early warnings on the tickets */
+  private eyes = false;
   private readonly picker = $("picker");
   private readonly tillCoins = $("till-coins");
   private readonly tagBar = Object.assign(document.createElement("span"), { className: "tag-bar", hidden: true });
@@ -144,9 +158,11 @@ export class Hud {
     const limitEl = $("role-limit");
     limitEl.replaceChildren(glyph(limitIcon), limit);
     limitEl.classList.toggle("none", role === "full");
-    $("role-tip").textContent = tip;
+    $("role-tip").textContent = forControls(tip);
     $("role-badge").title = `${info.name}: ${limit.toLowerCase()}. ${tip}.`;
     this.signals.hidden = !info.signals;
+    this.eyes = info.eyes;
+    for (const b of document.querySelectorAll<HTMLElement>(".touch-dash")) b.hidden = !info.dash;
     document.body.dataset.role = role;
     for (const input of document.querySelectorAll<HTMLInputElement>("input[name=role]")) input.checked = input.value === role;
     this.orderKey = ""; // rebuild the order list for the new senses
@@ -167,6 +183,12 @@ export class Hud {
     const shift = levelsAt(level.venue).indexOf(level) + 1;
     this.setText(this.levelNumber, level.tutorial ? "T" : String(shift || level.n));
     this.setText(this.levelName, level.name);
+    // the dash button: a ring fills back up while it recharges
+    if (this.dashButton && !this.dashButton.hidden) {
+      const cd = Math.max(0, me.dashCd ?? 0) / DASH.cooldown;
+      this.dashButton.style.setProperty("--charge", `${Math.round((1 - cd) * 100)}%`);
+      this.dashButton.classList.toggle("cooling", cd > 0);
+    }
     this.setText($("venue-short"), level.tutorial ? "Tutorial" : venueById(level.venue).short);
     // the restaurant's logo stands in for its name; the shift number sits on it
     const logo = $("venue-logo");
@@ -201,7 +223,8 @@ export class Hud {
     const coldFood = held?.type === "food" && FOOD_RULES[held.kind]?.cold && !held.spoiled && (held.state === "raw" || held.state === "chopped") ? held : null;
     const temp = coldFood ? (coldFood.warm ? " (getting warm!)" : " (cold)") : "";
     const bottle = me.spice ? SPICE_NAMES[me.spice.spice] : null;
-    const heldText = bottle ? `the ${bottle}` : held ? `${describeItem(held)}${mouldy ? " (mouldy!)" : temp}` : "nothing";
+    const tray = me.tray ? ` + ${describeItem(me.tray)} on the tray` : "";
+    const heldText = bottle ? `the ${bottle}` : held ? `${describeItem(held)}${mouldy ? " (mouldy!)" : temp}${tray}` : "nothing";
     if (heldText !== this.lastHeld) {
       this.lastHeld = heldText;
       this.held.textContent = heldText;
@@ -270,6 +293,10 @@ export class Hud {
       );
     }
     this.crosshair.classList.toggle("active", hints.some((h) => h.key));
+    // touch: Sniff shows up with something to smell in hand or in front of you (after the hints
+    // above have relit the buttons)
+    const smellable = game.phase === "playing" && !!(me.held ?? (targetStation(game, me)?.item ?? null));
+    this.sniffButton?.classList.toggle("ready", smellable);
     this.syncPicker(target?.stock?.length && game.phase === "playing" ? target : null, me);
 
     this.syncOrders(game, me.role, sees, me.id);
@@ -297,11 +324,11 @@ export class Hud {
         const mark = document.createElement("span");
         mark.className = "mark";
         mark.textContent = step.done ? "✓" : step.wrong ? "✗" : step.current ? "▸" : "";
-        li.append(mark, step.text);
+        li.append(mark, forControls(step.text));
         return li;
       }),
     );
-    $("coach-text").textContent = guide.next ?? "";
+    $("coach-text").textContent = forControls(guide.next ?? "");
     this.coach.classList.remove("changed");
     void this.coach.offsetWidth; // replay the little bounce for each new step
     this.coach.classList.add("changed");
@@ -448,7 +475,9 @@ export class Hud {
   }
 
   private setText(el: HTMLElement, text: string) {
-    if (el.textContent !== text) el.textContent = text;
+    // compared in the player's language: the page shows text translated (see i18n/dom.ts)
+    const shown = tr(text);
+    if (el.textContent !== shown) el.textContent = shown;
   }
 
   /** Only orders this role could know: printed tickets need sight, phone orders need hearing. */
@@ -556,6 +585,7 @@ export class Hud {
           else {
             const hint = document.createElement("span");
             hint.className = "book-hint";
+            hint.dataset.recipe = String(order.recipe.id);
             hint.append(glyph("book"), "Recipe ", Object.assign(document.createElement("kbd"), { textContent: "R" }));
             li.append(tag, name, dish, hint);
           }
@@ -576,7 +606,9 @@ export class Hud {
     // who's on which ticket: what each chef carries is for one order, and at a cozy pace the coach
     // sends empty hands to one (the same rules on every screen, so everyone sees the same split)
     const on = new Map<number, Chef[]>();
-    for (const chef of game.chefs) {
+    // only worth showing with teammates: alone, it would just mark yourself
+    const team = game.chefs.filter((c) => !c.bot).length > 1;
+    for (const chef of team ? game.chefs : []) {
       if (chef.bot) continue;
       const id = guideFor(game, chef)?.order?.id;
       if (id !== undefined) on.set(id, [...(on.get(id) ?? []), chef]);
@@ -615,7 +647,10 @@ export class Hud {
       if (!fill) continue;
       const left = order.timeLeft / order.recipe.time;
       fill.style.width = `${(left * 100).toFixed(1)}%`;
-      fill.parentElement!.parentElement!.classList.toggle("urgent", left < 0.25);
+      const ticket = fill.parentElement!.parentElement!;
+      ticket.classList.toggle("urgent", left < 0.25);
+      // the eyes of the kitchen see a table getting restless sooner
+      ticket.classList.toggle("restless", this.eyes && left >= 0.25 && left < 0.45);
     }
   }
 }

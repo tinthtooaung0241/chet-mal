@@ -25,6 +25,8 @@ export interface Look {
    * @param flash extra exposure for a lightning flash
    */
   setAtmosphere(dark: number, flash: number): void;
+  /** Fast graphics (phones): no ambient occlusion, no multisampling, no bloom; FXAA keeps edges smooth. */
+  setFast(fast: boolean): void;
 }
 
 export function setupLook(scene: Scene, cameras: Camera[]): Look {
@@ -99,5 +101,17 @@ export function setupLook(scene: Scene, cameras: Camera[]): Look {
     ip.exposure = base.exposure * (1 - 0.8 * dark) + flash;
   }
 
-  return { shadows, setAtmosphere };
+  // ambient occlusion starts on; only a real change attaches or detaches it (attaching twice breaks it)
+  let fastNow = false;
+  function setFast(fast: boolean) {
+    if (fast === fastNow) return;
+    fastNow = fast;
+    pipeline.samples = fast ? 1 : 4;
+    pipeline.bloomEnabled = !fast;
+    const manager = scene.postProcessRenderPipelineManager;
+    if (fast) manager.detachCamerasFromRenderPipeline("ssao", cameras);
+    else manager.attachCamerasToRenderPipeline("ssao", cameras);
+  }
+
+  return { shadows, setAtmosphere, setFast };
 }

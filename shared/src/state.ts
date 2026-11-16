@@ -7,12 +7,17 @@ import { LAYOUTS, legend, type LayoutId, type StationKind } from "./layout";
 import { ROLES, type Emote, type Role, type Sense } from "./roles";
 import { twistById, type Twist, type TwistId } from "./twists";
 import type { ChefLook } from "./looks";
-import { addDiner, dinerGivesUp, dinerPaid, dinerServed, payingDiners, stepDiners, tableNumber, type Diner } from "./diners";
+import { addDiner, boosterOut, boosterWanted, dinerGivesUp, dinerPaid, dinerServed, payingDiners, stepDiners, tableNumber, type Diner } from "./diners";
 import {
   COLD_LIMIT,
   COLD_WARN,
   SEASON_BONUS,
   SEASON_PENALTY,
+  PINCH_BONUS,
+  HEAVY_PENALTY,
+  PLATING_POINTS,
+  CHARM_SECONDS,
+  type Pinch,
   SPICE_NAMES,
   seasonedWith,
   spiceList,
@@ -45,6 +50,7 @@ import {
   hasFires,
   spillsAt,
   hasWashing,
+  hasBoosters,
   WASH_TIME,
   KID_CHANCE,
   plainRecipe,
@@ -71,6 +77,7 @@ import {
   SOUP_SIZE,
   SOUP_TIME,
   PING_TIME,
+  DASH,
   REACH,
   TILE,
   describeFood,
@@ -107,6 +114,8 @@ export interface Food {
   warm: boolean;
   /** seasoning on this ingredient, and whether it went on before or after cooking */
   season: { spice: Spice; at: SeasonTime }[];
+  /** how each pinch went at the pour meter (missing: "good") */
+  pinches?: Partial<Record<Spice, Pinch>>;
 }
 
 export interface Plate {
@@ -114,6 +123,7 @@ export interface Plate {
   id: number;
   contents: Food[];
   season: Spice[];
+  pinches?: Partial<Record<Spice, Pinch>>;
   /** eaten off (or its food wasted): it goes in the sink before it's used again */
   dirty?: boolean;
 }
@@ -126,11 +136,18 @@ export interface Bowl {
   spoiled: boolean;
   perfect: boolean;
   season: Spice[];
+  pinches?: Partial<Record<Spice, Pinch>>;
   /** eaten from (or its soup wasted): it goes in the sink before it's used again */
   dirty?: boolean;
 }
 
 export type Item = Food | Plate | Bowl;
+
+/** The dirty dish counter's pile: plates and bowls customers left, waiting to go to the sink. */
+export interface Returns {
+  plates: number;
+  bowls: number;
+}
 
 /** The soup pot never leaves its station; chopped vegetables go in, soup comes out by the bowl. */
 export interface Pot {
@@ -166,6 +183,8 @@ export interface Station {
   /** a stove on fire: seconds it has burned (0 or missing: no fire); and how far it's smothered (0-1) */
   fire?: number;
   smother?: number;
+  /** the dirty dish counter's pile */
+  returns?: Returns;
 }
 
 export interface Chef {
@@ -177,6 +196,11 @@ export interface Chef {
   /** yaw in radians; 0 faces +z (towards the back wall) */
   facing: number;
   held: Item | null;
+  /** a second plate or bowl on a tray (the mute chef): it slides into the hands once they're free */
+  tray?: Item | null;
+  /** the dash: seconds of it left, and until the next one */
+  dashT?: number;
+  dashCd?: number;
   /** holding the chop key this frame */
   chopInput: boolean;
   chopping: boolean;
@@ -296,6 +320,8 @@ export interface Order {
 export interface Tally {
   /** the dishes' prices */
   dishes: number;
+  /** the head chef's presentation points */
+  presented: number;
   /** served with time to spare */
   speed: number;
   /** perfect cooking */
@@ -337,6 +363,7 @@ export interface Tally {
 
 export const noTally = (): Tally => ({
   dishes: 0,
+  presented: 0,
   speed: 0,
   perfect: 0,
   seasoning: 0,
@@ -439,6 +466,8 @@ export interface Input {
   moveX: number;
   moveZ: number;
   chop: boolean;
+  /** dash (Shift), for chefs who can */
+  dash?: boolean;
   /** first-person: the chef faces where the camera looks; otherwise it faces where it walks */
   facing?: number;
   /** first-person look up/down */
@@ -660,6 +689,7 @@ export function createGame(levelNumber = 1, upgrades: string[] = [], twist?: Twi
   }
   rebuildGrid(g);
   for (const s of g.stations) if (s.kind === "pot") s.pot = emptyPot();
+  for (const s of g.stations) if (s.kind === "returns") s.returns = { plates: 0, bowls: 0 };
 
   // the critics come at a random moment in the middle of the shift, spread out if there are two
   const critics = twistOf(g)?.critics ?? criticsAt(level);
@@ -767,6 +797,7 @@ export function stationName(s: Station): string {
     case "pantry":
     case "spice":
     case "register":
+    case "returns":
       return s.label ?? s.kind;
     case "board":
       return "cutting board";
@@ -914,7 +945,15 @@ export function moveChef(g: Game, chef: Chef, dt: number, input: Input) {
   let mx = input.moveX;
   let mz = input.moveZ;
   // spilled oil: careful steps
-  let speed = CHEF_SPEED * (spillUnder(g, chef) ? SPILL_SLOW : 1);
+  let speed = CHEF_SPEED * ROLES[chef.role].walkRate * (spillUnder(g, chef) ? SPILL_SLOW : 1);
+  // the dash: a short burst, then a cooldown
+  chef.dashT = Math.max(0, (chef.dashT ?? 0) - dt);
+  chef.dashCd = Math.max(0, (chef.dashCd ?? 0) - dt);
+  if (input.dash && ROLES[chef.role].dash && !chef.dashCd && Math.hypot(input.moveX, input.moveZ) > 0.01) {
+    chef.dashT = DASH.time;
+    chef.dashCd = DASH.cooldown;
+  }
+  if (chef.dashT) speed *= DASH.speed;
   // being led by the hand: with no input of your own, you follow your guide
   const guide = findChef(g, chef.guidedBy);
   if (chef.guidedBy && !guide) chef.guidedBy = null;
@@ -959,6 +998,11 @@ export function stepWorld(g: Game, dt: number) {
   // chopping (hold the chop key, empty hands, facing a board)
   for (const chef of g.chefs) {
     chef.chopping = false;
+    // hands free: the dish on the tray slides into them
+    if (!chef.held && !chef.spice && chef.tray) {
+      chef.held = chef.tray;
+      chef.tray = null;
+    }
     if (chef.bubble && (chef.bubble.ttl -= dt) <= 0) chef.bubble = null;
     if (chef.gesture && (chef.gesture.ttl -= dt) <= 0) chef.gesture = null;
     const target = targetStation(g, chef);
@@ -988,7 +1032,7 @@ export function stepWorld(g: Game, dt: number) {
     if (!FOOD_RULES[food.kind]?.chop || food.state !== "raw") continue;
     chef.chopping = true;
     const before = Math.floor(food.chop * 6);
-    food.chop = Math.min(1, food.chop + (dt / CHOP_TIME) * (hasUpgrade(g, "knives") ? 1.35 : 1));
+    food.chop = Math.min(1, food.chop + (dt / CHOP_TIME) * (hasUpgrade(g, "knives") ? 1.35 : 1) * ROLES[chef.role].chopRate);
     if (food.chop >= 1) {
       food.state = "chopped";
       chef.stats.chopped += 1;
@@ -1016,6 +1060,7 @@ export function stepWorld(g: Game, dt: number) {
     } else if (food.state === "cooked" && !food.perfectCued && food.cook >= cookTime + PERFECT_DELAY) {
       food.perfectCued = true;
       emit(g, "perfect", `The ${kind}${is === "are" ? "'" : "'s"} sizzle peaks. Take ${it} off now for a perfect dish!`, s, HEARD);
+      shimmer(g, s, `The ${kind} shimmers golden. Take ${it} off now for a perfect dish!`);
     } else if (food.state === "cooked" && !food.warned && food.cook >= cookTime + burnTime * 0.5) {
       food.warned = true;
       emit(g, "smoking", `The ${kind} ${is} smoking. ${is === "are" ? "They're" : "It's"} about to burn!`, s, SEEN_HEARD, undefined, true);
@@ -1037,6 +1082,7 @@ export function stepWorld(g: Game, dt: number) {
     } else if (pot.state === "done" && !pot.perfectCued && pot.cook >= SOUP_TIME + PERFECT_DELAY) {
       pot.perfectCued = true;
       emit(g, "perfect", `The ${name} bubbles just right. Ladle it now for a perfect bowl!`, s, HEARD);
+      shimmer(g, s, `The ${name} shimmers golden. Ladle it now for a perfect bowl!`);
     } else if (pot.state === "done" && !pot.warned && pot.cook >= SOUP_TIME + soupBurnFor(g) * 0.5) {
       pot.warned = true;
       emit(g, "smoking", `The ${name} is boiling dry!`, s, SEEN_HEARD, undefined, true);
@@ -1176,7 +1222,7 @@ export function stepWorld(g: Game, dt: number) {
       const left = d.dish?.dirty ? leaveOnPass(g, d.dish) : null;
       const dish = d.dish?.type ?? "plate";
       if (d.dish?.dirty) d.dish = null;
-      emit(g, "checkout", `${table} is at the till to pay by ${d.pay.toLowerCase()}${left ? `, and left their dirty ${dish} on the pass` : ""}.`, at, SEEN_HEARD);
+      emit(g, "checkout", `${table} is at the till to pay by ${d.pay.toLowerCase()}${left ? `, and left their dirty ${dish} on the ${left.returns ? "dirty dish counter" : "pass"}` : ""}.`, at, SEEN_HEARD);
     }
     else {
       g.tally.unpaid += 1;
@@ -1217,7 +1263,7 @@ function endShift(g: Game) {
 function washStep(g: Game, chef: Chef, sink: Station, dt: number) {
   const dishes = g.dishes!;
   const before = Math.floor((sink.wash ?? 0) * 4);
-  sink.wash = (sink.wash ?? 0) + dt / WASH_TIME;
+  sink.wash = (sink.wash ?? 0) + (dt / WASH_TIME) * ROLES[chef.role].washRate;
   if (sink.wash < 1) {
     // a splash now and then while scrubbing
     if (Math.floor(sink.wash * 4) > before) emit(g, "chop", undefined, sink, SEEN_HEARD);
@@ -1282,6 +1328,12 @@ export function spillUnder(g: Game, chef: { x: number; z: number }): Spill | und
 
 /** A dish comes back to the sink dirty (eaten, or wasted at the pass). */
 /** The same plate or bowl, emptied and dirty (it goes back through the sink before it's used again). */
+/** The perfect moment, seen: a golden shimmer only chefs with sharp eyes (the deaf chef) can make out. */
+function shimmer(g: Game, at: { x: number; z: number }, text: string) {
+  const eyes = g.chefs.filter((c) => ROLES[c.role].seesPerfect).map((c) => c.id);
+  if (eyes.length) emit(g, "perfect", text, at, FELT, eyes);
+}
+
 function soiled(dish: Plate | Bowl): Plate | Bowl {
   return dish.type === "plate"
     ? { type: "plate", id: dish.id, contents: [], season: [], dirty: true }
@@ -1293,6 +1345,13 @@ function soiled(dish: Plate | Bowl): Plate | Bowl {
  * the till (a chef takes it to the sink). With nowhere free, it goes straight to the sink.
  */
 function leaveOnPass(g: Game, dish: Plate | Bowl): Station | null {
+  // the dirty dish counter beside the till takes any number (self-service)
+  const returns = g.stations.find((s) => s.returns);
+  if (returns?.returns) {
+    if (dish.type === "plate") returns.returns.plates += 1;
+    else returns.returns.bowls += 1;
+    return returns;
+  }
   const till = g.stations.find((s) => s.kind === "register");
   const passRow = till?.row ?? g.rows - 1;
   const spots = g.stations
@@ -1325,11 +1384,13 @@ function addOrder(g: Game, recipe?: Recipe, channel?: OrderChannel, critic = fal
   recipe ??= recipeById(menu[Math.floor(Math.random() * menu.length)]);
   channel ??= twist?.phones ? (Math.random() < twist.phones ? "phone" : "ticket") : level.channels[Math.floor(Math.random() * level.channels.length)];
   const id = g.nextId++;
-  const kid = !critic && !level.tutorial && level.n >= 3 && Math.random() < KID_CHANCE;
+  const boosters = hasBoosters(level);
+  // booster shifts bring families more often, so the head chef gets a few seats to set out
+  const kid = !critic && !level.tutorial && level.n >= 3 && Math.random() < KID_CHANCE * (boosters ? 1.75 : 1);
   if (kid) recipe = plainRecipe(recipe);
   const wait = recipe.time * (level.patience ?? 1) * (twistOf(g)?.patience ?? 1) * paceOf(g).patience * (hasUpgrade(g, "sign") ? 1.25 : 1) * (critic ? CRITIC_PATIENCE : 1);
   g.orders.push({ id, recipe: { ...recipe, time: wait }, timeLeft: wait, channel, warned: false, ...(critic ? { critic } : {}), ...(kid ? { kid } : {}) });
-  addDiner(g, id, kid);
+  addDiner(g, id, kid, boosters);
   const pass = g.stations.find((s) => s.kind === "serve") ?? { x: 0, z: 0 };
   if (channel === "ticket") {
     // just the dish: how to make it is in the recipe book
@@ -1390,7 +1451,30 @@ function sameDish(recipe: Recipe, dish: Plate | Bowl): boolean {
   return want.every((k, i) => k === have[i]);
 }
 
-function serve(g: Game, chef: Chef, dish: Plate | Bowl, at: Station) {
+/**
+ * The deaf chef's plate check: "ready" if it matches an open order, "track" if everything on it
+ * belongs to one (just not finished), "wrong" if no order wants it; null for an empty plate.
+ */
+export function plateCheck(g: Game, dish: Plate | Bowl): "ready" | "track" | "wrong" | null {
+  if (dish.type === "plate" ? !dish.contents.length : !dish.soup) return null;
+  if (g.orders.some((o) => sameDish(o.recipe, dish))) return "ready";
+  if (dish.type === "bowl") return "wrong";
+  const have = dish.contents.map((f) => `${f.kind}:${f.state}`);
+  const fits = g.orders.some((o) => {
+    if (o.recipe.vessel !== "plate") return false;
+    const want = o.recipe.items.map((i) => `${i.kind}:${i.state}`);
+    return have.every((k) => {
+      const i = want.indexOf(k);
+      if (i < 0) return false;
+      want.splice(i, 1);
+      return true;
+    });
+  });
+  return fits ? "track" : "wrong";
+}
+
+/** @param plating how the head chef's plating swirl went (their presentation points) */
+function serve(g: Game, chef: Chef, dish: Plate | Bowl, at: Station, plating: Pinch = "good") {
   chef.held = null;
   const order = g.orders
     .filter((o) => sameDish(o.recipe, dish))
@@ -1422,19 +1506,23 @@ function serve(g: Game, chef: Chef, dish: Plate | Bowl, at: Station) {
   const taste = tasteDish(order.recipe, dish);
   const speed = Math.ceil((order.timeLeft / order.recipe.time) * 10);
   // picky eaters: every seasoning mistake costs more; at a cozy pace, slips cost nothing
-  const seasoning = taste.points >= 0 ? taste.points : paceOf(g).forgiving ? 0 : taste.points * (twistOf(g)?.picky ?? 1);
+  const slips = taste.points >= 0 ? taste.points : paceOf(g).forgiving ? 0 : taste.points * (twistOf(g)?.picky ?? 1);
+  const seasoning = slips + taste.pinch;
   const earned = Math.max(5, order.recipe.reward + speed + bonus + seasoning);
   // a critic raves about a dish with nothing wrong with its seasoning, served before their ticket turns red
-  const rave = !!order.critic && taste.points >= 0 && order.timeLeft >= order.recipe.time * 0.25;
+  const rave = !!order.critic && taste.clean && order.timeLeft >= order.recipe.time * 0.25;
   const pay = (g.rush > 0 ? RUSH_PAY : 1) * (twistOf(g)?.pay ?? 1);
-  const points = Math.round(earned * pay) + (rave ? CRITIC_RAVE : 0);
+  // the head chef's strength: a dish they serve is presented beautifully
+  const presented = ROLES[chef.role].presentation ? PLATING_POINTS[plating] : 0;
+  const points = Math.round(earned * pay) + (rave ? CRITIC_RAVE : 0) + presented;
   const t = g.tally;
   t.dishes += order.recipe.reward;
   t.speed += speed;
   t.perfect += bonus;
   t.seasoning += seasoning;
-  if (seasoning > 0) t.seasonedRight += 1;
-  t.extra += points - (order.recipe.reward + speed + bonus + seasoning);
+  if (taste.clean && taste.points > 0) t.seasonedRight += 1;
+  t.presented += presented;
+  t.extra += points - (order.recipe.reward + speed + bonus + seasoning + presented);
   if (g.rush > 0) t.rushServed += 1;
   if (g.blackout > 0) t.darkServed += 1;
   if (g.storm > 0) t.stormServed += 1;
@@ -1449,7 +1537,8 @@ function serve(g: Game, chef: Chef, dish: Plate | Bowl, at: Station) {
   g.orders.splice(g.orders.indexOf(order), 1);
   dinerServed(g, order.id, dish, false, Math.round(points * (hasUpgrade(g, "tipjar") ? 1.2 : 1) * (rave ? CRITIC_TIP : 1)));
   const praise = perfect.length ? ` Perfect ${perfect.join(" and ")}!` : "";
-  emit(g, "served", `Served ${order.recipe.name}!${praise}${taste.note} Plus ${points} points.`, at, EVERYONE, [chef.id]);
+  const plated = !ROLES[chef.role].presentation ? "" : plating === "perfect" ? " A picture-perfect plate!" : plating === "good" ? " Beautifully presented!" : "";
+  emit(g, "served", `Served ${order.recipe.name}!${praise}${taste.note}${plated} Plus ${points} points.`, at, EVERYONE, [chef.id]);
   if (order.critic) {
     const verdict = rave
       ? `A rave review! The critic loved their ${order.recipe.name}: plus ${CRITIC_RAVE} points, and they'll pay double at the till.`
@@ -1539,13 +1628,13 @@ function takeSpice(g: Game, chef: Chef, st: Station) {
  * With a spice bottle in hand: season the food or dish in front of you (on a stove, a board, a
  * counter, or held out by a teammate), or put the bottle back at a rack (or swap it for another).
  */
-function useSpice(g: Game, chef: Chef, st: Station | null) {
+function useSpice(g: Game, chef: Chef, st: Station | null, pinch: Pinch) {
   const me = [chef.id];
   const { spice } = chef.spice!;
   const name = SPICE_NAMES[spice];
   if (!st) {
     const mate = chefInFront(g, chef);
-    if (mate?.held) seasonItem(g, chef, mate.held, mate);
+    if (mate?.held) seasonItem(g, chef, mate.held, mate, pinch);
     else if (mate && !mate.spice) {
       mate.spice = chef.spice;
       chef.spice = null;
@@ -1569,7 +1658,7 @@ function useSpice(g: Game, chef: Chef, st: Station | null) {
     emit(g, "invalid", "It's on fire! Put the bottle back and hold F to smother it.", st, FELT, me);
     return;
   }
-  if (st.item) seasonItem(g, chef, st.item, st);
+  if (st.item) seasonItem(g, chef, st.item, st, pinch);
   else emit(g, "invalid", `Nothing here to season. Use the ${name} on some food or a dish, or put it back on a spice rack.`, st, FELT, me);
 }
 
@@ -1577,10 +1666,13 @@ function useSpice(g: Game, chef: Chef, st: Station | null) {
  * Seasoning, the way a cook really does it: on an ingredient (salt the raw steak, salt the fries
  * as they come out of the pan) or as a finishing touch on the plated dish.
  */
-function seasonItem(g: Game, chef: Chef, item: Item, at: { x: number; z: number }) {
+function seasonItem(g: Game, chef: Chef, item: Item, at: { x: number; z: number }, pinch: Pinch) {
   const me = [chef.id];
   const spice = chef.spice!.spice;
   const name = SPICE_NAMES[spice];
+  /** the words for how the pour went */
+  const how = (what: string) =>
+    pinch === "perfect" ? `A perfect pinch of ${name} on the ${what}!` : pinch === "heavy" ? `Too much ${name} on the ${what}!` : null;
   if (item.type === "food") {
     if (!ROLES[chef.role].cooks) {
       emit(g, "invalid", "The head chef doesn't season the ingredients: finish the plated dish instead.", at, FELT, me);
@@ -1597,7 +1689,8 @@ function seasonItem(g: Game, chef: Chef, item: Item, at: { x: number; z: number 
     }
     const what = describeItem(item);
     item.season.push({ spice, at: seasonTimeOf(item.state) });
-    emit(g, "season", `Seasoned the ${what} with ${name}.`, at, EVERYONE, me);
+    item.pinches = { ...item.pinches, [spice]: pinch };
+    emit(g, "season", how(item.kind.toLowerCase()) ?? `Seasoned the ${what} with ${name}.`, at, EVERYONE, me);
     return;
   }
   if (item.type === "plate" ? item.contents.length === 0 : !item.soup) {
@@ -1610,7 +1703,27 @@ function seasonItem(g: Game, chef: Chef, item: Item, at: { x: number; z: number 
   }
   const what = describeItem(item);
   item.season.push(spice);
-  emit(g, "season", `Finished the ${what} with ${name}.`, at, EVERYONE, me);
+  item.pinches = { ...item.pinches, [spice]: pinch };
+  emit(g, "season", how(item.type === "plate" ? "plate" : "bowl") ?? `Finished the ${what} with ${name}.`, at, EVERYONE, me);
+}
+
+/**
+ * What a spice bottle in hand would season right now (the food or dish in front of you, or held out
+ * by a teammate), or null when using it would do something else (swap, put back, hand it over) or
+ * nothing. The client starts the pour meter only when there's something to season.
+ */
+export function seasonTarget(g: Game, chef: Chef): Item | null {
+  if (g.phase !== "playing" || !chef.spice) return null;
+  const spice = chef.spice.spice;
+  const st = targetStation(g, chef);
+  const item = st ? (st.kind === "spice" || st.fire ? null : st.item) : (chefInFront(g, chef)?.held ?? null);
+  if (!item) return null;
+  if (item.type === "food") {
+    if (!ROLES[chef.role].cooks || item.state === "burnt" || (item.season ?? []).some((x) => x.spice === spice)) return null;
+    return item;
+  }
+  if (item.type === "plate" ? !item.contents.length : !item.soup) return null;
+  return item.season.includes(spice) ? null : item;
 }
 
 const TIMING_PENALTY = 3;
@@ -1620,9 +1733,10 @@ const TIMING_PENALTY = 3;
  * (before or after cooking), and the dish finished right. All correct earns a bonus; each mistake
  * costs a little and the customer says what was off.
  */
-export function tasteDish(recipe: Recipe, dish: Plate | Bowl): { points: number; note: string } {
+export function tasteDish(recipe: Recipe, dish: Plate | Bowl): { points: number; note: string; clean: boolean; pinch: number } {
   const notes: string[] = [];
   let points = 0;
+  let perfectPinches = 0;
   const lower = (k: string) => k.toLowerCase();
   if (dish.type === "plate") {
     const unused = [...dish.contents];
@@ -1635,7 +1749,12 @@ export function tasteDish(recipe: Recipe, dish: Plate | Bowl): { points: number;
       const missing = wanted.filter((sp) => !got.some((x) => x.spice === sp));
       const extra = got.filter((x) => !wanted.includes(x.spice)).map((x) => x.spice);
       const late = got.filter((x) => wanted.includes(x.spice) && want.seasonAt && x.at !== want.seasonAt).map((x) => x.spice);
-      points -= (missing.length + extra.length) * SEASON_PENALTY + late.length * TIMING_PENALTY;
+      // how each wanted pinch went at the pour meter
+      const onTime = got.filter((x) => wanted.includes(x.spice) && !late.includes(x.spice)).map((x) => x.spice);
+      perfectPinches += onTime.filter((sp) => food.pinches?.[sp] === "perfect").length;
+      const heavy = onTime.filter((sp) => food.pinches?.[sp] === "heavy");
+      points -= (missing.length + extra.length) * SEASON_PENALTY + late.length * TIMING_PENALTY + heavy.length * HEAVY_PENALTY;
+      if (heavy.length) notes.push(`too much ${spiceList(heavy)} on the ${lower(food.kind)}`);
       if (missing.length) notes.push(`the ${lower(food.kind)} needed ${spiceList(missing)}`);
       if (extra.length) notes.push(`no ${spiceList(extra)} on the ${lower(food.kind)}`);
       if (late.length) notes.push(`${spiceList(late)} ${late.length > 1 ? "go" : "goes"} on the ${lower(food.kind)} ${want.seasonAt === "before" ? "before cooking" : "after cooking"}`);
@@ -1644,15 +1763,22 @@ export function tasteDish(recipe: Recipe, dish: Plate | Bowl): { points: number;
   const finish = recipe.finish ?? [];
   const missing = finish.filter((sp) => !dish.season.includes(sp));
   const extra = dish.season.filter((sp) => !finish.includes(sp));
-  points -= (missing.length + extra.length) * SEASON_PENALTY;
+  const wantedOn = dish.season.filter((sp) => finish.includes(sp));
+  perfectPinches += wantedOn.filter((sp) => dish.pinches?.[sp] === "perfect").length;
+  const heavyOn = wantedOn.filter((sp) => dish.pinches?.[sp] === "heavy");
+  points -= (missing.length + extra.length) * SEASON_PENALTY + heavyOn.length * HEAVY_PENALTY;
+  if (heavyOn.length) notes.push(`too much ${spiceList(heavyOn)} on top`);
   if (missing.length) notes.push(`it needed ${spiceList(missing)} to finish`);
   if (extra.length) notes.push(`they didn't want ${spiceList(extra)} on top`);
+  // a perfect pinch earns its bonus even when something else was off
+  const pinch = perfectPinches * PINCH_BONUS;
   if (!notes.length) {
     const seasoned = finish.length || recipe.items.some((i) => i.season?.length);
-    return seasoned ? { points: SEASON_BONUS, note: " Seasoned just right!" } : { points: 0, note: "" };
+    const praise = perfectPinches ? ` Seasoned just right, ${perfectPinches === 1 ? "with a perfect pinch" : `${perfectPinches} perfect pinches`}!` : " Seasoned just right!";
+    return seasoned ? { points: SEASON_BONUS, note: praise, clean: true, pinch } : { points: 0, note: "", clean: true, pinch: 0 };
   }
   const shown = notes.slice(0, 2).join("; ");
-  return { points, note: ` ${shown[0].toUpperCase()}${shown.slice(1)}${notes.length > 2 ? "…" : "."}` };
+  return { points, note: ` ${shown[0].toUpperCase()}${shown.slice(1)}${notes.length > 2 ? "…" : "."}`, clean: false, pinch };
 }
 
 /** Every food in play, with whoever is holding it (for cold-food timers). */
@@ -1821,6 +1947,22 @@ function spoiledIn(item: Item): number {
 }
 
 /** What a head chef would be doing here that's a cook's job (null if it's fine). */
+/** Who sets booster seats out: the head chef, or anyone when the kitchen has no head chef (solo, two cooks). */
+export function seatsKids(g: Game, chef: Chef): boolean {
+  return !ROLES[chef.role].cooks || !g.chefs.some((c) => !c.bot && !ROLES[c.role].cooks);
+}
+
+/** Empty-handed at the pass while a kid needs a booster seat: put one out for them to fetch. */
+function setOutBooster(g: Game, chef: Chef, st: Station) {
+  const kid = boosterWanted(g)!;
+  if (!seatsKids(g, chef)) {
+    emit(g, "invalid", "The head chef hands out booster seats.", st, FELT, [chef.id]);
+    return;
+  }
+  boosterOut(kid);
+  emit(g, "place", `Booster seat out for the kid at Table ${tableNumber(kid.seat)}.`, st, EVERYONE, [chef.id]);
+}
+
 function headChefCant(st: Station, held: Item | null): string | null {
   if (st.kind === "crate" || st.kind === "fridge" || st.kind === "pantry") return "fetch the ingredients";
   if (st.kind === "pot") return held?.type === "bowl" ? null : "make the soup";
@@ -1830,12 +1972,15 @@ function headChefCant(st: Station, held: Item | null): string | null {
   return null;
 }
 
-/** The single "use" button: pick up, put down, combine, serve, bin or hand over. */
-export function interact(g: Game, chef: Chef) {
+/**
+ * The single "use" button: pick up, put down, combine, serve, bin or hand over.
+ * @param pinch with a spice bottle in hand: how the pour went at the meter
+ */
+export function interact(g: Game, chef: Chef, pinch: Pinch = "good") {
   if (g.phase !== "playing") return;
   const st = targetStation(g, chef);
   if (chef.spice) {
-    useSpice(g, chef, st);
+    useSpice(g, chef, st, pinch);
     return;
   }
   if (!st) {
@@ -1940,11 +2085,12 @@ export function interact(g: Game, chef: Chef) {
       }
       return;
     case "serve":
-      if (!held) emit(g, "invalid", "Bring a plated dish or a bowl of soup here to serve it.", st, FELT, me);
+      if (!held && boosterWanted(g)) setOutBooster(g, chef, st);
+      else if (!held) emit(g, "invalid", "Bring a plated dish or a bowl of soup here to serve it.", st, FELT, me);
       else if (held.type === "food") emit(g, "invalid", "Put it on a plate first.", st, FELT, me);
       else if (held.type === "plate" && held.contents.length === 0) emit(g, "invalid", "The plate is empty.", st, FELT, me);
       else if (held.type === "bowl" && !held.soup) emit(g, "invalid", "The bowl is empty. Fill it at the soup pot.", st, FELT, me);
-      else serve(g, chef, held, st);
+      else serve(g, chef, held, st, pinch);
       return;
     case "sink":
       if (g.dishes && (held?.type === "plate" || held?.type === "bowl") && held.dirty) {
@@ -1958,6 +2104,26 @@ export function interact(g: Game, chef: Chef) {
     case "spice":
       takeSpice(g, chef, st);
       return;
+    case "returns": {
+      const pile = st.returns!;
+      if (!held) {
+        const type = pile.plates > 0 ? "plate" : pile.bowls > 0 ? "bowl" : null;
+        if (!type) {
+          emit(g, "invalid", "No dirty dishes here yet. Customers leave them here after eating.", st, FELT, me);
+          return;
+        }
+        if (type === "plate") pile.plates -= 1;
+        else pile.bowls -= 1;
+        chef.held = type === "plate" ? { type, id: g.nextId++, contents: [], season: [], dirty: true } : { type, id: g.nextId++, soup: null, spoiled: false, perfect: false, season: [], dirty: true };
+        emit(g, "pickup", `Took a dirty ${type}. Take it to the sink.`, st, EVERYONE, me);
+      } else if (held.type !== "food" && held.dirty) {
+        if (held.type === "plate") pile.plates += 1;
+        else pile.bowls += 1;
+        chef.held = null;
+        emit(g, "place", `Put the dirty ${held.type} back on the pile.`, st, EVERYONE, me);
+      } else emit(g, "invalid", "This counter is for dirty dishes.", st, FELT, me);
+      return;
+    }
     case "fridge":
     case "pantry":
       useStore(g, chef, st);
@@ -2009,6 +2175,14 @@ export function interact(g: Game, chef: Chef) {
   }
   if ((held.type === "bowl" && onTop.type === "food") || (held.type === "food" && onTop.type === "bowl")) {
     emit(g, "invalid", "Food goes on a plate; bowls are for soup from the pot.", st, FELT, me);
+    return;
+  }
+  // the mute chef's tray: a second plate or bowl rides along with the one in hand
+  if (ROLES[chef.role].tray && !chef.tray && held.type !== "food" && onTop.type !== "food") {
+    liftFrom(st, onTop, chef);
+    st.item = null;
+    chef.tray = onTop;
+    emit(g, "pickup", `Put ${describeItem(onTop)} on your tray: two dishes in one trip.`, st, EVERYONE, me);
     return;
   }
   emit(g, "invalid", `The ${here} already has ${describeItem(onTop)}.`, st, FELT, me);
@@ -2098,7 +2272,6 @@ export function perceivesEvent(g: Game, chef: Chef, event: GameEvent): boolean {
 
 // --- the mute chef's voice: pings, emotes, the bell ---------------------------------
 
-const CHARM_TIME = 8; // seconds added to every waiting order
 const CHARM_COOLDOWN = 35;
 
 /** Mark the station in front of you (or the spot ahead). Seen as a marker, heard as a chime. */
@@ -2123,18 +2296,41 @@ export function emote(g: Game, chef: Chef, word: Emote) {
   emit(g, "emote", `${chef.name} signals: ${word}!`, chef, SEEN_HEARD, [chef.id]);
 }
 
-export function ringBell(g: Game, chef: Chef) {
+/** Whether a charm would work right now: a charmer at the pass, with orders waiting and the charm rested. */
+export function canCharm(g: Game, chef: Chef): boolean {
+  return g.phase === "playing" && ROLES[chef.role].charms && g.charmWait <= 0 && g.orders.length > 0 && targetStation(g, chef)?.kind === "serve";
+}
+
+/**
+ * Whether Use would serve a finished dish right now (the head chef's plating swirl starts here):
+ * at the pass, holding a plate with food or a bowl of soup.
+ */
+export function servingNow(g: Game, chef: Chef): boolean {
+  const held = chef.held;
+  if (g.phase !== "playing" || !held || held.type === "food" || held.dirty || chef.spice) return false;
+  if (targetStation(g, chef)?.kind !== "serve") return false;
+  return held.type === "plate" ? held.contents.length > 0 : !!held.soup;
+}
+
+/** @param charm how the mute chef's charm signs went (a miss charms nobody, and there's no wait to try again) */
+export function ringBell(g: Game, chef: Chef, charm: Pinch = "good") {
   if (g.phase !== "playing") return;
   // the mute chef's gift: at the pass, a wave to the tables buys every waiting customer time
-  if (ROLES[chef.role].charms && g.charmWait <= 0 && g.orders.length && targetStation(g, chef)?.kind === "serve") {
+  if (canCharm(g, chef)) {
+    if (charm === "heavy") {
+      chef.bubble = { text: "…?", ttl: 1.5 };
+      emit(g, "invalid", "The tables didn't follow your signs. Try again!", chef, FELT, [chef.id]);
+      return;
+    }
     g.charmWait = CHARM_COOLDOWN;
     chef.stats.charms += 1;
+    const seconds = CHARM_SECONDS[charm];
     for (const order of g.orders) {
-      order.timeLeft = Math.min(order.recipe.time, order.timeLeft + CHARM_TIME);
+      order.timeLeft = Math.min(order.recipe.time, order.timeLeft + seconds);
       order.warned = false;
     }
     chef.bubble = { text: "Thank you for waiting!", ttl: 2.5 };
-    emit(g, "bell", `${chef.name} waves to the tables. Everyone is happy to wait a little longer.`, chef, SEEN_HEARD, [chef.id]);
+    emit(g, "bell", `${chef.name} waves to the tables${charm === "perfect" ? " with a flourish" : ""}. Everyone is happy to wait ${seconds} seconds longer.`, chef, SEEN_HEARD, [chef.id]);
     setGesture(chef, "wave");
     return;
   }

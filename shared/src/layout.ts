@@ -16,6 +16,8 @@ export type StationKind =
   | "spice"
   /** the till on the pass: customers pay here, cooks ring them up (and buy upgrades between payers) */
   | "register"
+  /** beside the till: customers leave their dirty dishes here (self-service); chefs take them to the sink */
+  | "returns"
   /** scenery: takes up its tile but is never used (a corner nobody can reach comfortably) */
   | "decor";
 
@@ -59,6 +61,8 @@ const LEGEND: Record<string, LegendEntry> = {
   H: { kind: "pantry", stock: ["Bread", "Tomato"], label: "bread and tomato shelf" },
   // the till on the pass counter: 1 cash, 2 card
   R: { kind: "register", stock: [...PAYMENTS], label: "till" },
+  // beside the till: the dirty dish counter, where customers leave their plates
+  Q: { kind: "returns", label: "dirty dish counter" },
   // the spice rack, by the stoves
   S: { kind: "spice", stock: [...SPICES], label: "spice rack" },
 };
@@ -80,7 +84,7 @@ export const KITCHEN = [
   "D.........B",
   "U.........B",
   "..........B",
-  ".XCWWWCRCCC",
+  ".XCWWWCRQCC",
 ];
 
 /**
@@ -108,19 +112,19 @@ export const LAYOUTS: Record<LayoutId, { name: string; blurb: string; grid: stri
   island: {
     name: "Island kitchen",
     blurb: "Boards on an island: walk round it",
-    grid: ["ZSOOOPKKAHZ", "C.........F", "C..CBBBC..G", "D.........C", "U.........C", "..........C", ".XCWWWCRCCC"],
+    grid: ["ZSOOOPKKAHZ", "C.........F", "C..CBBBC..G", "D.........C", "U.........C", "..........C", ".XCWWWCRQCC"],
   },
   // a wall of counters splits prep (storage, boards) from cooking (stoves, plates, the pass)
   split: {
     name: "Split kitchen",
     blurb: "A wall splits prep from cooking: pass food over it",
-    grid: ["ZSOOOPKKAHZ", "C.....C...F", "C.....C...G", "D.....C...B", "U.........B", "..........B", ".XCWWWCRCCC"],
+    grid: ["ZSOOOPKKAHZ", "C.....C...F", "C.....C...G", "D.....C...B", "U.........B", "..........B", ".XCWWWCRQCC"],
   },
   // a long counter shuts the stoves into a back corridor, open only at the ends
   corridor: {
     name: "Corridor kitchen",
     blurb: "The stoves are behind a long counter",
-    grid: ["ZSOOOPKKAHZ", "C.........F", "C.........G", "D.CCCBCC..B", "U.........B", "..........B", ".XCWWWCRCCC"],
+    grid: ["ZSOOOPKKAHZ", "C.........F", "C.........G", "D.CCCBCC..B", "U.........B", "..........B", ".XCWWWCRQCC"],
   },
 };
 

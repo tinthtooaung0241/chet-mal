@@ -13,8 +13,13 @@ import {
 } from "@babylonjs/core";
 import type { AssetLibrary } from "../assets";
 import { ChefModel } from "./chef";
+import { tr } from "../i18n";
 import {
   FOOD_RULES,
+  ROLES,
+  plateCheck,
+  type Bowl,
+  type Plate,
   dinerDishSpot,
   dinerSeat,
   eatenShare,
@@ -69,12 +74,15 @@ const FRIDGE_SPOTS: [number, number, number][] = [
   [-0.07, -0.04, 0.3],
   [0.08, 0.05, 1.7],
 ];
-/** Each restaurant's customers: everyday clothes at the street stand, longyi and htamein in Yangon. */
+/** Each restaurant's customers: everyday clothes at the street stand, Burmese patterns in Yangon. */
 const DINER_MODELS: Record<string, string[]> = {
   street: ["Diner_A", "Diner_B", "Diner_C", "Diner_D"],
   burmese: ["Diner_MM_A", "Diner_MM_B", "Diner_MM_C", "Diner_MM_D"],
 };
 const TABLE_TOP = 0.78;
+/** the terrace chairs' seat, and a booster seat's height on top of it */
+const CHAIR_SEAT = 0.47;
+const BOOSTER_HEIGHT = 0.12;
 /** seconds an item takes to glide from where it was to where it goes (a station to the hands, the hands to the pass) */
 const ITEM_GLIDE = 0.22;
 
@@ -113,7 +121,17 @@ function unlitMaterial(scene: Scene, name: string, color: Color3): StandardMater
   return mat;
 }
 
+/** the plate check's tags: words and colour */
+const CHECKS: Record<string, [string, string]> = {
+  ready: ["✓ Ready", "#3fae78"],
+  track: ["… On track", "#d9a426"],
+  wrong: ["✗ No order", "#d65a45"],
+};
+
 /** A rounded, always-facing-you tag (station labels, ping labels, emote bubbles). */
+/** fonts for text drawn into the 3D scene; Myanmar script needs its own */
+export const TAG_FONTS = `system-ui, "Noto Sans Myanmar", "Myanmar Text", "Myanmar Sangam MN", sans-serif`;
+
 function makeTag(scene: Scene, name: string, text: string, bg = "#2f3e4f", fg = "#f6f1e6"): Mesh {
   const texture = new DynamicTexture(name, { width: 256, height: 80 }, scene, true);
   texture.hasAlpha = true;
@@ -124,13 +142,14 @@ function makeTag(scene: Scene, name: string, text: string, bg = "#2f3e4f", fg = 
   ctx.roundRect(4, 4, 248, 72, 36);
   ctx.fill();
   ctx.fillStyle = fg;
-  // shrink long text (e.g. "plate of cooked steak and fries") to fit the tag
+  // in the player's language; shrink long text (e.g. "plate of cooked steak and fries") to fit the tag
+  const shown = tr(text);
   let size = 40;
-  do ctx.font = `bold ${size}px system-ui, sans-serif`;
-  while (ctx.measureText(text).width > 228 && (size -= 2) > 16);
+  do ctx.font = `bold ${size}px ${TAG_FONTS}`;
+  while (ctx.measureText(shown).width > 228 && (size -= 2) > 16);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(text, 128, 42);
+  ctx.fillText(shown, 128, 42);
   texture.update();
   // black emissive colour so only the texture shows (white would wash the text out)
   const mat = unlitMaterial(scene, `${name}Mat`, Color3.Black());
@@ -233,18 +252,25 @@ export class GameView {
   private puddleMat: StandardMaterial | null = null;
   /** plates waiting by each sink, shown as many as there are dirty dishes (up to the stack's size) */
   private readonly dirtyStacks = new Map<number, TransformNode[]>();
+  /** the dirty dish counter's pile of grimy plates */
+  private readonly returnPiles = new Map<number, TransformNode[]>();
   /** each item's node, the model it shows, where it is (a station, a chef's hands, a diner), and a glide in progress */
-  private readonly items = new Map<number, { node: TransformNode; key: string; spot: string; glide?: { from: Vector3; start: number } }>();
+  private readonly items = new Map<number, { node: TransformNode; key: string; spot: string; glide?: { from: Vector3; start: number }; lift?: number }>();
   /** spice bottles in chefs' hands, cloned from their rack slot */
   private readonly bottles = new Map<string, { node: TransformNode; key: string; glide: { from: Vector3; start: number } | null }>();
   private readonly chefs = new Map<string, ChefEntry>();
   private readonly racks = new Map<number, { parts: Map<string, { node: TransformNode; restY: number }>; lit: string | null }>();
-  private readonly diners = new Map<number, { model: ChefModel; bubble: { text: string; mesh: Mesh } | null; fade: number; glass: Mesh | null }>();
+  private readonly diners = new Map<number, { model: ChefModel; bubble: { text: string; mesh: Mesh } | null; fade: number; glass: Mesh | null; booster: Mesh | null }>();
   private readonly potSoup = new Map<number, { mesh: Mesh; mat: StandardMaterial }>();
   /** a chef put a foot down (for positional footstep sounds) */
   onFootstep: ((chefId: string, x: number, z: number) => void) | null = null;
   private readonly pings = new Map<number, { root: TransformNode; ring: Mesh; glow: StandardMaterial }>();
   private highlighted: Station | null = null;
+  /** I'm the eyes of the kitchen (the deaf chef): see syncEyes */
+  private eyes = false;
+  private readonly checks = new Map<string, { mesh: Mesh; verdict: string }>();
+  /** stations glowing from a ping */
+  private readonly pinged = new Set<number>();
   private selfVisible = false;
   private readonly labels: Mesh[] = [];
   private time = 0;
@@ -442,6 +468,20 @@ export class GameView {
         this.bars.set(s.id, new ProgressBar(this.scene, s.x, 1.22, s.z));
         break;
       }
+      case "returns": {
+        // the dirty dish counter: a pile of grimy plates grows as customers leave them
+        this.spawnInto(root, "Counter");
+        const pile = [0, 1, 2, 3, 4, 5].map((i) => {
+          const plate = this.grime(this.spawnInto(root, "Plate", COUNTER_TOP + 0.01 + i * 0.03, PLATE_SCALE), true);
+          plate.position.x = (i % 2) * 0.04 - 0.02;
+          plate.rotation.y = i * 0.9;
+          plate.setEnabled(false);
+          return plate;
+        });
+        this.returnPiles.set(s.id, pile);
+        this.label(s, "Dirty dishes", 1.2);
+        break;
+      }
       case "register": {
         // the till sits on the pass counter, its screen and card reader facing both sides
         this.spawnInto(root, "Counter");
@@ -580,6 +620,7 @@ export class GameView {
 
   private syncSignals(game: Game) {
     const live = new Set<number>();
+    const glowing = new Set<number>();
     for (const p of game.pings) {
       live.add(p.id);
       let entry = this.pings.get(p.id);
@@ -604,7 +645,19 @@ export class GameView {
         this.pings.set(p.id, entry);
       }
       entry.ring.scaling.setAll(1 + 0.25 * Math.sin(this.time * 6));
+      // the pinged station glows for the whole team until the ping fades
+      const st = game.stations.find((s) => Math.abs(s.x - p.x) < 0.01 && Math.abs(s.z - p.z) < 0.01);
+      if (st) {
+        glowing.add(st.id);
+        this.pinged.add(st.id);
+        this.glowStation(st, true);
+      }
       entry.glow.alpha = 0.55 * Math.min(1, p.ttl);
+    }
+    for (const id of this.pinged) {
+      if (glowing.has(id)) continue;
+      this.pinged.delete(id);
+      this.glowStation(game.stations.find((s) => s.id === id) ?? null, false);
     }
     for (const [id, entry] of this.pings) {
       if (!live.has(id)) {
@@ -711,7 +764,18 @@ export class GameView {
         const bites = Math.min(1, Math.max(0, Math.floor((eaten * n - i) * 3) / 3));
         const left = 1 - bites;
         this.placeItem(food, x + dx * shrink, y + PLATE_WELL * shrink, z + dz * shrink, yaw + i * 0.7, ITEM_SCALE * 0.75 * shrink * Math.max(left, 0.01), seen, `${spot}/plate`);
-        this.items.get(food.id)?.node.setEnabled(left > 0);
+        const placed = this.items.get(food.id);
+        if (!placed) return;
+        placed.node.setEnabled(left > 0);
+        // food rests on the plate, not inside it: lift each piece so its bottom sits on the plate's
+        // top (measured once per model, at this size, then scaled). Measured from each model's own
+        // shape, not where it is now: either may still be gliding in (food the plate was put on)
+        if (placed.lift === undefined) {
+          const plateTop = entry.node.getHierarchyBoundingVectors(true).max.y - entry.node.position.y + y;
+          const foodBottom = placed.node.getHierarchyBoundingVectors(true).min.y - placed.node.position.y + y + PLATE_WELL * shrink;
+          placed.lift = Math.max(0, plateTop - 0.004 * shrink - foodBottom) / shrink;
+        }
+        if (placed.lift) placed.node.position.y += placed.lift * shrink;
       });
     }
   }
@@ -745,16 +809,26 @@ export class GameView {
         bottle?.node.dispose(false, true);
         if (!part) continue;
         part.node.computeWorldMatrix(true);
-        const node = part.node.instantiateHierarchy(null, { doNotInstantiate: true }) as TransformNode;
-        node.scaling.copyFrom(part.node.absoluteScaling);
-        node.rotation.set(0, 0, 0);
-        node.rotationQuaternion = null;
+        const copy = part.node.instantiateHierarchy(null, { doNotInstantiate: true }) as TransformNode;
+        copy.scaling.copyFrom(part.node.absoluteScaling);
+        copy.rotation.set(0, 0, 0);
+        copy.rotationQuaternion = null;
+        copy.position.set(0, 0, 0);
+        copy.setEnabled(true);
+        // the rack's bottles keep the rack's pivot: stand the copy on its own base, centred, so it
+        // sits in the hand like any held food
+        const node = new TransformNode(`bottle:${chef.id}`, this.scene);
+        copy.parent = node;
+        const { min, max } = copy.getHierarchyBoundingVectors(true);
+        copy.position.set(-(min.x + max.x) / 2, -min.y, -(min.z + max.z) / 2);
         bottle = { node, key, glide: { from: part.node.getAbsolutePosition().clone(), start: this.time } };
         this.bottles.set(chef.id, bottle);
       }
       const model = this.chefs.get(chef.id)?.model;
       const at = chef.id === me.id && hand ? hand.add(new Vector3(0.05, 0.04, 0)) : model?.rightHandPoint() ?? new Vector3(chef.x, 1.0, chef.z);
-      this.glideTo(bottle.node, at.x, at.y, at.z, bottle);
+      // close to the eye in first person, so near real size like held food
+      bottle.node.scaling.setAll(chef.id === me.id && hand ? 1 / ITEM_SCALE : 1);
+      this.glideTo(bottle.node, at.x, at.y - (chef.id === me.id && hand ? 0.08 : 0), at.z, bottle);
       bottle.node.rotation.y = chef.facing;
     }
     for (const [id, bottle] of this.bottles) {
@@ -813,6 +887,7 @@ export class GameView {
       entry.model.root.dispose(false, false);
       entry.bubble?.mesh.dispose(false, true);
       entry.glass?.dispose(false, true);
+      entry.booster?.dispose(false, true);
     }
     this.diners.clear();
   }
@@ -832,6 +907,7 @@ export class GameView {
    */
   sync(game: Game, me: Chef, dt: number, hand: Vector3 | null = null) {
     this.time += dt;
+    this.eyes = ROLES[me.role].eyes;
     this.syncChefs(game, me, dt);
     const seen = new Set<number>();
     for (const s of game.stations) {
@@ -856,6 +932,18 @@ export class GameView {
         this.placeItem(chef.held, x + Math.sin(yaw) * 0.48, 0.98, z + Math.cos(yaw) * 0.48, yaw, ITEM_SCALE, seen, `chef:${chef.id}`);
       }
     }
+    // the mute chef's tray: the second dish rides beside the first (to the left)
+    for (const chef of game.chefs) {
+      if (!chef.tray) continue;
+      const mine = chef.id === me.id && hand;
+      const model = this.chefs.get(chef.id)?.model;
+      const yaw = mine ? chef.facing : model?.root.rotation.y ?? chef.facing;
+      const base = mine ? hand : model?.carryPoint() ?? new Vector3(chef.x + Math.sin(yaw) * 0.48, 0.98, chef.z + Math.cos(yaw) * 0.48);
+      const side = mine ? 0.32 : 0.42;
+      const x = base.x - Math.cos(yaw) * side;
+      const z = base.z + Math.sin(yaw) * side;
+      this.placeItem(chef.tray, x, base.y + (mine ? 0.02 : 0.06), z, yaw, mine ? 1 : ITEM_SCALE, seen, `tray:${chef.id}`);
+    }
     this.syncBottles(game, me, hand);
     this.syncDiners(game, dt, seen);
     for (const [id, entry] of this.items) {
@@ -874,6 +962,50 @@ export class GameView {
     this.syncFloaters(dt);
     this.syncPots(game);
     this.syncSignals(game);
+    this.syncEyes(game, me, hand);
+  }
+
+  // --- the deaf chef's eyes -----------------------------------------------------------
+
+  /**
+   * What only the eyes of the kitchen see: a check over every plate and bowl (ready, on track,
+   * wrong).
+   */
+  private syncEyes(game: Game, me: Chef, hand: Vector3 | null) {
+    const live = new Set<string>();
+    if (this.eyes && game.phase === "playing") {
+      const spots: { key: string; dish: Item; x: number; y: number; z: number }[] = [];
+      for (const s of game.stations) {
+        if (s.item && s.item.type !== "food") spots.push({ key: `st:${s.id}`, dish: s.item, x: s.x, y: (this.surfaceY.get(s.id) ?? 0.9) + 0.5, z: s.z });
+      }
+      if (me.held && me.held.type !== "food" && hand) spots.push({ key: "held", dish: me.held, x: hand.x, y: hand.y + 0.16, z: hand.z });
+      for (const spot of spots) {
+        if (spot.dish.type !== "food" && spot.dish.dirty) continue;
+        const verdict = plateCheck(game, spot.dish as Plate | Bowl);
+        if (!verdict) continue;
+        live.add(spot.key);
+        let tag = this.checks.get(spot.key);
+        if (tag && tag.verdict !== verdict) {
+          tag.mesh.material?.dispose(true, true);
+          tag.mesh.dispose();
+          tag = undefined;
+        }
+        if (!tag) {
+          const [text, bg] = CHECKS[verdict];
+          const mesh = makeTag(this.scene, `check-${spot.key}`, text, bg, "#ffffff");
+          mesh.scaling.setAll(spot.key === "held" ? 0.35 : 0.8);
+          tag = { mesh, verdict };
+          this.checks.set(spot.key, tag);
+        }
+        tag.mesh.position.set(spot.x, spot.y, spot.z);
+      }
+    }
+    for (const [key, tag] of this.checks) {
+      if (live.has(key)) continue;
+      tag.mesh.material?.dispose(true, true);
+      tag.mesh.dispose();
+      this.checks.delete(key);
+    }
   }
 
   // --- customers --------------------------------------------------------------------
@@ -889,11 +1021,13 @@ export class GameView {
         const model = new ChefModel(this.scene, this.shadows, this.lib, "full", APRON.full, looks[d.look % looks.length]);
         model.root.position.set(d.x, 0, d.z);
         model.root.rotation.y = d.facing;
-        entry = { model, bubble: null, fade: 0, glass: null };
+        entry = { model, bubble: null, fade: 0, glass: null, booster: null };
         this.diners.set(d.id, entry);
       }
       const sitting = d.state === "waiting" || d.state === "eating";
       const spot = dinerDishSpot(d);
+      // a kid's booster seat: on the pass, carried back to the chair, then on it
+      const carryingSeat = d.booster === "carried" && d.state === "booster" && d.timer <= 0;
       // seated and waiting: they look around the terrace now and then, and fidget once they're hungry
       const hungry = d.state === "waiting" && !!orders.get(d.orderId)?.warned;
       const lookAround = d.state === "waiting" ? Math.sin(this.time * 0.55 + d.id * 1.7) * Math.max(0, Math.sin(this.time * 0.23 + d.id)) * 0.45 : 0;
@@ -905,13 +1039,14 @@ export class GameView {
           facing: d.facing + lookAround + fidget,
           pitch: sitting ? 0.25 : 0,
           chopping: false,
-          holding: spot === "hands",
+          holding: spot === "hands" || carryingSeat,
           stirring: false,
           gesture: null,
           guided: false,
           guiding: false,
           look: null,
           sitting,
+          seatLift: d.booster === "chair" ? BOOSTER_HEIGHT : 0,
           eating: d.state === "eating" && d.mood !== "sick",
           utensil: d.dish?.type === "bowl" || /noodle|mohinga/i.test(orders.get(d.orderId)?.recipe.id ?? d.dish?.type ?? "") ? "spoon" : "fork",
         },
@@ -939,6 +1074,17 @@ export class GameView {
         }
       }
 
+      if (d.booster && d.booster !== "needed") {
+        entry.booster ??= this.makeBooster(d.id);
+        const [sx, sz] = dinerSeat(d);
+        const palms = carryingSeat ? entry.model.carryPoint() : null;
+        if (palms) entry.booster.position.set(palms.x, palms.y - 0.08, palms.z);
+        else if (d.booster === "chair") entry.booster.position.set(sx, CHAIR_SEAT, sz);
+        // on the pass, beside where their dish would go
+        else entry.booster.position.set(d.pickup[0] + 0.3, COUNTER_TOP, -2.62);
+        entry.booster.rotation.y = d.booster === "chair" ? d.facing : palms ? d.facing : Math.PI;
+      }
+
       // a glass of water at their place from when they sit down until they leave the terrace
       if (!entry.glass && sitting) entry.glass = this.makeGlass(d.id);
       if (entry.glass) {
@@ -955,6 +1101,8 @@ export class GameView {
       const text =
         d.state === "paying"
           ? `${d.pay}, please!`
+          : d.state === "standing" && d.mood !== "angry"
+            ? "Booster seat?"
           : d.mood === "angry"
           ? "Hmph!"
           : d.mood === "sick" && d.state === "leaving"
@@ -981,8 +1129,27 @@ export class GameView {
       entry.model.root.dispose(false, false);
       entry.bubble?.mesh.dispose(false, true);
       entry.glass?.dispose(false, true);
+      entry.booster?.dispose(false, true);
       this.diners.delete(id);
     }
+  }
+
+  /** A kid's booster seat: a soft-cornered block with a low back, in a sunny pastel. */
+  private makeBooster(id: number): Mesh {
+    const mat = new StandardMaterial(`boosterMat-${id}`, this.scene);
+    mat.diffuseColor = Color3.FromHexString("#f2b84b").scale(0.85);
+    mat.specularColor = new Color3(0.05, 0.05, 0.05);
+    const base = MeshBuilder.CreateBox(`booster-${id}`, { width: 0.32, height: BOOSTER_HEIGHT, depth: 0.3 }, this.scene);
+    base.position.y = BOOSTER_HEIGHT / 2;
+    const back = MeshBuilder.CreateBox(`boosterBack-${id}`, { width: 0.32, height: 0.14, depth: 0.05 }, this.scene);
+    back.position.set(0, BOOSTER_HEIGHT + 0.07, -0.125);
+    const root = new Mesh(`boosterRoot-${id}`, this.scene);
+    for (const part of [base, back]) {
+      part.material = mat;
+      part.parent = root;
+      this.shadows.addShadowCaster(part);
+    }
+    return root;
   }
 
   /** A tumbler of water: clear glass with water two-thirds up. */
@@ -1201,10 +1368,16 @@ export class GameView {
       stack.forEach((plate, k) => plate.setEnabled(k < left));
       left = Math.max(0, left - stack.length);
     }
+    for (const s of game.stations) {
+      const pile = this.returnPiles.get(s.id);
+      const n = s.returns ? s.returns.plates + s.returns.bowls : 0;
+      pile?.forEach((plate, k) => plate.setEnabled(k < n));
+    }
   }
 
   private showBurnCountdown(bar: ProgressBar, left: number, warned: boolean, visible: boolean) {
-    const flash = warned && Math.floor(this.time * 6) % 2 === 0;
+    // the eyes of the kitchen see it coming sooner
+    const flash = (warned || (this.eyes && left < 0.45)) && Math.floor(this.time * 6) % 2 === 0;
     bar.show(left, flash ? BAR.frame : Color3.Lerp(BAR.burn, BAR.safe, left), visible);
   }
 

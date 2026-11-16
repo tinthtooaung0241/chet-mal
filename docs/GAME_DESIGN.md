@@ -28,6 +28,8 @@ to be talked through) and *Spaceteam* (shouting under pressure).
 | **Talks with** | Voice and signals | Voice | Signals only: ping (G), signs (T), bell (B) | — |
 | **Cooks** | No: plates, finishes and serves | Yes | Yes | Yes |
 | **Only they can** | See every ticket and hear every call, and run the pass | Play through a storm unaffected | Charm the tables (B at the pass: +8 s for every order, then 35 s rest) | — |
+| **Strength** | Presentation: +5 points on every dish they serve | Chops 30% faster; golden shimmer; eagle eye (early burn and restless-table flashes); plate check (✓ / … / ✗ over dishes) | Walks 15% faster; Shift dash (4s cooldown); a tray for a second dish; washes up 60% faster | — |
+| **Pour meter edge** | Flourish: a taller "just right" band | — | Steady hands: a slower pour | — |
 
 Chefs can hand things to each other (use while facing a teammate) and lead each other by the hand
 (H). A ping (G) names what you hold or point at. Each ticket shows a little role badge for every
@@ -68,6 +70,12 @@ only the chef who did something.
    3. Season it: take a spice bottle from the rack (keys 1–8) and carry it to the food, wherever
       it is (a board, a counter, a stove, or a teammate's hands). Some spices go on before cooking,
       some straight after. Put the bottle back, or swap it for another, at the rack.
+      **The pour meter:** hold Space by the food and the meter rises; let go in the honey "just
+      right" band. The mint line in its middle is a **perfect pinch** (+2 points). The meter bounces off the
+      top and back down for as long as you hold, so a missed band comes round again. Below the
+      band adds nothing yet (try again); above it is **too much** (−3, nothing at a Cozy pace). The band sits somewhere new each time, and the Cozy pace makes it taller.
+      Settings can turn the meter off: every pinch is then just right. On a phone, hold the Use
+      button (it reads "Hold to season") and let go the same way.
    4. Cook on a stove, or in the soup pot (three chopped ingredients, 10 s).
    5. Plate it, or ladle soup into a bowl.
    6. Add the finishing spices on top: put the dish down and bring each bottle to it.
@@ -162,11 +170,12 @@ perceive, so a deaf cook still needs to be told about phone orders.
 - **Oil spills** (from level 6, once a shift): chefs in the puddle move at 45% speed until someone
   holds F on it for 2 s.
 - **Washing up** (from level 5, except 7): the racks hold 4 plates and 3 bowls. Nothing washes
-  itself: a customer who's eaten carries their dirty dish to the till and leaves it on a pass
-  counter, and a wasted dish leaves a dirty plate in your hands. Take each one to the sink (Space),
+  itself: a customer who's eaten carries their dirty dish to the till and leaves it on the
+  self-service dirty dish counter beside it, and a wasted dish leaves a dirty plate in your hands. Take each one to the sink (Space),
   then hold F there for 1.5 s to wash it. Dirty dishes can't be filled, served or put back on a
   rack.
 - **Kids** (from level 3): one customer in five wants the dish plain, with no seasoning at all.
+- **Booster seats** (from level 8): a kid stands by their chair ("Booster seat?") until the head chef, empty-handed at the pass, puts a booster seat out. The kid fetches it, carries it back and sits on it. With no head chef, whoever runs the till does it. Their order timer keeps running while they wait.
 - **Layouts:** levels 4 to 6 and 8 to 10 each rearrange the middle of the room: an island,
   a split kitchen, or a corridor behind the stoves.
 

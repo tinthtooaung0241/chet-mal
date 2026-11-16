@@ -40,6 +40,14 @@ export class Voice {
   }
 
   private mic: MediaStream | null = null;
+  private micOn = true;
+
+  /** The Microphone setting: off keeps the call but sends silence. */
+  setMicOn(on: boolean) {
+    this.micOn = on;
+    this.mic?.getAudioTracks().forEach((t) => (t.enabled = on));
+  }
+
   private me = "";
   private hears = true;
   /** resolves once we know whether we have a microphone; calls wait for it so the mic joins them */
@@ -68,6 +76,7 @@ export class Voice {
         this.mic = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         });
+        this.setMicOn(this.micOn);
         this.status = "on";
       } catch {
         this.status = "no microphone";

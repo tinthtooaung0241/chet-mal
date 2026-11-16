@@ -20,6 +20,7 @@ export function shiftReport(game: Game): ReportLine[] {
     { label: "Speed", points: t.speed, icon: "alarm" },
     { label: "Perfect", points: t.perfect, icon: "sparkle" },
     { label: "Seasoning", points: t.seasoning, icon: "salt" },
+    { label: "Presentation", points: t.presented ?? 0, icon: "chef" },
     { label: `Combo ×${t.bestCombo}`, points: t.combo, icon: "bolt" },
     { label: bonuses.length === 1 ? bonuses[0] : "Bonuses", points: t.extra, icon: "star" },
     { label: `${t.lost} walked out`, points: -t.lostPoints, icon: "angry" },

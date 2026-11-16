@@ -5,6 +5,8 @@ import { FOOD_RULES, displayKind, ROLES, SOUP_SIZE, SPICE_NAMES, spiceList, leve
 import { glyph, img, renderedIcon } from "../ui/icons";
 import { SPICE_GLYPHS, foodIcon, soupIcon } from "./hints";
 import { $ } from "../ui/dom";
+import { isBurmese, tr, utterance } from "../i18n";
+import { METHOD_VERB } from "../i18n/my/rules";
 
 const lower = (kind: string) => displayKind(kind).toLowerCase();
 /** How each food is cooked in the pan, in plain words. */
@@ -179,8 +181,15 @@ function method(recipe: Recipe): HTMLElement {
     const text = document.createElement("span");
     text.className = "step-text";
     const verb = document.createElement("b");
-    verb.textContent = step.verb;
-    text.append(verb, ` ${step.rest}`);
+    if (isBurmese) {
+      // Burmese says the verb last: "ခရမ်းချဉ်သီးကို လှီးပါ"
+      verb.textContent = METHOD_VERB[step.verb] ?? tr(step.verb);
+      const rest = tr(step.rest);
+      text.append(...(rest ? [rest, " "] : []), verb);
+    } else {
+      verb.textContent = step.verb;
+      text.append(verb, ` ${step.rest}`);
+    }
     const where = document.createElement("span");
     where.className = "step-where";
     where.title = `at the ${step.where}`;
@@ -265,8 +274,11 @@ export class RecipeBook {
     return this.dialog.open;
   }
 
-  /** Opens on the menu; dishes already ordered come first. The blind chef starts on the first recipe. */
-  show(game: Game, role: Role) {
+  /**
+   * Opens on the menu; dishes already ordered come first. The blind chef starts on the first
+   * recipe. Given a dish (a ticket's Recipe chip), it opens on that page.
+   */
+  show(game: Game, role: Role, recipeId?: Recipe["id"]) {
     const { sees, hears } = ROLES[role];
     this.ordered = new Set(game.orders.filter((o) => (o.channel === "ticket" ? sees : hears)).map((o) => o.recipe.id));
     const level = levelByNumber(game.level);
@@ -285,8 +297,10 @@ export class RecipeBook {
       ? "Read aloud: ← → turn the page, Enter repeats it, R closes the book."
       : `${level.name}: ${this.recipes.length} dishes. Pick one from the menu; ← → turns the page.`;
     if (!this.dialog.open) this.dialog.showModal();
-    this.goTo(this.readAloud ? 0 : -1, 0);
-    if (this.readAloud) this.speak(`Recipe book, ${this.recipes.length} dishes. ${recipeSentence(this.recipes[0])}`);
+    const page = recipeId === undefined ? -1 : this.recipes.findIndex((r) => r.id === recipeId);
+    const first = page >= 0 ? page : this.readAloud ? 0 : -1;
+    this.goTo(first, 0);
+    if (this.readAloud) this.speak(`Recipe book, ${this.recipes.length} dishes. ${recipeSentence(this.recipes[first])}`);
   }
 
   close() {
@@ -423,6 +437,6 @@ export class RecipeBook {
   private speak(text: string) {
     if (!("speechSynthesis" in window)) return;
     speechSynthesis.cancel();
-    speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    speechSynthesis.speak(utterance(text));
   }
 }

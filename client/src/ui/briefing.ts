@@ -4,13 +4,15 @@ import { LAYOUTS, levelByNumber, twistById, type Role, type TwistId } from "@kit
 import { readJson, writeJson } from "../storage";
 import { $ } from "./dom";
 import { glyph } from "./icons";
+import { forControls } from "./words";
+import { utterance } from "../i18n";
 
 /** How each chef plays, read aloud after the briefing when speech is on. */
 const ROLE_TIPS: Record<Role, string> = {
-  full: "Practising alone: you see and hear everything. Switch chef with keys 0–3 to try each role.",
-  head: "You run the pass. You see every ticket, hear every phone order, and your tickets show how each dish is coming along. You don't cook: tell your cooks what to make, then plate, finish and serve, and ring customers up at the till.",
-  deaf: "You can't hear. Watch tickets, bars, smoke and your teammates' signs. Phone orders only reach the others.",
-  mute: "You can't talk. Point with G, ring the bell with B, and hold T, then move the mouse to a sign and let go. Only you can charm customers: press B at the pass to wave, and every table waits a little longer.",
+  full: "Practising alone: you see and hear everything. Switch chef from the menu to try each role.",
+  head: "You run the pass. You see every ticket, hear every phone order, and your tickets show how each dish is coming along. You don't cook: tell your cooks what to make, then plate, finish and serve, and ring customers up at the till. Your strength: every dish you serve earns 5 points more.",
+  deaf: "You can't hear. Watch tickets, bars, smoke and your teammates' signs. Phone orders only reach the others. Your strength: you chop 30% faster, and the perfect moment shimmers golden for you.",
+  mute: "You can't talk. Point with G, ring the bell with B, and hold T, then move the mouse to a sign and let go. Only you can charm customers: press B at the pass to wave, and every table waits a little longer. You're also the quickest on your feet: the kitchen's runner.",
 };
 
 /** The short version of each chef's job, on the card. */
@@ -59,7 +61,7 @@ export class Briefing {
     $("briefing-lines").replaceChildren(
       ...lines.map((line) => {
         const li = document.createElement("li");
-        li.append(glyph(line.icon), line.text);
+        li.append(glyph(line.icon), forControls(line.text));
         return li;
       }),
     );
@@ -70,7 +72,7 @@ export class Briefing {
     if (speak && "speechSynthesis" in window) {
       speechSynthesis.cancel();
       const said = lines.map((l) => l.text).join(". ");
-      speechSynthesis.speak(new SpeechSynthesisUtterance(`${level.name}. ${twist ? twist.name : level.teach.title}. ${said}. ${ROLE_TIPS[role]}`));
+      speechSynthesis.speak(utterance(forControls(`${level.name}. ${twist ? twist.name : level.teach.title}. ${said}. ${ROLE_TIPS[role]}`)));
     }
   }
 }

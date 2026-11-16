@@ -13,6 +13,7 @@
     "start": "npm --workspace server run start",
     "typecheck": "npm --workspace client run typecheck && npm --workspace server run typecheck",
     "start:prod": "npm --workspace server run start:prod",
-    "test:coach": "tsx shared/test/autoplay.ts"
+    "test:coach": "tsx shared/test/autoplay.ts",
+    "test:burmese": "tsx client/test/burmese.ts"
   }
 }

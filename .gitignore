@@ -9,3 +9,7 @@ assets/vendor/**/*.zip
 
 # the animation library is only needed to re-bake clips.json: unzip it here when you do
 assets/vendor/quaternius-ual/x/
+
+# local keys
+*.local
+.env

@@ -1,7 +1,7 @@
 // Messages between browser and server. Plain JSON over one WebSocket per player.
 import type { Emote, Role } from "./roles";
 import type { TwistId } from "./twists";
-import type { Pace } from "./rules";
+import type { Pace, Pinch } from "./rules";
 import type { ChefLook } from "./looks";
 import { rebuildGrid, type Game, type GameEvent } from "./state";
 
@@ -22,6 +22,8 @@ export type ClientMessage =
   /** room "" creates a new kitchen and "*" joins any open one (Quick Play); id rejoins after a refresh */
   | { t: "hello"; name: string; room: string; id?: string; look?: ChefLook }
   | { t: "role"; role: Role }
+  /** a new name, in the room before the shift starts */
+  | { t: "name"; name: string }
   /** twist: a daily special's twist (null for a normal shift) */
   | { t: "level"; level: number; twist?: TwistId | null }
   /** upgrades: the host's restaurant equipment, used for this shift */
@@ -31,8 +33,9 @@ export type ClientMessage =
   | { t: "restart"; level?: number; upgrades?: string[] }
   /** own chef's movement: clients move their chef locally and report where it is */
   | { t: "move"; x: number; z: number; facing: number; pitch: number; chop: boolean; guidedBy: string | null }
-  /** pick: the item chosen at a fridge or spice rack, so the server uses the same one */
-  | { t: "act"; action: Action; pick?: number; aim?: { x: number; z: number } }
+  /** pick: the item chosen at a fridge or spice rack, so the server uses the same one; pinch: how a
+   *  pour went at the meter, when the action seasons something */
+  | { t: "act"; action: Action; pick?: number; aim?: { x: number; z: number }; pinch?: Pinch }
   | { t: "emote"; word: Emote }
   /** WebRTC signalling relayed to one other player */
   | { t: "rtc"; to: string; data: unknown };

@@ -35,5 +35,9 @@ export function teamAwards(game: Game): Award[] {
     given.set(o.chef.id, { chef: o.chef, title: o.kind.title, icon: o.kind.icon, detail: o.kind.detail(o.value) });
     taken.add(o.kind.stat);
   }
-  return game.chefs.map((chef) => given.get(chef.id) ?? { chef, title: "Kitchen spirit", icon: "chef", detail: "kept everyone smiling" });
+  // nothing stood out: still a nice word, but one that fits a chef who did nothing at all
+  const idle = (chef: Chef) => Object.values(chef.stats ?? {}).every((n) => !n);
+  return game.chefs.map(
+    (chef) => given.get(chef.id) ?? (idle(chef) ? { chef, title: "Warming up", icon: "chef", detail: "next shift's yours" } : { chef, title: "Kitchen spirit", icon: "chef", detail: "kept everyone smiling" }),
+  );
 }

@@ -412,6 +412,13 @@ select:focus-visible {
 .order.urgent .order-bar i {
   background: var(--peach-edge);
 }
+/* the deaf chef's early warning: the bar pulses red before the ticket starts shaking */
+.order.restless .order-bar i {
+  animation: restless 0.8s ease-in-out infinite;
+}
+@keyframes restless {
+  50% { background: var(--peach-edge); }
+}
 
 @keyframes ticket-in {
   from {
@@ -3580,6 +3587,21 @@ body.touch .touch-sat:not(.ready):not(.down) {
   opacity: 0;
   scale: 0.6;
   pointer-events: none;
+}
+
+/* the mute chef's dash is always there; a honey ring fills back up while it recharges */
+body.touch .touch-dash:not([hidden]),
+body.touch .touch-dash:not([hidden]):not(.ready):not(.down) {
+  opacity: 1;
+  scale: 1;
+  pointer-events: auto;
+  background:
+    radial-gradient(closest-side, var(--paper) calc(100% - 4px), transparent calc(100% - 3px)),
+    conic-gradient(var(--honey) var(--charge, 100%), var(--oat) 0);
+}
+
+body.touch .touch-dash.cooling .icon-svg {
+  opacity: 0.45;
 }
 
 /* ====================================================================== HUD size follows the screen */
@@ -7091,9 +7113,11 @@ body.touch #help .key-groups {
   }
 }
 @media (max-width: 640px) and (min-height: 521px) {
+  #recipe-book[open] {
+    display: flex;
+  }
   #recipe-book {
     height: calc(100dvh - 104px);
-    display: flex;
     flex-direction: column;
   }
   #recipe-book .book-spread {
@@ -8514,9 +8538,1507 @@ body:has(#setup[open]) #lobby-start {
   transform: rotate(-40deg);
 }
 
+/* Your shift's two groups (which shift; what it's like and how it plays) flow as one column
+   normally; on any wide screen they sit side by side so it fits without scrolling, with Done
+   across the bottom. */
+.setup-col {
+  display: contents;
+}
+@media (min-width: 860px) {
+  #setup[open] {
+    display: grid;
+    width: min(860px, calc(100vw - 48px));
+    grid-template-columns: 1fr 1fr;
+    column-gap: 26px;
+    align-items: start;
+  }
+  #setup > h2,
+  #setup > #setup-done {
+    grid-column: 1 / -1;
+  }
+  #setup .setup-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  #setup .setup-col > * {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  #setup > #setup-done {
+    justify-self: center;
+    width: min(320px, 100%);
+    margin-top: 14px;
+  }
+}
+
+/* cards keep one size while their content changes: How to play's pages share one spot (the
+   card fits the tallest), and Your shift keeps the restaurant and level pickers' space when a daily
+   special hides them */
+.how-pages {
+  display: grid;
+}
+.how-pages > .how-page {
+  grid-area: 1 / 1;
+}
+.how-pages > .how-page[hidden] {
+  display: block;
+  visibility: hidden;
+}
+#setup #normal-shift[hidden] {
+  display: block;
+  visibility: hidden;
+}
+
+/* Your shift on a wide, tall-enough screen fits without scrolling, so it never switches to a
+   scrolling box (that switch, made so the shift list can open over the card, changed its height) */
+@media (min-width: 860px) and (min-height: 561px) {
+  #setup,
+  #setup:not(:has(.dropdown.open)) {
+    overflow: visible;
+  }
+}
+
+/* Your shift: the restaurant and level pickers and the daily special's card share one spot, so
+   switching between them never changes the card's height */
+.shift-stack {
+  display: grid;
+}
+.shift-stack > * {
+  grid-area: 1 / 1;
+}
+#setup .shift-stack > [hidden] {
+  display: block;
+  visibility: hidden;
+}
+.daily-shift {
+  align-self: start;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: #fdf1d4;
+  text-align: left;
+}
+.daily-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.daily-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--paper);
+}
+.daily-badge .icon-svg {
+  width: 28px;
+  height: 28px;
+}
+.daily-head span {
+  display: grid;
+}
+.daily-head strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+.daily-head small {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+.daily-shift ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.daily-shift li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.daily-shift li .icon-svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+/* a role's strength, under its description on the chef card */
+.chef-card .strength {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: var(--pill);
+  background: var(--paper);
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.chef-card .strength .icon-svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+/* the pour meter, to the right of the crosshair: a tall pill on paper, the honey "just right"
+   band with its mint perfect line, and the pour rising as Use is held. Flat, like the rest of the HUD. */
+#pour {
+  position: absolute;
+  left: calc(50% + 64px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--r-lg);
+  background: rgba(255, 250, 240, 0.92);
+  color: var(--ink);
+  font-family: var(--font-display);
+  pointer-events: none;
+  animation: toast-in 0.15s ease-out both;
+}
+#pour[hidden] {
+  display: none;
+}
+/* the spice's icon on a little round chip at the top */
+#pour .pour-name {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+}
+#pour .pour-name .icon-svg {
+  width: 28px;
+  height: 28px;
+}
+#pour .pour-bar {
+  position: relative;
+  width: 26px;
+  height: 170px;
+  overflow: hidden;
+  border-radius: var(--pill);
+  background: #c9c3bb;
+}
+#pour .pour-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: #f7cd4f;
+}
+#pour .pour-core {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: #56c08a;
+}
+/* the pour itself: just a firm ink line rising up the meter to time it by (no overlay, so the
+   colours stay bright) */
+#pour .pour-fill {
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  bottom: 0;
+  background: none;
+  border-top: 4px solid var(--ink);
+}
+#pour .pour-bar.in-band .pour-fill {
+  border-top-width: 6px;
+}
+#pour .pour-edge {
+  padding: 1px 8px;
+  border-radius: var(--pill);
+  background: var(--lilac-soft);
+  font-family: "Nunito", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+#pour .pour-edge[hidden] {
+  display: none;
+}
+/* the verdict: the bar's edge flashes its colour for a moment, nothing else moves */
+#pour .pour-bar {
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+  transition: outline-color 0.15s;
+}
+#pour[data-result="perfect"] .pour-bar { outline-color: var(--mint); }
+#pour[data-result="good"] .pour-bar { outline-color: #f6c35b; }
+#pour[data-result="heavy"] .pour-bar { outline-color: var(--peach); }
+#pour[data-result="light"] .pour-bar { outline-color: var(--sky-soft); }
+/* the verdict pops up above the meter, floating, in its colour */
+#pour .pour-say {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  padding: 4px 12px;
+  border-radius: var(--pill);
+  font-size: 0.95rem;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-50%);
+}
+#pour .pour-say.pop {
+  animation: pour-pop 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+#pour[data-result="perfect"] .pour-say { background: var(--mint); color: var(--mint-ink); }
+#pour[data-result="good"] .pour-say { background: #f6c35b; color: var(--ink); }
+#pour[data-result="heavy"] .pour-say { background: var(--peach); color: var(--ink); }
+#pour[data-result="light"] .pour-say { background: var(--sky-soft); color: var(--ink); }
+@keyframes pour-pop {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(0.6); }
+  25% { opacity: 1; transform: translate(-50%, 0) scale(1.12); }
+  40% { transform: translate(-50%, 0) scale(1); }
+  85% { opacity: 1; transform: translate(-50%, -4px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -10px) scale(1); }
+}
+/* phones: no crosshair, so the meter sits a little right of centre (clear of the thumbs), a
+   touch bigger so the band is easy to see at arm's length */
+body.touch #pour {
+  left: auto;
+  right: calc(50% - 160px);
+  top: 52%;
+  padding: 10px;
+}
+body.touch #pour .pour-bar {
+  width: 34px;
+  height: min(190px, 46dvh);
+}
+
 /* no ring until someone actually navigates with Tab or the arrow keys */
 body:not(.keyboard-nav) :focus-visible,
 body:not(.keyboard-nav) input:focus-visible + span {
   outline: none !important;
 }
 
+
+/* --- pick your chef: header, senses, job, strengths, limit ------------------------- */
+#lobby-room .chef-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 14px;
+  text-align: left;
+  color: var(--ink);
+}
+#lobby-room .chef-card > span,
+#lobby-room .chef-card[aria-pressed="true"] > span,
+#lobby-room .chef-card:not([aria-pressed="true"]):hover > span {
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+#lobby-room .chef-card .cc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#lobby-room .chef-card .chef-emoji {
+  flex: none;
+  margin: 0;
+}
+#lobby-room .chef-card .chef-emoji .icon-svg {
+  width: 44px;
+  height: 44px;
+  padding: 8px;
+}
+#lobby-room .chef-card .cc-name {
+  display: grid;
+  gap: 1px;
+}
+#lobby-room .chef-card .cc-name strong {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+#lobby-room .chef-card .cc-name small {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+/* the four senses, labelled: green for what they have, struck through for what they don't */
+#lobby-room .chef-card .cc-senses {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+#lobby-room .chef-card .cc-sense {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: var(--pill);
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+#lobby-room .chef-card .cc-sense .icon-svg {
+  width: 15px;
+  height: 15px;
+}
+#lobby-room .chef-card .cc-sense.no {
+  background: rgba(59, 47, 39, 0.08);
+  color: #b0533f;
+}
+#lobby-room .chef-card .cc-sense.no .icon-svg {
+  opacity: 0.55;
+}
+#lobby-room .chef-card .cc-job {
+  color: var(--ink-soft) !important;
+}
+#lobby-room .chef-card .cc-list {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.75);
+}
+#lobby-room .chef-card .cc-list b {
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+#lobby-room .chef-card .cc-list span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+#lobby-room .chef-card .cc-list .icon-svg,
+#lobby-room .chef-card .cc-limit .icon-svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+#lobby-room .chef-card .cc-limit {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: auto;
+  font-size: 0.72rem !important;
+  color: #b0533f !important;
+}
+#lobby-room .chef-card .cc-list span:last-child {
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+/* the cards stay short (who they are, what they sense); the details open underneath */
+#lobby-room .chef-card .cc-job,
+#lobby-room .chef-card .cc-list,
+#lobby-room .chef-card .cc-limit {
+  display: none;
+}
+#chef-detail {
+  display: grid;
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  background: var(--oat);
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+#chef-detail.head { background: #fdf1d4; }
+#chef-detail.deaf { background: var(--peach-soft); }
+#chef-detail.mute { background: var(--lilac-soft); }
+/* every pane in the same cell: the tallest sets the height, only the chosen one shows */
+#chef-detail .cd-pane {
+  grid-area: 1 / 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* name, job, then the limit right under them (the spare height goes below it, so a long
+     strengths list never pushes the limit down) */
+  grid-template-rows: auto auto 1fr;
+  gap: 8px 14px;
+  align-content: start;
+  visibility: hidden;
+}
+#chef-detail .cd-pane > * {
+  align-self: start;
+}
+#chef-detail .cd-pane.on,
+#chef-detail:not(.head):not(.deaf):not(.mute) .cd-empty {
+  visibility: visible;
+}
+#chef-detail .cd-empty {
+  align-content: center;
+}
+#chef-detail .cd-empty p {
+  grid-column: 1 / -1;
+  margin: 0;
+  text-align: center;
+  color: var(--ink-soft);
+}
+#chef-detail .cd-pane > strong {
+  grid-column: 1;
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+#chef-detail .cc-job {
+  grid-column: 1;
+  color: var(--ink-soft);
+}
+#chef-detail .cc-limit {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #b0533f;
+  font-size: 0.78rem;
+}
+#chef-detail .cc-list {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.75);
+}
+#chef-detail .cc-list b {
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+#chef-detail .cc-list span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+#chef-detail .icon-svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+@media (max-width: 640px) {
+  #chef-detail .cd-pane { grid-template-columns: 1fr; }
+  #chef-detail .cc-list { grid-column: 1; grid-row: auto; }
+}
+/* three equal columns that never push the dialog wider */
+#lobby-room #lobby-roles {
+  min-width: 0; /* a fieldset is min-content wide by default */
+}
+#lobby-room #lobby-roles > * {
+  min-width: 0;
+}
+#lobby-room .chef-card {
+  min-width: 0;
+}
+#lobby-room .chef-card .cc-senses {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#lobby-room .chef-card .cc-sense {
+  min-width: 0;
+  padding: 4px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#lobby-room .chef-card .cc-name {
+  min-width: 0;
+}
+/* compact cards: centred, the senses they have as small icons, the one they lack spelled out */
+#lobby-room .chef-card {
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 12px 8px;
+}
+#lobby-room .chef-card .cc-head {
+  flex-direction: column;
+  gap: 6px;
+}
+#lobby-room .chef-card .cc-name {
+  justify-items: center;
+}
+#lobby-room .chef-card .cc-senses {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+#lobby-room .chef-card .cc-sense.yes {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  justify-content: center;
+  gap: 0; /* the hidden word still counts as a flex item: no gap, so the icon sits centred */
+  font-size: 0;
+  border-radius: 50%;
+}
+#lobby-room .chef-card .cc-sense em {
+  font-style: normal;
+}
+#lobby-room .chef-card .cc-sense.yes em {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+#lobby-room .chef-card .cc-sense.yes {
+  position: relative;
+}
+#lobby-room .chef-card .cc-sense.no {
+  order: 1;
+  flex-basis: 100%;
+  justify-content: center;
+}
+#lobby-room .chef-card .cc-sense i {
+  display: grid;
+  place-items: center;
+}
+#lobby-room .chef-card .cc-sense .icon-svg {
+  margin: 0;
+}
+/* every chef the same: the strengths box fills the panel's height, and the limit sits right
+   under the job */
+#chef-detail .cd-pane > .cc-list {
+  align-self: stretch;
+  align-content: start;
+}
+#chef-detail .cd-pane > .cc-limit {
+  align-self: start;
+}
+@media (max-width: 640px) {
+  #chef-detail .cd-pane { grid-template-rows: none; }
+  #chef-detail .cd-pane > .cc-limit { align-self: start; }
+}
+
+/* the chosen chef: a badge in the corner ("✓ You", or who took it); taken chefs fade */
+#lobby-room .chef-card {
+  position: relative;
+}
+#lobby-room .chef-card .cc-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  max-width: calc(100% - 12px);
+  padding: 2px 8px;
+  border-radius: var(--pill);
+  background: var(--ink);
+  color: var(--paper) !important;
+  font-size: 0.66rem !important;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#lobby-room .chef-card .cc-badge[hidden] {
+  display: none;
+}
+#lobby-room .chef-card[aria-pressed="true"] {
+  border-color: var(--ink);
+}
+#lobby-room .chef-card[aria-pressed="true"] .cc-badge {
+  background: #3fae78;
+}
+#lobby-room .chef-card.taken {
+  opacity: 0.55;
+  filter: saturate(0.6);
+}
+
+/* Warm-up looks like its neighbour: the same filled button */
+#lobby-room #warm-up {
+  background: var(--oat);
+  border-radius: var(--r-md);
+}
+
+/* who's here: a pill per chef in their colour, with their icon */
+#lobby-room #lobby-players li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 4px;
+  background: var(--oat);
+}
+/* the same height with or without a chef icon, so picking one moves nothing */
+#lobby-room #lobby-players li {
+  box-sizing: border-box;
+  height: 34px;
+}
+#lobby-room #lobby-players li.choosing { padding-left: 12px; }
+#lobby-room #lobby-players li.head { background: #fdf1d4; }
+#lobby-room #lobby-players li.deaf { background: var(--peach-soft); }
+#lobby-room #lobby-players li.mute { background: var(--lilac-soft); }
+#lobby-room #lobby-players li .chef-emoji {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  border-radius: 50%;
+  background: var(--paper);
+}
+#lobby-room #lobby-players li .chef-emoji .icon-svg {
+  width: 26px;
+  height: 26px;
+  padding: 5px;
+}
+#lobby-room #lobby-players li span {
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+#lobby-room #lobby-players li small {
+  padding: 1px 7px;
+  border-radius: var(--pill);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+/* players: the count next to the kitchen code; a disconnected chef's badge greys out */
+#room-count {
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: var(--pill);
+  background: var(--oat);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+#lobby-room .chef-card .cc-badge.away {
+  background: var(--ink-faint);
+}
+/* a smaller circle with a bigger icon, clear of the corner badge */
+#lobby-room .chef-card .chef-emoji {
+  width: 52px;
+  height: 52px;
+}
+#lobby-room .chef-card .chef-emoji .icon-svg {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: none;
+}
+#lobby-room .chef-card .cc-head {
+  margin-top: 14px;
+}
+
+/* ====================================================================== picker chips: clean and even (desktop) */
+body:not(.touch) #picker .pick {
+  gap: 8px;
+  height: 38px;
+  padding: 0 16px 0 5px;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* the number key: a round badge with the same 5px inset as the chip's edge */
+body:not(.touch) #picker .pick kbd {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  line-height: 1;
+  box-shadow: none;
+  background: #fde7b4;
+}
+
+body:not(.touch) #picker .pick .icon-img,
+body:not(.touch) #picker .pick .icon-svg {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+
+body:not(.touch) #picker .pick.on kbd {
+  background: var(--honey);
+}
+
+/* icon-only chips (unchosen spices, narrow screens): the same inset on both sides */
+body:not(.touch) #picker.spice .pick:not(.on) {
+  padding-right: 8px;
+}
+
+@media (max-width: 760px) {
+  body:not(.touch) #picker .pick {
+    padding-right: 8px;
+  }
+}
+
+body:not(.touch) #picker .pick.done::after {
+  margin-left: -2px;
+}
+
+/* Leave, armed: the second tap ends the shift */
+#pause-menu #quit.armed,
+#pause-menu #quit.armed:hover {
+  background: #f39a82;
+  color: #fff;
+}
+
+/* why there's no Next level yet */
+#game-over .next-locked {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 700;
+}
+
+#game-over .next-locked[hidden] {
+  display: none;
+}
+
+#game-over .next-locked .icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* the play menu: on ordinary screens the logo shrinks into the corner and the card sits a little
+   lower, so the card never covers the logo or its Burmese line */
+@media (min-height: 521px) and (max-height: 900px) {
+  body.in-lobby .title-wordmark {
+    top: 14px;
+    transform: rotate(-4deg) scale(0.62);
+    transform-origin: 0 0;
+  }
+  #lobby .title-card.play-menu {
+    top: calc(50% + 6vh);
+  }
+}
+
+/* ====================================================================== phones: the coach up top */
+/* on touch screens the coach sits in the top strip, between the checklist and the role badge, in at
+   most two short lines: the middle of the screen stays clear for the kitchen and the crosshair */
+body.touch #coach {
+  /* just under the role badge (which grows with a long role name, as in Burmese) */
+  top: 118px;
+  bottom: auto;
+  left: 182px;
+  right: 202px;
+  width: auto;
+  max-width: none;
+  transform: none;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 12px 4px 4px;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+body.touch #coach #coach-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+body.touch #coach .coach-step {
+  padding: 2px 8px;
+  font-size: 0.72rem;
+}
+
+@keyframes coach-in-touch {
+  from {
+    transform: translateY(-6px) scale(0.96);
+  }
+}
+
+body.touch #coach.changed {
+  animation-name: coach-in-touch;
+}
+
+/* the Signs wheel needs the screen: the coach steps aside while it's open */
+body:has(#emote-wheel:not([hidden])) #coach {
+  display: none;
+}
+
+/* ====================================================================== landscape phones: use the width */
+/* a phone on its side is wide and short: cards go two columns so they fit without scrolling, and
+   each card's main button stays in reach */
+@media (orientation: landscape) and (max-height: 520px) and (min-width: 600px) {
+  /* Settings: the rows in two columns */
+  #settings[open] {
+    width: min(760px, calc(100vw - 24px));
+  }
+  #settings .setting-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 14px;
+  }
+  #settings .setting-list > .setting-row {
+    margin: 0;
+  }
+
+  /* Your shift: which shift | what it's like, side by side, as on wide screens */
+  #setup[open] {
+    display: grid;
+    width: min(820px, calc(100vw - 24px));
+    grid-template-columns: 1fr 1fr;
+    column-gap: 18px;
+    align-items: start;
+  }
+  #setup > h2,
+  #setup > #setup-done {
+    grid-column: 1 / -1;
+  }
+  #setup .setup-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #setup .setup-col > * {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  /* Done stays at the bottom of the card while it scrolls */
+  #settings-done,
+  #setup > #setup-done {
+    position: sticky;
+    bottom: -10px;
+    z-index: 2;
+    justify-self: center;
+    width: min(320px, 100%);
+    box-shadow: 0 -10px 14px var(--paper), 0 4px 0 var(--honey-edge);
+  }
+
+  /* the end screen: how it went on the left, why and who on the right, buttons across the bottom */
+  #game-over[open] {
+    display: grid;
+    width: min(820px, calc(100vw - 24px));
+    grid-template-columns: 1fr 1fr;
+    grid-auto-flow: row dense;
+    column-gap: 20px;
+    align-items: start;
+    padding: 18px 22px 14px;
+  }
+  #game-over > :is(#over-chet, h2, #final-stars, #final-score, #final-stats) {
+    grid-column: 1;
+  }
+  #game-over > :is(#final-report, #final-tip, #final-awards, #final-stickers) {
+    grid-column: 2;
+  }
+  #game-over > .menu-actions {
+    grid-column: 1 / -1;
+    background: var(--paper);
+  }
+  #game-over #over-chet {
+    width: 64px;
+    height: 64px;
+    justify-self: center;
+  }
+
+  /* the room: Shift · Warm-up · Start always on screen, under the chef cards */
+  #lobby-room .room-actions {
+    position: sticky;
+    bottom: -8px;
+    z-index: 3;
+    padding: 6px 0 4px;
+    background: var(--paper);
+    box-shadow: 0 -10px 12px var(--paper);
+  }
+}
+
+/* How to play's touch page: the same row as the keys page */
+body.touch #how-to-play .how-row.touch-text {
+  display: flex;
+}
+body.touch #how-to-play h2 .touch-text {
+  display: inline;
+}
+
+/* ====================================================================== touch: thumb-sized menus */
+/* every play-menu choice at least 44px tall (40px on short phones, so the card still fits) */
+body.touch .title-card.play-menu > button,
+body.touch .title-card.play-menu #join-form :is(input, button) {
+  min-height: 44px;
+}
+body.touch .title-card.play-menu .play-tools button {
+  min-height: 52px;
+}
+@media (max-height: 520px) {
+  body.touch .title-card.play-menu > button,
+  body.touch .title-card.play-menu #join-form :is(input, button) {
+    min-height: 40px;
+  }
+  body.touch .title-card.play-menu .play-tools button {
+    min-height: 48px;
+  }
+}
+
+/* the full-screen button: bottom left, clear of the logo and the cards */
+body.touch #lobby-fullscreen {
+  top: auto;
+  right: auto;
+  left: calc(var(--safe-l, 0px) + 12px);
+  bottom: calc(var(--safe-b, 0px) + 12px);
+}
+body.touch:has(#lobby-room:not([hidden])) #lobby-fullscreen {
+  display: none;
+}
+@media (max-height: 520px) {
+  /* short phones: trim the card's own spacing so the bigger buttons still fit without scrolling */
+  body.touch #lobby .title-card.play-menu {
+    padding-top: 10px;
+    padding-bottom: 6px;
+    row-gap: 4px;
+  }
+  body.touch .title-card.play-menu .play-tools {
+    padding-top: 6px;
+  }
+  body.touch .title-card.play-menu :is(#play-daily, #lobby-back) {
+    min-height: 40px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+}
+
+/* the iPhone full-screen tip on the title screen: a small note, bottom right */
+.ios-tip {
+  position: absolute;
+  right: calc(var(--safe-r, 14px) + 4px);
+  bottom: calc(var(--safe-b, 12px) + 4px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 300px;
+  margin: 0;
+  padding: 6px 6px 6px 12px;
+  border-radius: var(--pill);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.ios-tip[hidden] {
+  display: none;
+}
+.ios-tip .icon-svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.ios-tip button {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--oat);
+  color: var(--ink-soft);
+}
+
+/* the title screen's top corner: the language switch and the about page (also how search
+   engines find it) */
+.title-links {
+  position: absolute;
+  top: calc(var(--safe-t, 0px) + 14px);
+  right: calc(var(--safe-r, 0px) + 16px);
+  display: flex;
+  gap: 8px;
+}
+body.in-lobby .title-links {
+  display: none;
+}
+.title-lang,
+.title-lang:hover {
+  padding: 6px 14px;
+  border-radius: var(--pill);
+  background: var(--honey);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.85rem;
+  box-shadow: none;
+}
+.title-about {
+  padding: 6px 14px;
+  border-radius: var(--pill);
+  background: rgba(255, 250, 240, 0.86);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.title-about:hover {
+  background: var(--paper);
+}
+body.in-lobby .title-about {
+  display: none;
+}
+
+/* ====================================================================== Burmese (မြန်မာ) */
+/* Myanmar script needs its own font: Noto Sans Myanmar, loaded only for Burmese, so it reads the
+   same on every device (older phones' own Myanmar font is often the old Zawgyi encoding, which
+   garbles standard text). It comes after the game's fonts, so Latin letters and digits keep their
+   look; the stacked vowel marks above and below need taller lines. */
+html[lang="my"] {
+  --font-display: "Fredoka", "Noto Sans Myanmar", "Myanmar Text", "Myanmar Sangam MN", sans-serif;
+  --font-my: "Nunito", "Noto Sans Myanmar", "Myanmar Text", "Myanmar Sangam MN", sans-serif;
+}
+html[lang="my"] body,
+html[lang="my"] body :is(p, li, dd, dt, small, span, label, legend, input, select, option, a, em, strong, b, button, h1, h2, h3, h4) {
+  font-family: var(--font-my);
+}
+html[lang="my"] body :is(h1, h2, h3, .title-card button, #score, #time, .coach-step, .chip strong, .shift-badge) {
+  font-family: var(--font-display);
+}
+/* spacing between letters breaks up Burmese syllables */
+html[lang="my"] body * {
+  letter-spacing: 0 !important;
+}
+/* room for the marks above and below in running text */
+html[lang="my"] body :is(p, li, dd, .how-lead, .cc-job, .cc-list span, .cc-limit, #coach-text, .toast .text, .briefing-lines li, .briefing-role, .final-tip, .book-pg, .setting-row legend, #lobby-status, #level-blurb, .pace-note, .helper-note) {
+  line-height: 1.6;
+}
+/* the language switch's own word */
+[lang="my"] .title-lang,
+.title-lang:lang(my) {
+  font-family: "Noto Sans Myanmar", "Myanmar Text", "Myanmar Sangam MN", sans-serif;
+}
+
+/* the coach on a wide screen sits just below the role badge, so a long step never runs under it */
+@media (min-width: 1101px) {
+  body:not(.touch) #coach {
+    top: 148px;
+  }
+}
+
+/* Burmese, continued: the font's own line height is very tall, so set one everywhere (buttons stay
+   their size), keep short labels on one line (Burmese otherwise breaks between syllables), and on
+   short screens stack the play menu's tools, icon over word */
+html[lang="my"] body {
+  line-height: 1.5;
+}
+html[lang="my"] body :is(button, input, select, .chip, .segmented span, .pick span, .prompt, .cc-sense, .cc-badge) {
+  line-height: 1.35;
+}
+html[lang="my"] body :is(button, .segmented span, .prompt, .cc-badge, #hand-slot, .chip) {
+  overflow-wrap: normal;
+}
+html[lang="my"] .title-card.play-menu .play-tools button,
+html[lang="my"] .segmented span,
+html[lang="my"] .cc-badge {
+  white-space: nowrap;
+}
+html[lang="my"] .title-card.play-menu .play-tools button {
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.74rem;
+}
+/* touch picker tiles: a long Burmese name takes two short lines instead of being cut off */
+html[lang="my"] body.touch #picker .pick > span:last-child {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 0.6rem;
+  line-height: 1.25;
+  text-align: center;
+}
+
+/* --- Settings in groups: the list scrolls, Done stays in reach ------------------------------ */
+#settings[open] {
+  display: flex;
+  flex-direction: column;
+  width: min(500px, calc(100vw - 16px));
+  overflow: hidden;
+}
+#settings .setting-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0 -8px 14px;
+  padding: 0 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#settings #settings-done {
+  flex: none;
+}
+.setting-group {
+  margin: 10px 4px 0;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.setting-group:first-child {
+  margin-top: 0;
+}
+.setting-row {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.setting-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.setting-row .segmented:has(input:disabled) {
+  opacity: 0.5;
+}
+#settings .reset-progress {
+  justify-self: center;
+  margin-top: 8px;
+  padding: 8px 18px;
+  border-radius: var(--pill);
+  font-size: 0.88rem;
+}
+#settings .reset-progress[hidden] {
+  display: none;
+}
+/* phones: the name and its choices stay on one line */
+@media (max-width: 480px) {
+  #settings {
+    padding: 22px 16px 16px;
+  }
+  .setting-row {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .setting-row legend {
+    font-size: 0.9rem;
+  }
+  .setting-row .segmented span {
+    padding: 5px 10px;
+    font-size: 0.86rem;
+  }
+}
+
+/* --- How to play: Basics, Cooking, Controls ------------------------------------------------- */
+.help-panels .help-panel[data-tab="basics"] {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+}
+.help-panels .help-panel[data-tab="basics"][hidden] {
+  display: flex;
+  visibility: hidden;
+}
+#help .how-lead {
+  margin: 0;
+  font-weight: 700;
+}
+#help .how-row .icon-svg {
+  width: 56px;
+  height: 56px;
+}
+#help .help-tabs span {
+  padding: 7px 18px;
+}
+.help-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.help-actions button[hidden] {
+  display: none;
+}
+/* a key combo wider than the column's key slot: the name starts after it */
+#help .key-groups p.wide-key > span {
+  width: auto;
+  margin-right: 8px;
+}
+
+/* --- pause menu: what the chef switch is for, and the two quick toggles ---------------------- */
+#role-picker legend small {
+  display: block;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.pause-toggles {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.pause-toggles .toggle[hidden] {
+  display: none;
+}
+@media (max-height: 520px) {
+  #pause-menu > .pause-toggles {
+    grid-column: 2;
+  }
+}
+
+/* --- the room: your name, help and settings -------------------------------------------------- */
+.room-me {
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: 6px 0 0;
+}
+.room-me .room-name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.room-me .room-name input {
+  flex: 1;
+  min-width: 70px;
+  width: 0;
+}
+.room-me button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+/* --- Colours: High contrast. Order timers in blue and orange, striped when time is short ----- */
+.safe-colors .order .order-bar i {
+  background: #2f7fd1;
+}
+.safe-colors .order.urgent .order-bar i {
+  background: repeating-linear-gradient(135deg, #d9730d 0 6px, #7a3d00 6px 12px);
+}
+.safe-colors .order.restless .order-bar i {
+  animation: restless-safe 0.8s ease-in-out infinite;
+}
+@keyframes restless-safe {
+  50% { background: #d9730d; }
+}
+
+/* the play menu's highlighted button is the keyboard's place: without a keyboard nothing looks picked */
+body:not(.keyboard-nav) .title-card.play-menu button.on:not(:hover) {
+  background: transparent;
+}
+
+/* --- flow: Restart shift, the end screen's Shop, the tutorial's Skip -------------------------- */
+#restart-shift[hidden],
+#over-shop[hidden],
+#briefing .briefing-skip[hidden],
+#title-continue[hidden] {
+  display: none;
+}
+#briefing .briefing-skip,
+#briefing .briefing-skip:hover {
+  display: block;
+  margin: 10px auto 0;
+  padding: 4px 10px;
+  background: none;
+  box-shadow: none;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-decoration: underline;
+}
+
+/* ====================================================================== touch controls, tuned (ROADMAP 15) */
+/* upright phones: the "turn sideways" card is for the kitchen only; menus fit upright as they are */
+@media (orientation: portrait) {
+  body.touch:not(:has(#hud:not([hidden]))) #rotate-hint {
+    display: none;
+  }
+}
+
+/* iPhones zoom the page (and stay zoomed) for a text field under 16px */
+@media (pointer: coarse) {
+  input:not([type="radio"]):not([type="checkbox"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Menu and Full screen: 44px under the thumb, whatever the HUD is scaled to */
+body.touch #menu-button,
+body.touch #fullscreen-button {
+  width: 48px;
+  height: 48px;
+}
+@media (max-height: 520px) {
+  body.touch #menu-button,
+  body.touch #fullscreen-button {
+    width: 53px;
+    height: 53px;
+  }
+}
+@media (max-height: 380px) {
+  body.touch #menu-button,
+  body.touch #fullscreen-button {
+    width: 57px;
+    height: 57px;
+  }
+}
+
+/* words on the buttons: big enough to read at arm's length */
+.touch-use {
+  font-size: 0.78rem;
+}
+.touch-sat,
+body.touch #touch [data-label]::after {
+  font-size: 0.75rem;
+}
+#touch-use-hold {
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+#touch-use-hold[hidden] {
+  display: none;
+}
+
+/* the side buttons keep their place, faint until they'd do something: thumbs learn where they are */
+body.touch .touch-sat:not(.ready):not(.down) {
+  opacity: 0.3;
+  scale: 1;
+  pointer-events: none;
+}
+
+/* one button: holding Use chops, washes and mops. The Hold button is there for players who ask */
+.touch-chop {
+  --size: 70px;
+}
+body:not(.hold-button) .touch-chop {
+  display: none;
+}
+body:not(.hold-button) .touch-sniff {
+  --a: 162deg !important;
+  --r: 100px !important;
+}
+
+/* Button size: Large */
+body.big-buttons #touch-pad,
+body.big-buttons.touch #signals {
+  right: calc(max(14px, env(safe-area-inset-right)) + 60px);
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 60px);
+  scale: 1.2;
+}
+body.big-buttons #touch-joy-base {
+  scale: 1.15;
+}
+
+/* Walk with the right thumb: the stick and the buttons swap sides (each button is flipped back) */
+body.left-handed.touch #touch-joy {
+  left: auto;
+  right: 20px;
+}
+body.left-handed.touch #touch-joy-base:not(.on) {
+  left: calc(100% - var(--safe-r) - 58px);
+}
+body.left-handed #touch-joy-hint {
+  left: auto;
+  right: calc(var(--safe-r) + 62px);
+  transform: translateX(50%);
+}
+body.left-handed #touch-pad,
+body.left-handed.touch #signals {
+  right: auto;
+  left: calc(max(14px, env(safe-area-inset-left)) + 50px);
+  scale: -1 1;
+}
+body.left-handed #touch-pad > button,
+body.left-handed.touch #signals .round-btn {
+  scale: -1 1;
+}
+body.left-handed.big-buttons #touch-pad,
+body.left-handed.big-buttons.touch #signals {
+  left: calc(max(14px, env(safe-area-inset-left)) + 60px);
+  scale: -1.2 1.2;
+}
+
+/* the touch settings only show where there's a touch layout */
+body:not(.touch) .touch-setting {
+  display: none;
+}
+
+/* pause menu: the View button, and rows a thumb can hit on a sideways phone */
+.view-toggle {
+  padding: 6px 14px;
+  border-radius: var(--pill);
+  font-size: 0.86rem;
+}
+.pause-toggles {
+  align-items: center;
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  #pause-menu #role-picker label span,
+  #pause-menu #quit,
+  #pause-menu #restart-shift,
+  #pause-menu .view-toggle,
+  #pause-menu .toggle {
+    min-height: 40px;
+  }
+  #pause-menu #role-picker label span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #pause-menu .toggle input {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* the labelled side buttons stay on the arc (the label rule above would put them back in the flow,
+   which dropped Sniff onto Hold and Dash onto Use) */
+body.touch #touch-pad [data-label] {
+  position: absolute;
+}
+
+/* right-thumb walking: the dish checklist moves across too, clear of the buttons */
+body.left-handed.touch #checklist {
+  left: auto;
+  right: max(var(--edge), env(safe-area-inset-right));
+  top: calc(max(var(--edge), env(safe-area-inset-top)) + 136px);
+}
+
+/* a quick second tap is a second tap, never the browser zooming in on a menu */
+html {
+  touch-action: manipulation;
+}
+
+/* ====================================================================== phones: tap the ticket's Recipe chip, tap the checklist */
+/* an open ticket's Recipe chip opens the book at that dish */
+body.touch .order .book-hint {
+  min-height: 32px;
+  padding: 4px 12px 4px 8px;
+  font-size: 0.78rem;
+  color: var(--ink);
+  background: var(--honey);
+  cursor: pointer;
+}
+
+/* the checklist says what's next when tapped (Q on a keyboard) */
+body.touch #checklist {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+body.touch #checklist:active {
+  transform: scale(0.97);
+}
+
+/* an open ticket is taller: the checklist steps down, clear of its timer */
+body.touch #hud:has(#orders .order.open) #checklist {
+  top: calc(max(var(--edge), env(safe-area-inset-top)) + 100px);
+}

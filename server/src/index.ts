@@ -23,6 +23,8 @@ import {
   interact,
   makeRoomCode,
   paceById,
+  PINCHES,
+  type Pinch,
   TUTORIAL,
   twistById,
   validLook,
@@ -52,7 +54,7 @@ const STATIC_DIR = fileURLToPath(new URL("../../client/dist", import.meta.url));
 if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0 });
 
 // Text files are gzipped once and kept; the CDN caches whatever we mark as cacheable.
-const ZIPPABLE = new Set([".html", ".js", ".css", ".json", ".svg", ".gltf"]);
+const ZIPPABLE = new Set([".html", ".js", ".css", ".json", ".svg", ".gltf", ".txt", ".xml", ".webmanifest"]);
 const zipped = new Map<string, Buffer>();
 const EMPTY_ROOM_TTL_MS = 5 * 60 * 1000;
 
@@ -155,6 +157,11 @@ class Room {
 
 const rooms = new Map<string, Room>();
 
+// --- checking what clients send (they can send anything) ----------------------------
+const text = (v: unknown) => (typeof v === "string" ? v : "");
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const ACTIONS: readonly string[] = ["interact", "chopHint", "ping", "bell", "hand", "sniff"];
+
 function newRoom(open = false): Room {
   let code = makeRoomCode();
   while (rooms.has(code)) code = makeRoomCode();
@@ -184,9 +191,21 @@ function handle(ws: WebSocket) {
     } catch {
       return;
     }
+    if (!msg || typeof msg !== "object") return;
+    // a bad message from one client must never take down every kitchen on the server
+    try {
+      onMessage(msg);
+    } catch (error) {
+      console.error("Bad message", error);
+      Sentry.captureException(error);
+    }
+  });
+
+  function onMessage(msg: ClientMessage) {
 
     if (msg.t === "hello") {
-      const code = msg.room.trim().toUpperCase();
+      if (room) return; // already in a kitchen on this connection
+      const code = text(msg.room).trim().toUpperCase();
       // "*" is Quick Play; no code makes a private kitchen
       room = code === "*" ? quickRoom() : code ? (rooms.get(code) ?? null) : newRoom();
       if (!room) return fail(`There's no kitchen with the code ${code}.`);
@@ -198,7 +217,7 @@ function handle(ws: WebSocket) {
       } else {
         if (room.players.size >= MAX_PLAYERS) return fail("That kitchen already has three chefs.");
         if (room.game) return fail("That kitchen is already cooking. Ask them for a new round.");
-        player = { id: randomUUID().slice(0, 8), name: msg.name.trim().slice(0, 20) || "Chef", role: null, ws, look: null };
+        player = { id: randomUUID().slice(0, 8), name: text(msg.name).trim().slice(0, 20) || "Chef", role: null, ws, look: null };
         room.players.set(player.id, player);
       }
       player.look = validLook(msg.look);
@@ -215,8 +234,15 @@ function handle(ws: WebSocket) {
     const chef = g ? findChef(g, player.id) : undefined;
 
     switch (msg.t) {
+      case "name": {
+        const name = text(msg.name).trim().slice(0, 20);
+        if (room.game || !name || name === player.name) return;
+        player.name = name;
+        room.lobby();
+        return;
+      }
       case "role": {
-        if (room.game || !(msg.role in ROLES)) return;
+        if (room.game || !Object.hasOwn(ROLES, msg.role)) return;
         const taken = [...room.players.values()].some((p) => p !== player && p.role === msg.role && msg.role !== "full");
         if (taken) return fail(`Someone is already the ${ROLES[msg.role].name.toLowerCase()}.`);
         player.role = msg.role;
@@ -249,33 +275,45 @@ function handle(ws: WebSocket) {
         room.start();
         return;
       case "move":
-        if (!chef) return;
+        if (!chef || !finite(msg.x) || !finite(msg.z) || !finite(msg.facing)) return;
         chef.x = msg.x;
         chef.z = msg.z;
         chef.facing = msg.facing;
-        chef.pitch = Math.max(-1.2, Math.min(1.2, msg.pitch ?? 0));
-        chef.chopInput = msg.chop;
+        chef.pitch = finite(msg.pitch) ? Math.max(-1.2, Math.min(1.2, msg.pitch)) : 0;
+        chef.chopInput = msg.chop === true;
         if (msg.guidedBy === null) chef.guidedBy = null; // clients may let go, but only the server links hands
         return;
       case "act":
-        if (!g || !chef) return;
+        if (!g || !chef || !ACTIONS.includes(msg.action)) return;
         if ((msg.action === "ping" || msg.action === "bell") && !ROLES[chef.role].signals) return;
         if (typeof msg.pick === "number" && Number.isFinite(msg.pick)) chef.pick = Math.max(0, Math.min(15, Math.floor(msg.pick)));
         if (msg.action === "ping" && msg.aim && Number.isFinite(msg.aim.x) && Number.isFinite(msg.aim.z)) {
           ping(g, chef, { x: msg.aim.x, z: msg.aim.z });
           return;
         }
-        ({ interact, chopHint, ping, bell: ringBell, hand: toggleHand, sniff } as const)[msg.action](g, chef);
+        {
+          // how a mini-game went (a pour, the plating swirl, a knife beat, charm signs), checked
+          const quality: Pinch = PINCHES.includes(msg.pinch as Pinch) ? msg.pinch! : "good";
+          if (msg.action === "interact") return interact(g, chef, quality);
+          if (msg.action === "bell") return ringBell(g, chef, quality);
+        }
+        ({ chopHint, ping, hand: toggleHand, sniff } as const)[msg.action](g, chef);
         return;
       case "emote":
         if (g && chef && ROLES[chef.role].signals && EMOTES.includes(msg.word)) emote(g, chef, msg.word);
         return;
       case "rtc": {
-        const to = room.players.get(msg.to);
+        const to = room.players.get(text(msg.to));
         if (to) room.send(to, { t: "rtc", from: player.id, data: msg.data });
         return;
       }
     }
+  }
+
+  // a broken or oversized frame: drop this connection (unhandled, it would stop the server)
+  ws.on("error", (error) => {
+    console.error("Socket error", error.message);
+    ws.terminate();
   });
 
   ws.on("close", () => {
@@ -308,6 +346,11 @@ const TYPES: Record<string, string> = {
   ".json": "application/json",
   ".svg": "image/svg+xml",
   ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".ico": "image/x-icon",
+  ".txt": "text/plain; charset=utf-8",
+  ".xml": "application/xml; charset=utf-8",
+  ".webmanifest": "application/manifest+json",
 };
 
 async function serveStatic(req: IncomingMessage, res: ServerResponse) {
@@ -347,7 +390,9 @@ const server = createServer((req, res) => {
   void serveStatic(req, res);
 });
 
-const wss = new WebSocketServer({ server, path: "/ws" });
+// game messages are small; refuse anything big. Kitchen snapshots (~8 KB, 15 a second) are
+// compressed: about a quarter of the size, which matters on mobile data
+const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 64 * 1024, perMessageDeflate: { threshold: 1024 } });
 wss.on("connection", handle);
 
 server.listen(PORT, () => console.log(`Kitchen server listening on http://localhost:${PORT} (WebSocket at /ws)`));

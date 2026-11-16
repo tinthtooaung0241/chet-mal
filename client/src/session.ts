@@ -3,6 +3,7 @@
 import { helperOn } from "./helper";
 import { myLook } from "./looks";
 import { myPace } from "./pace";
+import { setSeatedRoom } from "./resume";
 import {
   SNAPSHOT_HZ,
   addBot,
@@ -26,6 +27,7 @@ import {
   type Emote,
   type Game,
   type GameEvent,
+  type Pinch,
   type Input,
   type LobbyPlayer,
   type Role,
@@ -40,8 +42,8 @@ export interface Session {
   readonly game: Game | null;
   readonly me: Chef | null;
   step(dt: number, input: Input): void;
-  /** @param aim for a ping: the spot under the crosshair */
-  act(action: Action, aim?: { x: number; z: number }): void;
+  /** @param aim for a ping: the spot under the crosshair; pinch: how a pour went at the meter */
+  act(action: Action, aim?: { x: number; z: number }, pinch?: Pinch): void;
   /** choose an item at a fridge or spice rack (index into its stock) */
   setPick(index: number): void;
   emote(word: Emote): void;
@@ -70,6 +72,17 @@ export class LocalSession implements Session {
     if (helper) addBot(this.game);
   }
 
+  /** A shift saved before a reload, carried on where it left off. */
+  static resume(game: Game, meId: string, helper: boolean): LocalSession {
+    const session = Object.create(LocalSession.prototype) as LocalSession;
+    Object.assign(session, { online: false, helper, game, me: game.chefs.find((c) => c.id === meId)! });
+    return session;
+  }
+
+  get hasHelper() {
+    return this.helper;
+  }
+
   setRole(role: Role) {
     this.me.role = role;
   }
@@ -79,9 +92,12 @@ export class LocalSession implements Session {
     update(this.game, this.me, dt, input);
   }
 
-  act(action: Action, aim?: { x: number; z: number }) {
+  act(action: Action, aim?: { x: number; z: number }, pinch?: Pinch) {
     if (action === "ping") return ping(this.game, this.me, aim);
-    ({ interact, chopHint, ping, bell: ringBell, hand: toggleHand, sniff } as const)[action](this.game, this.me);
+    // the mini-games' quality rides along with these three
+    if (action === "interact") return interact(this.game, this.me, pinch);
+    if (action === "bell") return ringBell(this.game, this.me, pinch);
+    ({ chopHint, ping, hand: toggleHand, sniff } as const)[action](this.game, this.me);
   }
 
   setPick(index: number) {
@@ -150,12 +166,30 @@ export class NetSession implements Session {
   /** failed reconnects in a row, and whether we've ever been let in */
   private retries = 0;
   private reconnecting = false;
+  /** the next reconnect try, while one is waiting */
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  /** we closed it ourselves (leaving): never come back */
+  private closed = false;
 
   constructor(
-    private readonly name: string,
+    private name: string,
     private room: string,
   ) {
     this.ws = this.open();
+    // a phone that slept or switched apps (or lost signal) tries again as soon as it's back,
+    // however many tries ran out while it was away
+    const revive = () => {
+      if (document.visibilityState !== "visible" || !this.lobby || this.closed) return;
+      if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) return;
+      if (this.retryTimer) clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+      this.retries = 1;
+      this.reconnecting = true;
+      this.onReconnecting(1);
+      this.ws = this.open();
+    };
+    document.addEventListener("visibilitychange", revive);
+    window.addEventListener("online", revive);
   }
 
   /** Connect (again): the server gives a returning chef their seat back, by id. */
@@ -178,14 +212,17 @@ export class NetSession implements Session {
 
   /** Lost the connection: once we've been in a kitchen, try again a few times, waiting longer each time. */
   private dropped() {
-    if (!this.lobby || this.retries >= RECONNECT_TRIES) {
+    if (!this.lobby || this.closed || this.retries >= RECONNECT_TRIES) {
       this.onClose();
       return;
     }
     this.retries += 1;
     this.reconnecting = true;
     this.onReconnecting(this.retries);
-    setTimeout(() => (this.ws = this.open()), Math.min(8000, 1000 * 2 ** (this.retries - 1)));
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      this.ws = this.open();
+    }, Math.min(8000, 1000 * 2 ** (this.retries - 1)));
   }
 
   get me(): Chef | null {
@@ -214,6 +251,7 @@ export class NetSession implements Session {
         } catch {
           // ignore
         }
+        setSeatedRoom(msg.room);
         this.lobby = { you: msg.you, room: msg.room, host: "", players: [], playing: false, level: 1, twist: null };
         return;
       case "lobby":
@@ -252,6 +290,11 @@ export class NetSession implements Session {
     }
   }
 
+  rename(name: string) {
+    this.name = name;
+    this.send({ t: "name", name });
+  }
+
   chooseRole(role: Role) {
     this.send({ t: "role", role });
   }
@@ -280,8 +323,8 @@ export class NetSession implements Session {
     }
   }
 
-  act(action: Action, aim?: { x: number; z: number }) {
-    this.send({ t: "act", action, pick: this.pick, aim });
+  act(action: Action, aim?: { x: number; z: number }, pinch?: Pinch) {
+    this.send({ t: "act", action, pick: this.pick, aim, pinch });
   }
 
   setPick(index: number) {
@@ -302,7 +345,8 @@ export class NetSession implements Session {
   }
 
   close() {
-    this.retries = RECONNECT_TRIES; // on purpose: don't come back
+    this.closed = true; // on purpose: don't come back
+    if (this.retryTimer) clearTimeout(this.retryTimer);
     this.ws.close();
   }
 }

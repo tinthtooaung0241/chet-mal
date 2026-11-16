@@ -1,6 +1,8 @@
 // Icons and contextual prompts for the HUD: what's in your hands, and what your keys would do
 // right now ("[Space] Add to pot 2/3", "[F] Chop"). Read-only: it never changes the game.
 import {
+  boosterWanted,
+  seatsKids,
   FOOD_RULES,
   MAX_PLATE_ITEMS,
   SPICE_NAMES,
@@ -23,6 +25,7 @@ import {
   ROLES,
   spillUnder,
 } from "@kitchen/shared";
+import { pref } from "../prefs";
 import { glyph, img, renderedIcon } from "../ui/icons";
 
 const STATE_SUFFIXES: Record<FoodState, string[]> = {
@@ -126,10 +129,12 @@ function spiceHints(g: Game, me: Chef, st: Station | null): Prompt[] {
   const spice = me.spice!.spice;
   const name = SPICE_NAMES[spice];
   const use = (text: string): Prompt => ({ key: "Space", text });
+  // seasoning with the meter on: hold to pour, let go in the band
+  const pourIt = (text: string): Prompt => ({ key: "Space", text: pref("meter") === "on" ? `Hold: ${text[0].toLowerCase()}${text.slice(1)}` : text });
   if (!st) {
     const mate = chefInFront(g, me);
     const who = mate?.name.split(" (")[0];
-    if (mate?.held) return [use(`Season ${who}'s ${mate.held.type === "food" ? mate.held.kind.toLowerCase() : mate.held.type}: ${name}`)];
+    if (mate?.held) return [pourIt(`Season ${who}'s ${mate.held.type === "food" ? mate.held.kind.toLowerCase() : mate.held.type}: ${name}`)];
     if (mate && !mate.spice) return [use(`Hand the ${name} to ${who}`)];
     return [{ text: `Take the ${name} to some food or a dish` }];
   }
@@ -144,11 +149,11 @@ function spiceHints(g: Game, me: Chef, st: Station | null): Prompt[] {
     if (!ROLES[me.role].cooks) return [{ text: "Cooks season the ingredients" }];
     if (item.state === "burnt") return [{ text: "Too late, it's burnt" }];
     if ((item.season ?? []).some((x) => x.spice === spice)) return [{ text: `The ${kind} already has ${name}` }];
-    return [use(`${item.state === "cooked" ? "Season" : "Season the raw"} ${kind}: ${name}`)];
+    return [pourIt(`Season the ${item.state} ${kind}: ${name}`)];
   }
   if (item.type === "plate" ? !item.contents.length : !item.soup) return [{ text: "Put the food in first" }];
   if (item.season.includes(spice)) return [{ text: `Already has ${name}` }];
-  return [use(`Add ${name}`)];
+  return [pourIt(`Add ${name}`)];
 }
 
 /** What Space (use) and F (chop) would do for this chef right now. */
@@ -193,10 +198,17 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
     case "serve":
       if (held?.type === "plate" && held.contents.length) return [use("Serve!")];
       if (held?.type === "bowl" && held.soup) return [use("Serve!")];
+      if (!held && boosterWanted(g)) return [seatsKids(g, me) ? use("Put out a booster seat") : { text: "The head chef hands out booster seats" }];
       if (ROLES[me.role].charms && g.orders.length) {
         return [{ text: held?.type === "food" ? "Plate it first" : "Bring a finished dish" }, g.charmWait > 0 ? { text: `Wave again in ${Math.ceil(g.charmWait)}s` } : { key: "B", text: "Wave: tables wait longer" }];
       }
       return [{ text: held?.type === "food" ? "Plate it first" : "Bring a finished dish" }];
+    case "returns": {
+      const pile = st.returns ? st.returns.plates + st.returns.bowls : 0;
+      if (held && held.type !== "food" && held.dirty) return [use("Put it back on the pile")];
+      if (held) return [{ text: "For dirty dishes" }];
+      return pile ? [use(`Take a dirty dish (${pile} here)`)] : [{ text: "No dirty dishes yet" }];
+    }
     case "sink": {
       if (held && held.type !== "food" && held.dirty) return [use(`Put the dirty ${held.type} in the sink`)];
       const dirty = g.dishes ? g.dishes.dirtyPlates + g.dishes.dirtyBowls : 0;
@@ -257,6 +269,7 @@ export function actionHints(g: Game, me: Chef): Prompt[] {
     if (plate && (held.type === "food" || onTop.type === "food")) {
       prompts.push(plate.dirty ? { text: "That plate's dirty" } : plate.contents.length < MAX_PLATE_ITEMS ? use("Add to the plate") : { text: "Plate is full" });
     }
+    else if (ROLES[me.role].tray && !me.tray && held.type !== "food" && onTop.type !== "food") prompts.push(use("Put on your tray"));
     else prompts.push({ text: `${stationName(st)} is taken` });
   }
   return prompts;

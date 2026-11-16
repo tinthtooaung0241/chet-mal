@@ -1,9 +1,9 @@
-// The start screen: practice solo, or create/join a kitchen and pick a chef.
-import { LAYOUTS, PACES, ROLES, VENUES, levelByNumber, levelsAt, paceById, type Role, type TwistId, type VenueId } from "@kitchen/shared";
+// The start screen: play solo, or create/join a kitchen and pick a chef.
+import { LAYOUTS, PACES, VENUES, levelByNumber, levelsAt, paceById, type Role, type TwistId, type VenueId } from "@kitchen/shared";
 import { loadBusiness, venueLock } from "./business";
 import { bestStars, starText } from "./progress";
 import type { LobbyState } from "./session";
-import { dailyStatus, todaysSpecial } from "./daily";
+import { dailyStatus, nextDailyBonus, todaysSpecial } from "./daily";
 import { helperOn, setHelper } from "./helper";
 import { myPace, setPace } from "./pace";
 import { readText, writeText } from "./storage";
@@ -20,6 +20,8 @@ export interface LobbyHandlers {
   create(name: string): void;
   join(name: string, code: string): void;
   chooseRole(role: Role): void;
+  /** a new name typed in the room */
+  rename(name: string): void;
   chooseLevel(level: number, twist: TwistId | null): void;
   start(): void;
   /** a warm-up round in the tutorial kitchen for the whole crew */
@@ -27,6 +29,34 @@ export interface LobbyHandlers {
 }
 
 export class Lobby {
+  /** the chef this player picked (its details stay open under the cards) */
+  private myRole: Role | null = null;
+  private shownChef: Role | null | undefined;
+  /** shown before you pick: the first chef still free */
+  private preview: Role | null = null;
+
+  /**
+   * Show a chef's job, strengths and limit under the cards. All three sit stacked in the panel,
+   * one shown, so it's always as tall as the longest and nothing below it moves.
+   */
+  private showChef(role: Role | null) {
+    if (role === this.shownChef) return;
+    this.shownChef = role;
+    const panel = $("chef-detail");
+    if (!panel.querySelector(".cd-pane[data-role]")) {
+      for (const card of this.dialog.querySelectorAll<HTMLElement>("#lobby-roles [data-role]")) {
+        const pane = document.createElement("div");
+        pane.className = "cd-pane";
+        pane.dataset.role = card.dataset.role;
+        pane.append(...["strong", ".cc-job", ".cc-list", ".cc-limit"].map((sel) => card.querySelector(sel)!.cloneNode(true)));
+        panel.append(pane);
+      }
+    }
+    panel.className = role ?? "";
+    for (const pane of panel.querySelectorAll<HTMLElement>(".cd-pane")) pane.classList.toggle("on", (pane.dataset.role ?? null) === role);
+  }
+
+
   private readonly dialog = $<HTMLDialogElement>("lobby");
   private readonly nameInput = $<HTMLInputElement>("player-name");
   private readonly codeInput = $<HTMLInputElement>("room-code");
@@ -49,6 +79,8 @@ export class Lobby {
 
     this.onLevel = (level, twist) => handlers.chooseLevel(level, twist);
     this.refreshLevels();
+    // filled in from the start, so it keeps its space (and the card its height) while hidden
+    this.renderDailyShift();
     this.levelSelect.addEventListener("change", () => {
       this.showBlurb();
       this.renderMap();
@@ -97,6 +129,12 @@ export class Lobby {
       if (this.roomPane.hidden) this.hide();
     });
     $("lobby-back").addEventListener("click", () => this.hide());
+    // your name, on the room screen too: a friend who came by invite link never saw the shift dialog
+    const roomName = $<HTMLInputElement>("room-name");
+    roomName.addEventListener("change", () => {
+      this.nameInput.value = roomName.value;
+      handlers.rename(this.name());
+    });
     $("play-solo").addEventListener("click", () => handlers.solo(this.name()));
     $("create-room").addEventListener("click", () => handlers.create(this.name()));
     $("quick-play").addEventListener("click", () => handlers.join(this.name(), "*"));
@@ -107,7 +145,13 @@ export class Lobby {
       handlers.join(this.name(), code);
     });
     for (const button of this.dialog.querySelectorAll<HTMLButtonElement>("#lobby-roles button")) {
-      button.addEventListener("click", () => handlers.chooseRole(button.dataset.role as Role));
+      button.addEventListener("click", () => {
+        handlers.chooseRole(button.dataset.role as Role);
+        this.showChef(button.dataset.role as Role);
+      });
+      // a peek while hovering; back to your own pick after
+      button.addEventListener("pointerenter", () => this.showChef(button.dataset.role as Role));
+      button.addEventListener("pointerleave", () => this.showChef(this.myRole ?? this.preview));
     }
     this.startButton.addEventListener("click", () => handlers.start());
     $("warm-up").addEventListener("click", () => handlers.warmup());
@@ -144,8 +188,43 @@ export class Lobby {
     this.daily = on;
     for (const radio of this.shiftKinds) radio.checked = radio.value === (on ? "daily" : "normal");
     $("normal-shift").hidden = on;
+    $("daily-shift").hidden = !on;
+    this.renderDailyShift();
     this.showBlurb();
     this.showSummary();
+  }
+
+  /** Your shift, with the daily special chosen: today's twist, the shift it's on, the reward and your streak. */
+  private renderDailyShift() {
+    const { level, twist } = todaysSpecial();
+    const shift = levelByNumber(level);
+    const status = dailyStatus();
+    const bonus = nextDailyBonus();
+    const row = (icon: string, text: string) => {
+      const li = document.createElement("li");
+      li.append(glyph(icon), text);
+      return li;
+    };
+    const head = document.createElement("div");
+    head.className = "daily-head";
+    const badge = document.createElement("span");
+    badge.className = "daily-badge";
+    badge.append(glyph(twist.icon));
+    const title = document.createElement("strong");
+    title.textContent = twist.name;
+    const blurb = document.createElement("small");
+    blurb.textContent = twist.blurb;
+    const words = document.createElement("span");
+    words.append(title, blurb);
+    head.append(badge, words);
+    const list = document.createElement("ul");
+    list.append(
+      row("flag", `Today's shift: ${shift.name} (${VENUES.find((v) => v.id === shift.venue)?.name ?? ""})`),
+      row("coin", bonus ? `Finish with a star: +${bonus} coins` : `Done today: best ${status.best} points`),
+      row("flame", status.streak ? `${status.streak}-day streak` : "Start a streak: play it each day"),
+      row("chef", "Same twist for all your friends today"),
+    );
+    $("daily-shift").replaceChildren(head, list);
   }
 
   /** The play menu's daily special card: today's twist and shift, and your streak. */
@@ -271,6 +350,7 @@ export class Lobby {
   }
 
   show() {
+    $("shift-kind").hidden = true;
     document.body.classList.add("in-lobby");
     this.showSummary();
     this.renderDaily();
@@ -292,6 +372,10 @@ export class Lobby {
     this.startPane.hidden = true;
     this.roomPane.hidden = false;
     $("room-code-display").textContent = state.room;
+    const roomName = $<HTMLInputElement>("room-name");
+    if (document.activeElement !== roomName) roomName.value = this.nameInput.value.trim();
+    // the daily special switch is the host's way to pick it; solo has its own button on the menu
+    $("shift-kind").hidden = false;
     history.replaceState(null, "", `?room=${state.room}`);
 
     const mine = state.players.find((p) => p.id === state.you);
@@ -300,18 +384,23 @@ export class Lobby {
       const holder = state.players.find((p) => p.role === role);
       button.setAttribute("aria-pressed", String(mine?.role === role));
       button.disabled = !!holder && holder.id !== state.you;
+      // a corner badge: yours, or who took it
+      const badge = button.querySelector<HTMLElement>(".cc-badge")!;
+      badge.hidden = !holder;
+      badge.textContent = !holder
+        ? ""
+        : [holder.id === state.you ? "You" : holder.name, holder.id === state.host ? "Host" : "", holder.connected ? "" : "away"].filter(Boolean).join(" · ");
+      badge.classList.toggle("away", !!holder && !holder.connected);
+      button.classList.toggle("taken", !!holder && holder.id !== state.you);
     }
+    this.myRole = mine?.role ?? null;
+    // nothing picked yet: show the first chef still free, so the panel is never empty
+    const free = [...this.dialog.querySelectorAll<HTMLButtonElement>("#lobby-roles button")].find((b) => !b.disabled);
+    this.preview = (free?.dataset.role as Role | undefined) ?? null;
+    this.showChef(this.myRole ?? this.preview);
 
-    const list = $("lobby-players");
-    list.replaceChildren(
-      ...state.players.map((p) => {
-        const li = document.createElement("li");
-        const role = p.role ? ROLES[p.role].name : "choosing…";
-        const tags = [p.id === state.host ? "host" : "", p.id === state.you ? "you" : "", p.connected ? "" : "away"].filter(Boolean);
-        li.textContent = `${p.name} — ${role}${tags.length ? ` (${tags.join(", ")})` : ""}`;
-        return li;
-      }),
-    );
+    // how many have joined, next to the kitchen code
+    $("room-count").textContent = `${state.players.length} / 3 chefs`;
 
     const isHost = state.host === state.you;
     // the host picks the level (or the daily special); everyone sees it
@@ -334,7 +423,12 @@ export class Lobby {
         ? state.players.length < 3
           ? "You can start now, or wait for all three chefs."
           : "Everyone's ready!"
-        : "Waiting for everyone to pick a chef…"
-      : "Waiting for the host to start…";
+        : `Waiting for ${listNames(state.players.filter((p) => !p.role).map((p) => (p.id === state.you ? "you" : p.name)))} to pick a chef…`
+      : `Waiting for ${state.players.find((p) => p.id === state.host)?.name ?? "the host"} (host) to start…`;
   }
+}
+
+/** "Sam", "Sam and Alex", "Sam, Alex and Mia" */
+function listNames(names: string[]): string {
+  return names.length < 2 ? (names[0] ?? "everyone") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }

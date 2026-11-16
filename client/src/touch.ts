@@ -44,12 +44,56 @@ export function toggleFullscreen() {
 /** A tiny buzz under the thumb, on phones that have one. */
 const buzz = (ms: number) => navigator.vibrate?.(ms);
 
+// --- keeping the screen on: a head chef watching the pass doesn't touch it for a while
+type Lock = { release(): Promise<void> };
+let lock: Lock | null = null;
+let awake = false;
+async function takeLock() {
+  const wl = (navigator as Navigator & { wakeLock?: { request(type: "screen"): Promise<Lock> } }).wakeLock;
+  if (!awake || lock || !wl || document.visibilityState !== "visible") return;
+  try {
+    lock = await wl.request("screen");
+  } catch {
+    // low battery, or the browser said no: the phone's own timeout stands
+  }
+}
+document.addEventListener("visibilitychange", () => {
+  // the phone drops the lock whenever the page is hidden: take it again on the way back
+  lock = null;
+  void takeLock();
+});
+
+/** Keep the screen from dimming and locking (in a kitchen), or let it again. */
+export function keepAwake(on: boolean) {
+  if (on === awake) return;
+  awake = on;
+  if (on) void takeLock();
+  else {
+    void lock?.release().catch(() => {});
+    lock = null;
+  }
+}
+
+/** A hold shorter than this on Use is a tap (when Use also chops). */
+const TAP_MS = 220;
+
+/** "Hold to chop", "Hold to wash (3 dirty)"... as one word for a button. */
+function holdWord(text: string): string {
+  if (/chop/i.test(text)) return "Chop";
+  if (/wash/i.test(text)) return "Wash";
+  if (/mop/i.test(text)) return "Mop";
+  if (/fire/i.test(text)) return "Put out";
+  return "Hold";
+}
+
 export interface TouchHandlers {
   /** a button went down / up: the keyboard code it stands for */
   press(code: string): void;
   release(code: string): void;
   /** a drag on the scene, in pixels (first-person look) */
   look(dx: number, dy: number): void;
+  /** two fingers on the scene moved apart (above 1) or together (below 1) since the last move */
+  pinch(scale: number): void;
 }
 
 const JOY_RADIUS = 50; // px the knob can travel from the centre
@@ -68,7 +112,16 @@ export class TouchControls {
   readonly move = { x: 0, y: 0 };
   private readonly root = $("touch");
   private readonly useLabel = $("touch-use-label");
+  private readonly useHold = $("touch-use-hold");
+  private readonly holdLabel = $("touch-hold-label");
   private lastHints = "";
+  /** what holding would do right now ("Hold to chop"), and whether a tap of Use does something too */
+  private holdHint = "";
+  private useHint = false;
+  /** Use does both jobs (tap to use, hold to chop) unless the player asked for a Hold button */
+  private get oneButton() {
+    return !document.body.classList.contains("hold-button");
+  }
   /** whether the touch layout is showing (else the keyboard-and-mouse one) */
   active = false;
   /** called when the layout switches between touch and keyboard-and-mouse */
@@ -123,9 +176,11 @@ export class TouchControls {
       e.preventDefault();
       joyId = e.pointerId;
       capture(zone, e.pointerId);
-      // the stick is fixed to the screen, so it lands right under the thumb whatever the zone's box
-      cx = e.clientX;
-      cy = e.clientY;
+      // the stick is fixed to the screen, so it lands right under the thumb whatever the zone's box;
+      // near an edge it stays a stick's reach inside, so there's room to push every way
+      const reach = JOY_RADIUS + 12;
+      cx = Math.min(Math.max(e.clientX, reach), innerWidth - reach);
+      cy = Math.min(Math.max(e.clientY, reach), innerHeight - reach);
       base.style.position = "fixed";
       base.style.left = `${cx}px`;
       base.style.top = `${cy}px`;
@@ -150,19 +205,41 @@ export class TouchControls {
     for (const button of document.querySelectorAll<HTMLButtonElement>("#touch [data-key], .touch-only[data-key]")) {
       const code = button.dataset.key!;
       let down = false;
+      /** the key this press turned into: Use becomes the hold key when held at something to chop */
+      let sent: string | null = null;
+      let wait: ReturnType<typeof setTimeout> | null = null;
       button.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         capture(button, e.pointerId);
         down = true;
         button.classList.add("down");
         buzz(8);
+        if (code === "Space" && this.oneButton && this.holdHint) {
+          const hold = () => {
+            wait = null;
+            sent = "KeyF";
+            handlers.press("KeyF");
+          };
+          // nothing to pick up here: holding starts at once; else a short wait tells tap from hold
+          if (this.useHint) wait = setTimeout(hold, TAP_MS);
+          else hold();
+          return;
+        }
+        sent = code;
         handlers.press(code);
       });
       const up = () => {
         if (!down || !button.classList.contains("down")) return;
         down = false;
         button.classList.remove("down");
-        handlers.release(code);
+        if (wait) {
+          // let go before the hold began: a plain tap of Use
+          clearTimeout(wait);
+          wait = null;
+          handlers.press(code);
+          handlers.release(code);
+        } else if (sent) handlers.release(sent);
+        sent = null;
       };
       button.addEventListener("pointerup", up);
       button.addEventListener("pointercancel", up);
@@ -174,21 +251,44 @@ export class TouchControls {
     let lookId: number | null = null;
     let lx = 0;
     let ly = 0;
+    // a second finger on the scene: pinch (zooms the view from above)
+    const fingers = new Map<number, { x: number; y: number }>();
+    const spread = () => {
+      const [a, b] = [...fingers.values()];
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    };
     canvas.addEventListener("pointerdown", (e) => {
       if (e.pointerType !== "touch") return;
-      lookId = e.pointerId;
       // keep this finger even when it slides over the tickets or the top bar (looking up)
       capture(canvas, e.pointerId);
+      fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (fingers.size > 1) return;
+      lookId = e.pointerId;
       lx = e.clientX;
       ly = e.clientY;
     });
     canvas.addEventListener("pointermove", (e) => {
+      const finger = fingers.get(e.pointerId);
+      if (finger && fingers.size === 2) {
+        const before = spread();
+        finger.x = e.clientX;
+        finger.y = e.clientY;
+        const after = spread();
+        if (before > 10 && after > 10) handlers.pinch(after / before);
+        // the first finger doesn't also turn the camera, and doesn't jump when the pinch ends
+        if (e.pointerId === lookId) {
+          lx = e.clientX;
+          ly = e.clientY;
+        }
+        return;
+      }
       if (e.pointerId !== lookId) return;
       handlers.look(e.clientX - lx, e.clientY - ly);
       lx = e.clientX;
       ly = e.clientY;
     });
     const endLook = (e: PointerEvent) => {
+      fingers.delete(e.pointerId);
       if (e.pointerId === lookId) lookId = null;
     };
     canvas.addEventListener("pointerup", endLook);
@@ -200,18 +300,28 @@ export class TouchControls {
     const letGo = () => {
       joyId = null;
       lookId = null;
+      fingers.clear();
       base.classList.remove("on");
       home();
       setKnob(0, 0);
       for (const b of this.root.querySelectorAll<HTMLElement>(".down")) {
         b.classList.remove("down");
         handlers.release(b.dataset.key!);
+        // Use may have been standing in for the hold key
+        if (b.dataset.key === "Space") handlers.release("KeyF");
       }
     };
     document.addEventListener("fullscreenchange", letGo);
     document.addEventListener("visibilitychange", letGo);
     window.addEventListener("orientationchange", letGo);
     window.addEventListener("blur", letGo);
+  }
+
+  /** A setting that changes the buttons was switched: draw their words again. */
+  refresh() {
+    const hints = this.lastHints;
+    this.lastHints = "\0";
+    if (!hints) this.setHints([]);
   }
 
   setActive(on: boolean) {
@@ -236,6 +346,17 @@ export class TouchControls {
       const k = b.dataset.key!.replace(/^Key/, "");
       b.classList.toggle("ready", ready.has(k));
     }
-    this.useLabel.textContent = hints.find((h) => h.key === "Space")?.text ?? "Use";
+    // the button has room for a few words: seasoning with the meter is just "Hold to season"
+    const use = hints.find((h) => h.key === "Space")?.text;
+    this.holdHint = hints.find((h) => h.key === "F")?.text ?? "";
+    this.useHint = !!use;
+    const word = this.holdHint ? holdWord(this.holdHint) : "";
+    this.holdLabel.textContent = word || "Hold";
+    // one button: Use says what a tap does, and under it what holding does
+    const both = this.oneButton && !!word;
+    this.root.querySelector(".touch-use")!.classList.toggle("ready", !!use || both);
+    this.useLabel.textContent = use ? (use.startsWith("Hold:") ? "Hold to season" : use) : both ? `Hold: ${word}` : "Use";
+    this.useHold.textContent = both && use ? `Hold: ${word}` : "";
+    this.useHold.hidden = !(both && use);
   }
 }
