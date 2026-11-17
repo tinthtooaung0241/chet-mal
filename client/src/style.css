@@ -46,6 +46,41 @@
   --lift: 0 3px 0 var(--paper-shadow), 0 6px 14px rgba(45, 28, 12, 0.28);
   --lift-sm: 0 2px 0 var(--paper-shadow), 0 4px 10px rgba(45, 28, 12, 0.24);
   --gap: 10px;
+
+  /* type scale: every font size is one of these */
+  --t-micro: 0.62rem;
+  --t-caption: 0.7rem;
+  --t-small: 0.8rem;
+  --t-body: 0.86rem;
+  --t-label: 0.95rem;
+  --t-title: 1.05rem;
+  --t-head: 1.25rem;
+  --t-big: 1.4rem;
+  --t-huge: 1.6rem;
+  --lh-tight: 1.1;
+  --lh-label: 1.25;
+  --lh-text: 1.4;
+
+  /* spacing scale: every gap, padding and margin from 2 to 32px is one of these */
+  --s-1: 2px;
+  --s-2: 4px;
+  --s-3: 6px;
+  --s-4: 8px;
+  --s-5: 10px;
+  --s-6: 12px;
+  --s-7: 14px;
+  --s-8: 16px;
+  --s-9: 20px;
+  --s-10: 24px;
+  --s-11: 32px;
+
+  /* layout rhythm inside a card: what sits how far from what */
+  --stack: var(--s-8); /* between the groups of a card: title, button group, footer */
+  --group: var(--s-4); /* between the controls of one group: tiles, chips, a button pair */
+  --group-lg: var(--s-6); /* the same, for a grid of large buttons (the play menu) */
+  --inline: var(--s-4); /* between an icon and its label */
+  --control: 44px; /* a button's height */
+  --control-sm: 40px; /* a chip's height */
   --edge: 12px; /* distance of the HUD from the screen edge */
 
   --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
@@ -93,7 +128,7 @@ h3,
 }
 
 .small {
-  font-size: 0.85rem;
+  font-size: var(--t-body);
 }
 
 a {
@@ -103,8 +138,8 @@ a {
 kbd {
   display: inline-block;
   min-width: 1.6em;
-  padding: 1px 6px;
-  margin: 0 2px;
+  padding: 1px var(--s-3);
+  margin: 0 var(--s-1);
   border-radius: 6px;
   font-family: var(--font-display);
   font-size: 0.8em;
@@ -169,7 +204,7 @@ button,
   background: var(--paper);
   border: none;
   border-radius: var(--r-md);
-  padding: 8px 16px;
+  padding: var(--s-4) var(--s-8);
   box-shadow: var(--lift);
   transition:
     transform 0.08s,
@@ -204,8 +239,8 @@ button.danger {
 }
 
 button.big {
-  font-size: 1.05rem;
-  padding: 11px 22px;
+  font-size: var(--t-title);
+  padding: var(--s-5) var(--s-9);
 }
 
 button:disabled {
@@ -236,7 +271,7 @@ select:focus-visible {
   position: absolute;
   right: -5px;
   bottom: -5px;
-  font-size: 0.62rem;
+  font-size: var(--t-micro);
 }
 
 /* ====================================================================== left column: tickets + feed */
@@ -248,13 +283,13 @@ select:focus-visible {
   right: 476px; /* clear of the scoreboard */
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--s-7);
 }
 
 #orders {
   list-style: none;
   margin: 0;
-  padding: 6px 0 0;
+  padding: var(--s-3) 0 0;
   display: flex;
   flex-wrap: wrap;
   gap: var(--gap);
@@ -264,7 +299,7 @@ select:focus-visible {
 .order {
   position: relative;
   width: 150px;
-  padding: 10px 10px 9px;
+  padding: var(--s-5) var(--s-5) var(--s-4);
   color: var(--ink);
   background: var(--paper);
   border-radius: 6px 6px var(--r-md) var(--r-md);
@@ -322,7 +357,7 @@ select:focus-visible {
 
 .order .tag {
   display: block;
-  font-size: 0.66rem;
+  font-size: var(--t-micro);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -335,10 +370,10 @@ select:focus-visible {
 
 .order strong {
   display: block;
-  font-size: 1.08rem;
+  font-size: var(--t-title);
   font-weight: 600;
-  line-height: 1.1;
-  margin: 1px 0 2px;
+  line-height: var(--lh-tight);
+  margin: 1px 0 var(--s-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -348,7 +383,7 @@ select:focus-visible {
   position: relative;
   width: 54px;
   height: 54px;
-  margin: 0 auto 4px;
+  margin: 0 auto var(--s-2);
   display: grid;
   place-items: center;
 }
@@ -362,15 +397,15 @@ select:focus-visible {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 3px;
-  margin-bottom: 6px;
+  gap: var(--s-1);
+  margin-bottom: var(--s-3);
 }
 
 .order .ing {
   display: inline-flex;
   align-items: center;
   gap: 0;
-  padding: 1px 5px 1px 1px;
+  padding: 1px var(--s-2) 1px 1px;
   border-radius: var(--pill);
   background: var(--oat);
 }
@@ -445,16 +480,16 @@ select:focus-visible {
   width: min(320px, 42vw);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--s-3);
 }
 
 .toast {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-4);
   border-radius: var(--r-md);
-  font-size: 0.82rem;
-  line-height: 1.2;
+  font-size: var(--t-small);
+  line-height: var(--lh-label);
   animation: toast-in 0.3s cubic-bezier(0.2, 1.3, 0.4, 1) both;
 }
 
@@ -522,10 +557,6 @@ select:focus-visible {
   align-items: center;
 }
 
-#score-chip {
-  box-sizing: border-box;
-}
-
 .chip {
   position: relative;
   border-radius: var(--r-md);
@@ -533,9 +564,9 @@ select:focus-visible {
 }
 
 .chip strong {
-  font-size: 1.6rem;
+  font-size: var(--t-huge);
   font-weight: 600;
-  line-height: 1.05;
+  line-height: var(--lh-tight);
 }
 
 /* level: a small pill, read once per shift */
@@ -543,7 +574,7 @@ select:focus-visible {
   align-self: flex-start;
   height: auto !important;
   grid-template-columns: auto auto;
-  column-gap: 6px;
+  column-gap: var(--s-3);
   text-align: left;
   justify-items: start;
 }
@@ -558,15 +589,16 @@ select:focus-visible {
 }
 
 #level-chip strong {
-  font-size: 0.95rem;
+  font-size: var(--t-label);
   color: var(--ink);
 }
 
 /* score: a coin, the points and a ribbon of stars */
 #score-chip {
+  box-sizing: border-box;
   align-content: center;
   grid-template-columns: auto 1fr;
-  column-gap: 8px;
+  column-gap: var(--s-4);
 }
 
 .coin .icon-svg {
@@ -582,7 +614,7 @@ select:focus-visible {
 .score-line {
   display: inline-flex;
   align-items: baseline;
-  gap: 4px;
+  gap: var(--s-2);
 }
 
 /* the points needed for the next star */
@@ -646,7 +678,7 @@ select:focus-visible {
   left: 50%;
   top: 40%;
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: var(--t-head);
   color: var(--mint-ink);
   text-shadow:
     0 2px 0 #fff,
@@ -769,10 +801,6 @@ select:focus-visible {
   transform: scale(1.25) translateY(8%);
 }
 
-#role-badge > div:last-child {
-  position: relative;
-}
-
 #role-badge > div:last-child::before {
   /* gingham edge of the name tag */
   content: "";
@@ -785,15 +813,15 @@ select:focus-visible {
 }
 
 .role-name {
-  margin: 0 0 3px;
-  font-size: 1rem;
+  margin: 0 0 var(--s-1);
+  font-size: var(--t-label);
   font-weight: 600;
 }
 
 .role-name::before {
   content: "Today's chef";
   font-family: "Nunito", sans-serif;
-  font-size: 0.6rem;
+  font-size: var(--t-micro);
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -804,11 +832,11 @@ select:focus-visible {
 .role-limit {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--s-2);
   margin: 0;
-  padding: 1px 9px 1px 6px;
+  padding: 1px var(--s-4) 1px var(--s-3);
   border-radius: var(--pill);
-  font-size: 0.72rem;
+  font-size: var(--t-caption);
   font-weight: 700;
   color: var(--peach-ink);
   background: var(--peach-soft);
@@ -825,8 +853,8 @@ select:focus-visible {
 }
 
 .role-tip {
-  margin: 3px 0 0;
-  font-size: 0.7rem;
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-caption);
   color: var(--ink-soft);
 }
 
@@ -840,16 +868,16 @@ select:focus-visible {
   display: flex;
   flex-direction: column-reverse; /* prompts sit above the hand */
   align-items: center;
-  gap: 8px;
+  gap: var(--s-4);
 }
 
 #hand-slot {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 16px 5px 5px;
+  gap: var(--s-4);
+  padding: var(--s-2) var(--s-8) var(--s-2) var(--s-2);
   border-radius: var(--pill);
-  font-size: 0.95rem;
+  font-size: var(--t-label);
 }
 
 #hand-slot.empty {
@@ -879,7 +907,7 @@ select:focus-visible {
 
 #prompts {
   display: flex;
-  gap: 6px;
+  gap: var(--s-3);
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -887,21 +915,21 @@ select:focus-visible {
 .prompt {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px 4px 5px;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-6) var(--s-2) var(--s-2);
   border-radius: var(--pill);
-  font-size: 0.88rem;
+  font-size: var(--t-body);
   animation: toast-in 0.2s ease-out both;
 }
 
 .prompt.info {
-  padding-left: 12px;
+  padding-left: var(--s-6);
   color: var(--ink-soft);
   background: var(--cream);
 }
 
 .prompt kbd {
-  font-size: 0.82rem;
+  font-size: var(--t-small);
 }
 
 /* what you're looking at, just under the crosshair */
@@ -912,10 +940,10 @@ select:focus-visible {
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 11px 3px 4px;
+  gap: var(--s-3);
+  padding: var(--s-1) var(--s-5) var(--s-1) var(--s-2);
   border-radius: var(--pill);
-  font-size: 0.8rem;
+  font-size: var(--t-small);
   white-space: nowrap;
   box-shadow: var(--lift-sm);
 }
@@ -962,9 +990,9 @@ select:focus-visible {
   right: var(--edge);
   bottom: var(--edge);
   margin: 0;
-  padding: 4px 10px;
+  padding: var(--s-2) var(--s-5);
   border-radius: var(--pill);
-  font-size: 0.72rem;
+  font-size: var(--t-caption);
   color: var(--ink-soft);
   box-shadow: var(--lift-sm);
   opacity: 0.9;
@@ -1022,7 +1050,7 @@ select:focus-visible {
   display: grid;
   place-items: center;
   align-content: center;
-  font-size: 0.74rem;
+  font-size: var(--t-caption);
   transform: rotate(var(--a)) translate(94px) rotate(calc(-1 * var(--a)));
   pointer-events: auto;
 }
@@ -1034,7 +1062,7 @@ select:focus-visible {
 #emote-wheel button .icon-svg {
   width: 28px;
   height: 28px;
-  margin: 0 0 2px;
+  margin: 0 0 var(--s-1);
 }
 
 #emote-wheel button kbd {
@@ -1067,7 +1095,7 @@ dialog {
   border: none;
   /* a little book: square spine on the left, softly rounded page corners on the right */
   border-radius: 6px var(--r-md) var(--r-md) 6px;
-  padding: 26px 24px 20px 30px;
+  padding: var(--s-10) var(--s-10) var(--s-9) var(--s-11);
   color: var(--ink);
   background:
     linear-gradient(90deg, rgba(120, 80, 40, 0.16), rgba(120, 80, 40, 0) 18px) left / 18px 100% no-repeat,
@@ -1112,8 +1140,8 @@ dialog::backdrop {
 }
 
 dialog h2 {
-  margin: 0 0 4px;
-  font-size: 1.6rem;
+  margin: 0 0 var(--s-2);
+  font-size: var(--t-huge);
   font-weight: 600;
 }
 
@@ -1132,22 +1160,22 @@ dialog h2 {
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
-  margin: 14px 0 4px;
+  margin: var(--s-7) 0 var(--s-2);
 }
 
 button .icon-svg,
 button .icon-img {
-  margin-right: 4px;
+  margin-right: var(--s-2);
 }
 
 /* pause menu: practise as… */
 #role-picker {
   border: none;
-  margin: 12px 0;
+  margin: var(--s-6) 0;
   padding: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: var(--s-4);
 }
 
 #role-picker[hidden] {
@@ -1155,16 +1183,16 @@ button .icon-img {
 }
 
 #role-picker legend {
-  margin-bottom: 8px;
-  font-size: 0.9rem;
+  margin-bottom: var(--s-4);
+  font-size: var(--t-body);
 }
 
 #role-picker label span {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 7px 10px;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-5);
   border-radius: var(--r-md);
   background: var(--oat);
   cursor: pointer;
@@ -1198,9 +1226,9 @@ button .icon-img {
 .toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-4);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--t-body);
 }
 
 .toggle input {
@@ -1211,12 +1239,12 @@ button .icon-img {
 
 /* game over */
 .stars {
-  margin: 4px 0;
+  margin: var(--s-2) 0;
 }
 
 .stars .star {
   display: inline-block;
-  margin: 0 4px;
+  margin: 0 var(--s-2);
   filter: grayscale(1) brightness(1.2);
   opacity: 0.4;
 }
@@ -1239,19 +1267,19 @@ button .icon-img {
 }
 
 #final-score {
-  margin: 4px 0;
+  margin: var(--s-2) 0;
   color: var(--ink-soft);
 }
 
 #final-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin: 12px 0 4px;
+  gap: var(--s-4);
+  margin: var(--s-6) 0 var(--s-2);
 }
 
 #final-stats div {
-  padding: 8px 6px;
+  padding: var(--s-4) var(--s-3);
   border-radius: var(--r-md);
   background: var(--oat);
 }
@@ -1265,15 +1293,15 @@ button .icon-img {
 }
 
 #final-stats dt {
-  font-size: 0.62rem;
+  font-size: var(--t-micro);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--ink-soft);
 }
 
 #final-stats dd {
-  margin: 2px 0 0;
-  font-size: 1.4rem;
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-big);
   font-weight: 600;
 }
 
@@ -1285,19 +1313,19 @@ button .icon-img {
 
 .field {
   display: grid;
-  gap: 5px;
-  margin: 10px 0;
-  font-size: 0.9rem;
+  gap: var(--s-2);
+  margin: var(--s-5) 0;
+  font-size: var(--t-body);
 }
 
 #level-blurb {
-  margin: 0 0 10px;
-  font-size: 0.85rem;
+  margin: 0 0 var(--s-5);
+  font-size: var(--t-body);
 }
 
 #join-form {
   display: flex;
-  gap: 8px;
+  gap: var(--s-4);
 }
 
 #join-form input {
@@ -1318,7 +1346,7 @@ button .icon-img {
 
 #room-code-display {
   font-family: var(--font-display);
-  font-size: 1.6rem;
+  font-size: var(--t-huge);
   letter-spacing: 0.2em;
   color: var(--honey-edge);
 }
@@ -1326,22 +1354,22 @@ button .icon-img {
 #lobby-roles {
   border: none;
   padding: 0;
-  margin: 10px 0;
+  margin: var(--s-5) 0;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--s-4);
 }
 
 #lobby-roles legend {
-  margin-bottom: 8px;
+  margin-bottom: var(--s-4);
 }
 
 .chef-card {
   display: grid;
-  gap: 3px;
+  gap: var(--s-1);
   align-content: start;
   text-align: center;
-  padding: 10px 8px;
+  padding: var(--s-5) var(--s-4);
   border: 3px solid transparent;
 }
 
@@ -1357,7 +1385,7 @@ button .icon-img {
 
 .chef-card span:last-child {
   font-weight: 600;
-  font-size: 0.72rem;
+  font-size: var(--t-caption);
   color: var(--ink-soft);
 }
 
@@ -1381,13 +1409,13 @@ button .icon-img {
 #lobby-players {
   list-style: none;
   padding: 0;
-  margin: 4px 0 12px;
+  margin: var(--s-2) 0 var(--s-6);
   display: grid;
-  gap: 4px;
+  gap: var(--s-2);
 }
 
 #lobby-players li {
-  padding: 5px 10px;
+  padding: var(--s-2) var(--s-5);
   border-radius: var(--r-sm);
   background: var(--oat);
 }
@@ -1407,7 +1435,7 @@ button .icon-img {
 #recipe-book {
   overflow: visible; /* a page turning in 3D may poke out; never show a scrollbar for it */
   width: min(860px, calc(100vw - 32px));
-  padding: 14px;
+  padding: var(--s-7);
   background: #9a5b3a; /* the cover, all round the pages */
   border-radius: var(--r-md);
 }
@@ -1438,7 +1466,7 @@ button .icon-img {
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 22px 26px 12px;
+  padding: var(--s-9) var(--s-10) var(--s-6);
   overflow-y: auto;
   outline: none;
   /* paper, not a screen: no scrollbar, and the ruled lines move with the writing */
@@ -1572,8 +1600,8 @@ button .icon-img {
 .book-pg h4,
 .menu-head,
 .cover-eyebrow {
-  margin: 0 0 8px;
-  font-size: 0.68rem;
+  margin: 0 0 var(--s-4);
+  font-size: var(--t-caption);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1593,7 +1621,7 @@ button .icon-img {
   place-items: center;
   border: 3px solid #fbe9d0;
   border-radius: 50%;
-  font-size: 1.05rem;
+  font-size: var(--t-title);
   font-weight: 700;
   line-height: 1;
   color: #fbe9d0;
@@ -1612,13 +1640,13 @@ button .icon-img {
   bottom: -10px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.6rem;
+  font-size: var(--t-micro);
 }
 
 .folio {
   position: absolute;
   bottom: 10px;
-  font-size: 0.72rem;
+  font-size: var(--t-caption);
   font-style: italic;
   color: var(--ink-faint);
 }
@@ -1630,13 +1658,13 @@ button .icon-img {
   position: static;
   align-self: center;
   margin-top: auto;
-  padding-top: 10px;
+  padding-top: var(--s-5);
 }
 
 /* ---- the cover page */
 .cover {
   text-align: center;
-  padding-top: 18px;
+  padding-top: var(--s-8);
 }
 
 .cover-title {
@@ -1644,7 +1672,7 @@ button .icon-img {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--s-4);
   font-size: 2rem;
 }
 
@@ -1654,16 +1682,16 @@ button .icon-img {
 }
 
 .cover-sub {
-  margin: 6px 0 0;
+  margin: var(--s-3) 0 0;
   font-weight: 600;
   color: var(--ink-soft);
 }
 
 .cover-hint {
-  margin: 20px auto 22px;
+  margin: var(--s-9) auto var(--s-9);
   max-width: 260px;
-  font-size: 0.85rem;
-  line-height: 1.45;
+  font-size: var(--t-body);
+  line-height: var(--lh-text);
   color: var(--ink-soft);
 }
 
@@ -1676,8 +1704,8 @@ button .icon-img {
 /* ---- the menu */
 .menu-head {
   text-align: center;
-  font-size: 0.9rem;
-  margin: 6px 0 12px;
+  font-size: var(--t-body);
+  margin: var(--s-3) 0 var(--s-6);
 }
 
 .menu-list {
@@ -1685,7 +1713,7 @@ button .icon-img {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 4px;
+  gap: var(--s-2);
 }
 
 .menu-entry {
@@ -1694,8 +1722,8 @@ button .icon-img {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px 8px 6px;
+  gap: var(--s-5);
+  padding: var(--s-4) var(--s-5) var(--s-4) var(--s-3);
   border-radius: var(--r-sm);
   cursor: pointer;
   transition: background 0.15s, transform 0.15s;
@@ -1737,13 +1765,13 @@ button .icon-img {
 .menu-name {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s-3);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: var(--t-label);
 }
 
 .menu-what {
-  font-size: 0.72rem;
+  font-size: var(--t-caption);
   color: var(--ink-faint);
   white-space: nowrap;
   overflow: hidden;
@@ -1753,7 +1781,7 @@ button .icon-img {
 .menu-price {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--s-1);
   font-weight: 600;
 }
 
@@ -1783,14 +1811,14 @@ button .icon-img {
 /* ---- a recipe: the dish on the left page */
 .book-back {
   align-self: flex-start;
-  padding: 3px 12px;
-  font-size: 0.8rem;
+  padding: var(--s-1) var(--s-6);
+  font-size: var(--t-small);
 }
 
 .hero {
   position: relative;
   align-self: center;
-  margin: 6px 0 4px;
+  margin: var(--s-3) 0 var(--s-2);
   width: 104px;
   height: 104px;
   display: grid;
@@ -1812,19 +1840,19 @@ button .icon-img {
 }
 
 .hero-name {
-  margin: 6px 0 0;
+  margin: var(--s-3) 0 0;
   text-align: center;
-  font-size: 1.6rem;
+  font-size: var(--t-huge);
   font-weight: 600;
 }
 
 .book-meta {
-  margin: 2px 0 6px;
+  margin: var(--s-1) 0 var(--s-3);
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 4px;
-  font-size: 0.8rem;
+  gap: var(--s-2);
+  font-size: var(--t-small);
   color: var(--ink-soft);
 }
 
@@ -1834,16 +1862,16 @@ button .icon-img {
 }
 
 .book-pg section {
-  margin-top: 10px;
+  margin-top: var(--s-5);
 }
 
 .book-badge {
   position: absolute;
   top: -4px;
   right: -46px;
-  padding: 2px 9px;
+  padding: var(--s-1) var(--s-4);
   border-radius: var(--pill);
-  font-size: 0.62rem;
+  font-size: var(--t-micro);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1855,10 +1883,10 @@ button .icon-img {
 
 .book-key {
   margin: 0;
-  padding: 10px 12px;
+  padding: var(--s-5) var(--s-6);
   display: grid;
-  gap: 4px;
-  font-size: 0.75rem;
+  gap: var(--s-2);
+  font-size: var(--t-caption);
   color: var(--ink-soft);
   border: 2px dashed #ead9bb;
   border-radius: var(--r-sm);
@@ -1867,7 +1895,7 @@ button .icon-img {
 .book-key div {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-4);
 }
 
 .book-key dt {
@@ -1891,16 +1919,16 @@ button .icon-img {
   padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 6px;
-  font-size: 0.85rem;
+  gap: var(--s-3);
+  font-size: var(--t-body);
 }
 
 .book-ingredients li {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px 6px;
-  padding: 5px 8px;
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-2) var(--s-4);
   border-radius: var(--r-sm);
   background: #fff;
   box-shadow: 0 0 0 1px #efe2c8, 0 2px 0 #efe2c8;
@@ -1920,10 +1948,10 @@ button .icon-img {
 .book-ingredients .time {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 0 7px;
+  gap: var(--s-1);
+  padding: 0 var(--s-3);
   border-radius: var(--pill);
-  font-size: 0.68rem;
+  font-size: var(--t-caption);
   color: var(--ink-soft);
   background: var(--oat);
 }
@@ -1956,10 +1984,10 @@ button .icon-img {
   display: grid;
   grid-template-columns: 20px 30px 1fr auto;
   align-items: center;
-  gap: 10px;
-  padding: 6px 4px;
-  font-size: 0.88rem;
-  line-height: 1.3;
+  gap: var(--s-5);
+  padding: var(--s-3) var(--s-2);
+  font-size: var(--t-body);
+  line-height: var(--lh-label);
 }
 
 .book-method li::before {
@@ -1969,7 +1997,7 @@ button .icon-img {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  font-size: 0.72rem;
+  font-size: var(--t-caption);
   font-weight: 700;
   color: #fff;
   background: var(--peach-edge);
@@ -2015,10 +2043,10 @@ button .icon-img {
 .step-where {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 9px 2px 4px;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-4) var(--s-1) var(--s-2);
   border-radius: var(--pill);
-  font-size: 0.7rem;
+  font-size: var(--t-caption);
   font-weight: 600;
   white-space: nowrap;
   color: var(--ink-soft);
@@ -2041,12 +2069,12 @@ button .icon-img {
 
 .book-tip {
   display: flex;
-  gap: 10px;
+  gap: var(--s-5);
   align-items: flex-start;
-  margin-top: 12px;
-  padding: 8px 12px;
-  font-size: 0.78rem;
-  line-height: 1.4;
+  margin-top: var(--s-6);
+  padding: var(--s-4) var(--s-6);
+  font-size: var(--t-small);
+  line-height: var(--lh-text);
   border-radius: 4px;
   background: #fff6c9;
   box-shadow: 0 2px 6px rgba(80, 60, 20, 0.15);
@@ -2069,7 +2097,7 @@ button .icon-img {
   padding: 0;
   border: none;
   border-radius: 0;
-  font-size: 1.25rem;
+  font-size: var(--t-head);
   font-weight: 700;
   color: var(--peach-ink);
   background: none;
@@ -2088,7 +2116,7 @@ button .icon-img {
 .page-corner.next {
   right: 0;
   text-align: left;
-  padding: 0 0 12px 10px;
+  padding: 0 0 var(--s-6) var(--s-5);
 }
 
 .page-corner.next::before {
@@ -2099,7 +2127,7 @@ button .icon-img {
 .page-corner.prev {
   left: 0;
   text-align: right;
-  padding: 0 10px 12px 0;
+  padding: 0 var(--s-5) var(--s-6) 0;
 }
 
 .page-corner.prev::before {
@@ -2257,17 +2285,15 @@ i[data-img] {
   #scoreboard {
     left: var(--edge);
     justify-content: flex-end;
-  }
-  #scoreboard {
-    gap: 6px;
+    gap: var(--s-3);
   }
   #score-chip {
     min-width: 100px;
-    padding: 6px 10px;
+    padding: var(--s-3) var(--s-5);
   }
   #level-chip {
     min-width: 60px;
-    padding: 12px 8px 6px;
+    padding: var(--s-6) var(--s-4) var(--s-3);
   }
   #clock-ring {
     width: 58px;
@@ -2316,7 +2342,7 @@ i[data-img] {
 /* ====================================================================== seasoning + cold food */
 
 .order .ing.spice {
-  padding: 2px 4px;
+  padding: var(--s-1) var(--s-2);
   background: #fdf1d4;
 }
 
@@ -2346,9 +2372,9 @@ i[data-img] {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 10px;
+  gap: var(--s-5);
   max-width: min(900px, calc(100vw - 24px));
-  padding: 8px 12px;
+  padding: var(--s-4) var(--s-6);
   border-radius: var(--r-lg);
   background: rgba(255, 250, 240, 0.9);
   box-shadow: var(--lift);
@@ -2368,10 +2394,10 @@ i[data-img] {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 11px 4px 5px;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-5) var(--s-2) var(--s-2);
   border-radius: var(--pill);
-  font-size: 0.8rem;
+  font-size: var(--t-small);
   white-space: nowrap;
   color: var(--ink-soft);
   background: var(--paper);
@@ -2382,7 +2408,7 @@ i[data-img] {
 }
 
 #picker .pick kbd {
-  font-size: 0.72rem;
+  font-size: var(--t-caption);
   margin: 0;
 }
 
@@ -2408,7 +2434,7 @@ i[data-img] {
 
 #picker .pick.done::after {
   content: "✓";
-  margin-left: 2px;
+  margin-left: var(--s-1);
   color: var(--mint-ink);
   font-weight: 800;
 }
@@ -2425,7 +2451,7 @@ i[data-img] {
 }
 
 #picker.spice .pick:not(.on) {
-  padding-right: 8px;
+  padding-right: var(--s-4);
 }
 
 /* seasoning on a ticket ingredient: tiny icons around the cook icon, in the order they go on */
@@ -2459,16 +2485,16 @@ i[data-img] {
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--s-5);
   max-width: min(560px, calc(100vw - 680px));
-  padding: 8px 18px 8px 8px;
+  padding: var(--s-4) var(--s-8) var(--s-4) var(--s-4);
   border-radius: var(--pill);
   color: var(--ink);
   background: var(--paper);
   font-family: "Nunito", sans-serif;
   font-weight: 800;
-  font-size: 0.98rem;
-  line-height: 1.25;
+  font-size: var(--t-label);
+  line-height: var(--lh-label);
 }
 
 #coach[hidden] {
@@ -2482,11 +2508,11 @@ i[data-img] {
 /* "Next": a soft honey chip, like the role badge's limit chip */
 .coach-step {
   flex: none;
-  padding: 4px 12px;
+  padding: var(--s-2) var(--s-6);
   border-radius: var(--pill);
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: var(--t-body);
   color: var(--ink);
   background: #fbe9b7;
 }
@@ -2503,7 +2529,7 @@ i[data-img] {
   left: var(--edge);
   bottom: var(--edge);
   width: 230px;
-  padding: 10px 12px 10px;
+  padding: var(--s-5) var(--s-6) var(--s-5);
   border-radius: var(--r-md);
   color: var(--ink);
   background: var(--paper);
@@ -2519,16 +2545,16 @@ i[data-img] {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: var(--s-4);
+  margin-bottom: var(--s-3);
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 0.98rem;
+  font-size: var(--t-label);
 }
 
 #checklist header .muted {
   font-family: "Nunito", sans-serif;
-  font-size: 0.7rem;
+  font-size: var(--t-caption);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -2538,15 +2564,15 @@ i[data-img] {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 3px;
-  font-size: 0.8rem;
+  gap: var(--s-1);
+  font-size: var(--t-small);
 }
 
 #checklist-steps li {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 3px 8px 3px 4px;
+  gap: var(--s-3);
+  padding: var(--s-1) var(--s-4) var(--s-1) var(--s-2);
   border-radius: var(--r-sm);
   color: var(--ink-soft);
 }
@@ -2558,7 +2584,7 @@ i[data-img] {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  font-size: 0.72rem;
+  font-size: var(--t-caption);
   background: var(--oat);
 }
 
@@ -2595,37 +2621,37 @@ i[data-img] {
 
 /* briefing card before a shift */
 .briefing-level {
-  margin: 4px 0 2px;
-  font-size: 0.72rem;
+  margin: var(--s-2) 0 var(--s-1);
+  font-size: var(--t-caption);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--peach-edge);
 }
 
 .briefing-lines {
-  margin: 10px 0 12px;
+  margin: var(--s-5) 0 var(--s-6);
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 6px;
+  gap: var(--s-3);
   text-align: left;
 }
 
 .briefing-lines li {
-  padding: 8px 12px;
+  padding: var(--s-4) var(--s-6);
   border-radius: var(--r-md);
   background: var(--oat);
-  font-size: 0.9rem;
-  line-height: 1.35;
+  font-size: var(--t-body);
+  line-height: var(--lh-text);
 }
 
 .briefing-role {
-  margin: 0 0 14px;
-  padding: 8px 12px;
+  margin: 0 0 var(--s-7);
+  padding: var(--s-4) var(--s-6);
   border-radius: var(--r-md);
   background: var(--sky-soft);
   color: var(--sky-ink);
-  font-size: 0.85rem;
+  font-size: var(--t-body);
   text-align: left;
 }
 
@@ -2650,7 +2676,7 @@ i[data-img] {
   display: block;
   width: 64px;
   height: 8px;
-  margin-left: 4px;
+  margin-left: var(--s-2);
   overflow: hidden;
   border-radius: var(--pill);
   background: var(--oat);
@@ -2711,7 +2737,7 @@ i[data-img] {
 .chef-card .chef-emoji .icon-svg {
   width: 60px;
   height: 60px;
-  padding: 10px;
+  padding: var(--s-5);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.7);
 }
@@ -2720,10 +2746,10 @@ i[data-img] {
 .till-coins {
   grid-column: 1 / -1;
   justify-self: start;
-  margin-top: 2px;
-  padding: 1px 8px;
+  margin-top: var(--s-1);
+  padding: 1px var(--s-4);
   border-radius: var(--pill);
-  font-size: 0.68rem;
+  font-size: var(--t-caption);
   font-weight: 800;
   color: var(--mint-ink);
   background: var(--mint-soft);
@@ -2731,21 +2757,21 @@ i[data-img] {
 
 /* upgrades shop */
 .shop-coins {
-  margin: 4px 0 10px;
+  margin: var(--s-2) 0 var(--s-5);
 }
 
 .shop-coins strong {
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: var(--t-head);
   color: var(--honey-edge);
 }
 
 .shop-list {
   list-style: none;
-  margin: 0 0 14px;
+  margin: 0 0 var(--s-7);
   padding: 0;
   display: grid;
-  gap: 8px;
+  gap: var(--s-4);
   text-align: left;
 }
 
@@ -2753,8 +2779,8 @@ i[data-img] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: var(--s-6);
+  padding: var(--s-5) var(--s-6);
   border-radius: var(--r-md);
   background: var(--oat);
 }
@@ -2765,7 +2791,7 @@ i[data-img] {
 
 .shop-list li div {
   display: grid;
-  gap: 2px;
+  gap: var(--s-1);
 }
 
 .shop-list li strong {
@@ -2774,7 +2800,7 @@ i[data-img] {
 }
 
 .shop-list li span {
-  font-size: 0.82rem;
+  font-size: var(--t-small);
   color: var(--ink-soft);
 }
 
@@ -2798,11 +2824,11 @@ i[data-img] {
   align-self: center;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 8px;
-  padding: 2px 6px 2px 4px;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
+  padding: var(--s-1) var(--s-3) var(--s-1) var(--s-2);
   border-radius: var(--pill);
-  font-size: 0.7rem;
+  font-size: var(--t-caption);
   font-weight: 600;
   color: var(--ink-soft);
   background: var(--oat);
@@ -2814,24 +2840,24 @@ i[data-img] {
 }
 
 .order .book-hint kbd {
-  font-size: 0.6rem;
+  font-size: var(--t-micro);
 }
 
 /* ====================================================================== top-right: compact pills */
 /* one tidy row (level · score · timer · book · menu) and a one-line chef tag under it */
 #scoreboard {
-  gap: 8px;
+  gap: var(--s-4);
 }
 
 #level-chip,
 #score-chip {
   height: 44px;
-  padding: 0 14px 0 10px;
+  padding: 0 var(--s-7) 0 var(--s-5);
   border-radius: var(--pill);
   transform: none;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--s-3);
 }
 
 #level-chip::before {
@@ -2840,7 +2866,7 @@ i[data-img] {
 
 #score-chip {
   min-width: 0;
-  padding-right: 12px;
+  padding-right: var(--s-6);
 }
 
 #score-chip .coin .icon-svg {
@@ -2849,11 +2875,11 @@ i[data-img] {
 }
 
 #score-chip strong {
-  font-size: 1.25rem;
+  font-size: var(--t-head);
 }
 
 .star-goal {
-  font-size: 0.78rem;
+  font-size: var(--t-small);
 }
 
 /* the star meter sits inline in the pill */
@@ -2861,7 +2887,7 @@ i[data-img] {
   grid-column: auto;
   width: 78px;
   height: 8px;
-  margin: 0 4px 0 6px;
+  margin: 0 var(--s-2) 0 var(--s-3);
 }
 
 .star-mark,
@@ -2871,7 +2897,7 @@ i[data-img] {
 }
 
 #clock {
-  margin: 0 2px;
+  margin: 0 var(--s-1);
 }
 
 #clock-ring {
@@ -2880,7 +2906,7 @@ i[data-img] {
 }
 
 #time {
-  font-size: 0.9rem;
+  font-size: var(--t-body);
 }
 
 #clock::before {
@@ -2899,25 +2925,14 @@ i[data-img] {
 /* the chef tag: avatar, name and your limit, all on one line */
 #role-badge {
   align-items: center;
-  gap: 8px;
+  gap: var(--s-4);
   border-radius: var(--pill);
   overflow: visible;
-}
-
-#role-badge > div:last-child {
-  display: flex;
-  align-items: center;
-  padding: 0;
 }
 
 #role-badge > div:last-child::before,
 .role-name::before {
   display: none;
-}
-
-#role-badge .role-name {
-  margin: 0;
-  font-size: 0.9rem;
 }
 
 #role-badge .role-tip {
@@ -2928,7 +2943,7 @@ i[data-img] {
 #status-pill {
   display: flex;
   align-items: center;
-  padding: 0 14px 0 5px;
+  padding: 0 var(--s-7) 0 var(--s-2);
   border-radius: var(--pill);
   background: var(--paper);
   box-shadow: var(--lift);
@@ -2942,16 +2957,12 @@ i[data-img] {
   box-shadow: none;
 }
 
-#status-pill #level-chip {
-  padding-right: 4px;
-}
-
 /* the level, as a round sticker with a little wobble when it appears */
 
 .status-divider {
   width: 0;
   height: 26px;
-  margin: 0 12px 0 8px;
+  margin: 0 var(--s-6) 0 var(--s-4);
   border-left: 2px dotted #e3cfae;
 }
 
@@ -2961,26 +2972,24 @@ i[data-img] {
 }
 
 /* the chef tag, in the same style as the level/score pill: a sticker, a dotted divider, the limit */
-#role-badge {
-  box-sizing: border-box;
-  padding: 0 12px 0 5px;
-}
-
-#role-avatar {
-  border-radius: 50%;
-}
 
 #role-badge > div:last-child {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0;
   gap: 0;
 }
 
 #role-badge .role-name {
-  padding-left: 4px;
+  margin: 0;
+  font-size: var(--t-body);
+  padding-left: var(--s-2);
 }
 
 #role-badge .role-limit {
   position: relative;
-  margin-left: 20px;
+  margin-left: var(--s-9);
 }
 
 #role-badge .role-limit::before {
@@ -2995,39 +3004,30 @@ i[data-img] {
 
 /* flat, tidy badges inside the pills (no sticker rim, no tilt) */
 
-#role-badge {
-  padding-left: 7px;
-}
-
-#role-avatar {
-  box-shadow: none;
-  transform: none;
-}
-
 /* the restaurant picker on the title screen */
 .venue-picker {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
-  margin: 4px 0 10px;
+  gap: var(--s-4);
+  margin: var(--s-2) 0 var(--s-5);
 }
 
 .venue-card {
   position: relative;
   display: grid;
-  gap: 2px;
-  padding: 10px 12px 12px;
+  gap: var(--s-1);
+  padding: var(--s-5) var(--s-6) var(--s-6);
   border-radius: var(--r-md);
   text-align: left;
   overflow: hidden;
 }
 
 .venue-card strong {
-  font-size: 0.95rem;
+  font-size: var(--t-label);
 }
 
 .venue-card small {
-  font-size: 0.72rem;
+  font-size: var(--t-caption);
   color: var(--ink-soft);
 }
 
@@ -3064,18 +3064,12 @@ i[data-img] {
 }
 
 /* the shift label: restaurant and shift number small on top, the shift's name below */
-#status-pill #level-chip {
-  grid-template-columns: auto;
-  gap: 1px;
-  padding-left: 10px;
-  align-content: center;
-}
 
 /* the rest of the restaurant's menu, served on later shifts: readable, but quieter */
 .menu-later-head {
-  margin: 16px 0 6px;
+  margin: var(--s-8) 0 var(--s-3);
   text-align: center;
-  font-size: 0.66rem;
+  font-size: var(--t-micro);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -3092,6 +3086,11 @@ i[data-img] {
 
 /* level: the restaurant's round logo with the shift number on a little badge */
 #status-pill #level-chip {
+  padding-right: var(--s-2);
+  grid-template-columns: auto;
+  gap: 1px;
+  padding-left: var(--s-5);
+  align-content: center;
   position: relative;
   display: block; /* an older level-pill rule forces auto height */
   align-self: center;
@@ -3101,8 +3100,43 @@ i[data-img] {
   display: block;
 }
 
+#status-pill .status-divider {
+  margin: 0 var(--s-5) 0 var(--s-5);
+}
+
+/* a shorter star bar keeps the pill compact */
+#status-pill #star-meter {
+  width: 64px;
+}
+
+/* a smaller shift number, and a little air between the top row and the chef tag */
+
+#role-badge {
+  box-sizing: border-box;
+  padding: 0 var(--s-6) 0 var(--s-2);
+  padding-left: var(--s-3);
+  top: 86px;
+}
+
+/* both pills share one height; the logo fills it, the shift number tags its corner */
+#status-pill,
+#role-badge {
+  height: 52px;
+}
+
 #status-pill #venue-logo .icon-svg {
   display: block;
+  width: 42px;
+  height: 42px;
+}
+
+#role-avatar {
+  border-radius: 50%;
+  box-shadow: none;
+  transform: none;
+  width: 38px;
+  min-height: 38px;
+  height: 38px;
 }
 
 .shift-badge {
@@ -3114,61 +3148,17 @@ i[data-img] {
   line-height: 1;
   color: #fff !important;
   background: var(--peach-edge);
-}
-
-#status-pill .status-divider {
-  margin: 0 10px 0 10px;
-}
-
-/* a shorter star bar keeps the pill compact */
-#status-pill #star-meter {
-  width: 64px;
-}
-
-/* a smaller shift number, and a little air between the top row and the chef tag */
-.shift-badge {
-  padding: 0 3px;
-}
-
-#role-badge {
-  top: 86px;
-}
-
-/* both pills share one height; the logo fills it, the shift number tags its corner */
-#status-pill,
-#role-badge {
-  height: 52px;
-}
-
-#status-pill #level-chip {
-  height: 42px !important;
-}
-
-#status-pill #venue-logo .icon-svg {
-  width: 42px;
-  height: 42px;
-}
-
-.shift-badge {
+  padding: 0 var(--s-1);
   right: -4px;
   min-width: 15px;
   height: 15px;
-  font-size: 0.58rem !important;
+  font-size: var(--t-micro) !important;
   box-shadow: 0 0 0 2px var(--paper);
-}
-
-#role-avatar {
-  width: 38px;
-  min-height: 38px;
-  height: 38px;
-}
-
-.shift-badge {
   bottom: 1px;
 }
 
 #status-pill {
-  padding-left: 6px;
+  padding-left: var(--s-3);
 }
 
 /* ====================================================================== touch controls */
@@ -3263,7 +3253,7 @@ body.touch .touch-only {
   padding: 0;
   border-radius: 50%;
   font-weight: 700;
-  line-height: 1.05;
+  line-height: var(--lh-tight);
   text-align: center;
 }
 
@@ -3272,7 +3262,6 @@ body.touch .touch-only {
   top: -50px;
   width: 100px;
   height: 100px;
-  font-size: 0.68rem;
   background: var(--paper);
   color: var(--ink-soft);
   box-shadow: 0 4px 0 var(--oat), 0 8px 18px rgba(45, 28, 12, 0.28);
@@ -3304,7 +3293,6 @@ body.touch .touch-only {
   top: calc(sin(var(--a)) * var(--r) * -1 - var(--size) / 2);
   width: var(--size);
   height: var(--size);
-  font-size: 0.6rem;
   background: var(--paper);
   box-shadow: 0 3px 0 var(--oat), 0 5px 12px rgba(45, 28, 12, 0.25);
   opacity: 0.82;
@@ -3313,10 +3301,6 @@ body.touch .touch-only {
 .touch-sat .icon-svg {
   width: 24px;
   height: 24px;
-}
-
-.touch-chop {
-  --size: 62px;
 }
 
 .touch-chop .icon-svg {
@@ -3423,8 +3407,8 @@ body.touch #scene {
     display: grid;
     place-content: center;
     justify-items: center;
-    gap: 18px;
-    padding: 24px;
+    gap: var(--s-8);
+    padding: var(--s-10);
     text-align: center;
     font-weight: 700;
     color: var(--ink);
@@ -3464,29 +3448,29 @@ body.touch #scene {
   /* compact: a smaller logo row, slim venue chips, and the side buttons two to a row */
   .venue-picker {
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    margin: 0 0 4px;
+    gap: var(--s-3);
+    margin: 0 0 var(--s-2);
   }
   .venue-card {
-    padding: 6px 9px 8px;
+    padding: var(--s-3) var(--s-4) var(--s-4);
     gap: 0;
   }
   .venue-card strong {
-    font-size: 0.8rem;
-    line-height: 1.15;
+    font-size: var(--t-small);
+    line-height: var(--lh-tight);
   }
   .venue-card small {
-    font-size: 0.66rem;
+    font-size: var(--t-micro);
   }
   #level-blurb {
-    font-size: 0.74rem;
-    line-height: 1.3;
-    margin: 2px 0 0;
+    font-size: var(--t-caption);
+    line-height: var(--lh-label);
+    margin: var(--s-1) 0 0;
   }
   /* Play is the main thing on a phone: solo practice is the big gold button */
   #join-form button {
-    padding: 5px 14px;
-    font-size: 0.85rem;
+    padding: var(--s-2) var(--s-7);
+    font-size: var(--t-body);
   }
 }
 
@@ -3512,8 +3496,8 @@ body.touch #role-badge {
 /* tickets fold into small chips (table, dish, timer); tap one to open it */
 body.touch:not([data-role="head"]) #orders .order:not(.open) {
   width: 92px;
-  padding: 8px 8px 7px;
-  gap: 2px;
+  padding: var(--s-4) var(--s-4) var(--s-3);
+  gap: var(--s-1);
 }
 
 body.touch:not([data-role="head"]) #orders .order:not(.open) :is(.dish, .dish-icons, .book-hint) {
@@ -3521,13 +3505,8 @@ body.touch:not([data-role="head"]) #orders .order:not(.open) :is(.dish, .dish-ic
 }
 
 body.touch:not([data-role="head"]) #orders .order:not(.open) strong {
-  font-size: 0.78rem;
-  line-height: 1.1;
-}
-
-body.touch #orders .order {
-  pointer-events: auto;
-  cursor: pointer;
+  font-size: var(--t-small);
+  line-height: var(--lh-tight);
 }
 
 /* kitchen news: one short line under the top bar that fades away */
@@ -3554,18 +3533,15 @@ body.touch #hand-slot.empty {
 }
 
 /* the stick fades back when no thumb is on it */
-body.touch #touch-joy-base:not(.on) {
-  opacity: 0.35;
-}
 
 #touch-joy-hint {
   position: absolute;
   left: calc(var(--safe-l) + 62px);
   bottom: calc(var(--safe-b) + 132px);
   transform: translateX(-50%);
-  padding: 4px 10px;
+  padding: var(--s-2) var(--s-5);
   border-radius: var(--pill);
-  font-size: 0.75rem;
+  font-size: var(--t-caption);
   font-weight: 700;
   background: var(--paper);
   box-shadow: var(--lift-sm);
@@ -3581,12 +3557,6 @@ body.touch #touch-joy-base:not(.on) {
 /* Chop and Hand only show up when they'd do something */
 body.touch .touch-sat {
   transition: opacity 0.15s, scale 0.15s;
-}
-
-body.touch .touch-sat:not(.ready):not(.down) {
-  opacity: 0;
-  scale: 0.6;
-  pointer-events: none;
 }
 
 /* the mute chef's dash is always there; a honey ring fills back up while it recharges */
@@ -3652,7 +3622,7 @@ body.touch #star-meter {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
-    padding-top: 8px;
+    padding-top: var(--s-4);
   }
   body.touch #orders .order {
     flex: none;
@@ -3661,6 +3631,7 @@ body.touch #star-meter {
 
 /* the logo's box is exactly the logo, so the shift number tucks onto its corner */
 #status-pill #level-chip {
+  height: 42px !important;
   flex: none;
   width: 42px !important;
   min-width: 0 !important;
@@ -3675,21 +3646,14 @@ body.touch #star-meter {
 
 /* phones: the pill hugs the logo and the score, evenly spaced */
 body.touch #status-pill .status-divider {
-  margin: 0 8px;
+  margin: 0 var(--s-4);
 }
 
 body.touch #status-pill #score-chip {
-  padding: 0 12px 0 0;
+  padding: 0 var(--s-6) 0 0;
 }
 
 /* phones: the sign wheel opens by the Talk button, under the right thumb, a little smaller */
-body.touch #emote-wheel {
-  left: auto;
-  top: auto;
-  right: calc(max(14px, env(safe-area-inset-right)) + 70px);
-  bottom: max(12px, env(safe-area-inset-bottom));
-  margin: 0;
-}
 
 body.touch #emote-wheel .wheel-center {
   display: none;
@@ -3725,7 +3689,7 @@ body.touch .touch-text {
   /* every card uses the width it has and keeps clear of the notch */
   dialog {
     max-height: calc(100dvh - 16px);
-    padding: 14px 18px;
+    padding: var(--s-7) var(--s-8);
   }
   .card-dialog {
     width: min(460px, calc(100vw - 32px));
@@ -3734,7 +3698,7 @@ body.touch .touch-text {
     width: min(760px, calc(100vw - 32px));
   }
   dialog h2 {
-    margin-block: 0 6px;
+    margin-block: 0 var(--s-3);
   }
 
   /* pause menu: what to do on the left, settings on the right */
@@ -3742,7 +3706,7 @@ body.touch .touch-text {
     width: min(680px, calc(100vw - 32px));
     display: grid;
     grid-template-columns: 1fr 1fr;
-    column-gap: 20px;
+    column-gap: var(--s-9);
     align-items: start;
   }
   #pause-menu > * {
@@ -3758,7 +3722,7 @@ body.touch .touch-text {
     margin: 0;
   }
   #pause-menu .menu-actions {
-    margin: 8px 0 0;
+    margin: var(--s-4) 0 0;
   }
 
   /* help cards: four short columns side by side; the cooking steps are in How to play */
@@ -3795,7 +3759,7 @@ body.touch button.touch-only {
   #briefing-lines {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 8px;
+    gap: var(--s-4);
   }
   #briefing-lines li {
     margin: 0;
@@ -3817,6 +3781,11 @@ body.touch button.touch-only {
 
 /* phones: the sign wheel opens just left of the thumb buttons, never on top of Use or Talk */
 body.touch #emote-wheel {
+  left: auto;
+  top: auto;
+  right: calc(max(14px, env(safe-area-inset-right)) + 70px);
+  bottom: max(12px, env(safe-area-inset-bottom));
+  margin: 0;
   right: calc(max(14px, env(safe-area-inset-right)) + 230px);
   bottom: calc(max(12px, env(safe-area-inset-bottom)) + 30px);
 }
@@ -3840,10 +3809,10 @@ body.touch #emote-wheel {
   width: auto;
   height: auto;
   zoom: 1;
-  padding: 10px;
+  padding: var(--s-5);
   display: grid;
   grid-template-columns: repeat(4, 58px);
-  gap: 8px;
+  gap: var(--s-4);
   border-radius: 22px;
   background: var(--paper);
   box-shadow: 0 0 0 4px var(--peach-soft), 0 10px 26px rgba(45, 28, 12, 0.35);
@@ -3861,7 +3830,7 @@ body.touch #emote-wheel button:hover {
   margin: 0;
   border-radius: 16px;
   transform: none;
-  font-size: 0.68rem;
+  font-size: var(--t-caption);
   order: 1;
 }
 
@@ -3891,7 +3860,7 @@ body.touch #checklist {
   bottom: auto;
   left: max(var(--edge), env(safe-area-inset-left));
   width: 190px;
-  padding: 7px 10px;
+  padding: var(--s-3) var(--s-5);
   zoom: 0.85;
 }
 
@@ -3907,22 +3876,24 @@ body.touch #checklist-steps li:not(.done) ~ li:not(.done) ~ li:not(.done) ~ li:n
 /* ====================================================================== phones: view switch and slimmer tickets */
 /* tickets: narrower cards with smaller dots, so three fit without covering the kitchen */
 body.touch #orders {
-  gap: 6px;
+  gap: var(--s-3);
 }
 
 body.touch #orders .order {
+  pointer-events: auto;
+  cursor: pointer;
   width: 104px;
-  padding: 6px 7px 6px;
+  padding: var(--s-3) var(--s-3) var(--s-3);
 }
 
 body.touch #orders .order strong {
-  font-size: 0.82rem;
-  line-height: 1.1;
+  font-size: var(--t-small);
+  line-height: var(--lh-tight);
 }
 
 body.touch #orders .order small,
 body.touch #orders .order .table {
-  font-size: 0.58rem;
+  font-size: var(--t-micro);
 }
 
 body.touch #orders .order .ing {
@@ -3973,6 +3944,7 @@ body.touch #touch-joy {
 }
 
 body.touch #touch-joy-base:not(.on) {
+  opacity: 0.35;
   left: calc(var(--safe-l) + 58px);
   top: calc(100% - var(--safe-b) - 62px);
 }
@@ -3981,8 +3953,8 @@ body.touch #touch-joy-base:not(.on) {
 /* the HUD lets touches through to the game; the picker has to take its own */
 body.touch #picker {
   pointer-events: auto;
-  gap: 8px;
-  padding: 8px;
+  gap: var(--s-4);
+  padding: var(--s-4);
   max-width: calc(100vw - 2 * 150px); /* between the stick and the Use button */
   flex-wrap: nowrap;
   overflow-x: auto;
@@ -3994,12 +3966,12 @@ body.touch #picker .pick {
   flex: none;
   flex-direction: column;
   justify-content: center;
-  gap: 2px;
+  gap: var(--s-1);
   width: 64px;
   min-height: 64px;
-  padding: 6px 4px 5px;
+  padding: var(--s-3) var(--s-2) var(--s-2);
   border-radius: var(--r-md);
-  font-size: 0.66rem;
+  font-size: var(--t-micro);
   font-weight: 800;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
@@ -4120,13 +4092,13 @@ body.touch #picker {
 }
 
 body.touch #picker.spice {
-  gap: 6px;
+  gap: var(--s-3);
 }
 
 body.touch #picker.spice .pick {
   width: 54px;
   min-height: 58px;
-  font-size: 0.6rem;
+  font-size: var(--t-micro);
 }
 
 body.touch #picker.spice .pick .icon-img,
@@ -4149,25 +4121,25 @@ body.touch #picker.spice .pick .icon-svg {
   .page-corner {
     width: 34px;
     height: 34px;
-    font-size: 1rem;
+    font-size: var(--t-label);
   }
   .page-corner.next {
-    padding: 0 0 8px 7px;
+    padding: 0 0 var(--s-4) var(--s-3);
   }
   .page-corner.prev {
-    padding: 0 7px 8px 0;
+    padding: 0 var(--s-3) var(--s-4) 0;
   }
   .page-corner:hover {
     width: 40px;
     height: 40px;
   }
   .book-spread .book-pg {
-    padding-top: 16px;
+    padding-top: var(--s-8);
   }
   /* a bigger "‹ Menu" for thumbs */
   .book-back {
-    padding: 6px 16px;
-    font-size: 0.95rem;
+    padding: var(--s-3) var(--s-8);
+    font-size: var(--t-label);
   }
 
   .book-pg {
@@ -4180,7 +4152,7 @@ body.touch #picker.spice .pick .icon-svg {
   }
   .book-pg::-webkit-scrollbar-track {
     background: transparent;
-    margin: 10px 0;
+    margin: var(--s-5) 0;
   }
   .book-pg::-webkit-scrollbar-thumb {
     background: #c49a6c;
@@ -4234,7 +4206,7 @@ body.touch #picker.spice .pick .icon-svg {
 
 .book-spread .book-pg::-webkit-scrollbar-track {
   background: transparent;
-  margin: 10px 0;
+  margin: var(--s-5) 0;
 }
 
 .book-spread .book-pg::-webkit-scrollbar-thumb {
@@ -4253,8 +4225,8 @@ body.touch #picker.spice .pick .icon-svg {
   right: 22px; /* the page's top right corner */
   transform: none;
   margin: 0;
-  padding-top: 10px;
-  font-size: 0.72rem;
+  padding-top: var(--s-5);
+  font-size: var(--t-caption);
   line-height: normal;
 }
 /* the right page's corner is under the close button: sit just left of it */
@@ -4346,10 +4318,10 @@ body.touch #picker.spice .pick .icon-svg {
 .title-wordmark small {
   display: block;
   align-self: start;
-  margin: 8px 0 0 0.2em;
+  margin: var(--s-4) 0 0 0.2em;
   font-family: "Myanmar Sangam MN", "Noto Sans Myanmar", "Padauk", var(--font-display);
   font-size: clamp(1.1rem, 2.6vw, 1.8rem);
-  line-height: 1.25;
+  line-height: var(--lh-label);
   color: var(--honey-strong);
 }
 .title-wordmark small span {
@@ -4372,9 +4344,9 @@ body.touch #picker.spice .pick .icon-svg {
   left: clamp(28px, 11vw, 160px);
   top: max(46vh, calc(clamp(14px, 9vh, 90px) + 11rem));
   width: 250px;
-  padding: 18px 16px;
+  padding: var(--s-8) var(--s-8);
   display: grid;
-  gap: 2px;
+  gap: var(--s-1);
   transform: rotate(-3deg);
   border-radius: var(--r-lg);
   background: var(--paper);
@@ -4385,7 +4357,7 @@ body.touch #picker.spice .pick .icon-svg {
 .title-card button,
 .title-card button:hover,
 .title-card button:active {
-  padding: 5px 12px;
+  padding: var(--s-2) var(--s-6);
   border: none;
   border-radius: var(--pill);
   background: transparent;
@@ -4394,7 +4366,7 @@ body.touch #picker.spice .pick .icon-svg {
   translate: none;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 1.2rem;
+  font-size: var(--t-head);
   font-weight: 600;
   text-align: center;
   cursor: pointer;
@@ -4404,7 +4376,7 @@ body.touch #picker.spice .pick .icon-svg {
   right: 24px;
   bottom: 18px;
   margin: 0;
-  padding: 6px 14px;
+  padding: var(--s-3) var(--s-7);
   border-radius: var(--pill);
   background: rgba(45, 28, 12, 0.72);
   color: var(--paper);
@@ -4416,12 +4388,12 @@ body.touch .title-hint {
 /* phones held sideways: wordmark and card side by side */
 @media (max-height: 520px) {
   .title-wordmark > span { font-size: 2.6rem; }
-  .title-wordmark small { font-size: 1.1rem; }
+  .title-wordmark small { font-size: var(--t-title); }
   .title-chet { width: 72px; }
-  .title-card { top: auto; bottom: 18px; width: 210px; padding: 12px; }
-  .title-card button, .title-card button:hover, .title-card button:active { font-size: 1.05rem; padding: 4px 10px; }
+  .title-card { top: auto; bottom: 18px; width: 210px; padding: var(--s-6); }
+  .title-card button, .title-card button:hover, .title-card button:active { font-size: var(--t-title); padding: var(--s-2) var(--s-5); }
 }
-#lobby-back { margin-bottom: 6px; }
+#lobby-back { margin-bottom: var(--s-3); }
 
 /* --- the play screen: same scene and wordmark as the title, with two paper cards --- */
 body.in-lobby .title-card:not(.play-menu),
@@ -4465,9 +4437,9 @@ body.in-lobby .title-hint {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--s-4);
   width: 100%;
-  font-size: 1.08rem;
+  font-size: var(--t-title);
 }
 .play-menu .icon-svg,
 .play-menu .icon-img {
@@ -4481,8 +4453,8 @@ body.in-lobby .title-hint {
 #lobby #join-form {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 6px;
-  margin: 2px 0;
+  gap: var(--s-3);
+  margin: var(--s-1) 0;
 }
 #lobby #join-form button {
   width: auto;
@@ -4492,7 +4464,7 @@ body.in-lobby .title-hint {
   width: 100%;
   min-width: 0;
   font: inherit;
-  padding: 6px 12px;
+  padding: var(--s-3) var(--s-6);
   border-radius: var(--pill);
   border: 2px solid var(--oat);
   background: #fff;
@@ -4511,8 +4483,8 @@ body.in-lobby .title-hint {
   max-height: calc(100dvh - 36px);
   overflow-y: auto;
   display: grid;
-  gap: 8px;
-  padding: 18px;
+  gap: var(--s-4);
+  padding: var(--s-8);
   transform: rotate(1.5deg);
   border-radius: var(--r-lg);
   background: var(--paper);
@@ -4539,27 +4511,17 @@ body.in-lobby .title-hint {
   right: 16px;
 }
 @media (max-height: 520px) {
-  .play-menu {
-    bottom: auto;
-    left: 18px;
-    max-height: calc(100dvh - 104px);
-    grid-template-columns: 1fr 1fr;
-  }
   .play-menu #join-form {
     grid-column: 1 / -1;
   }
   .title-card.play-menu button {
-    font-size: 0.92rem;
-    padding: 3px 6px;
+    font-size: var(--t-label);
+    padding: var(--s-1) var(--s-3);
   }
   #lobby-room:not([hidden]) {
     top: 8px;
     bottom: 8px;
   }
-}
-.title-card.play-menu #join-form button {
-  color: var(--ink);
-  padding: 5px 16px;
 }
 @media (max-height: 520px) {
   body.in-lobby .title-wordmark {
@@ -4574,15 +4536,15 @@ body.in-lobby .title-hint {
     display: none;
   }
   .play-menu {
+    bottom: auto;
+    left: 18px;
+    max-height: calc(100dvh - 104px);
+    grid-template-columns: 1fr 1fr;
     max-height: calc(100dvh - 84px);
   }
 }
 
 /* the shift choice has its own dialog, so the menu stays small */
-#setup {
-  max-height: calc(100dvh - 24px);
-  overflow-y: auto;
-}
 #setup .field {
   display: grid;
 }
@@ -4590,7 +4552,7 @@ body.in-lobby .title-hint {
 #setup select {
   width: 100%;
   font: inherit;
-  padding: 7px 12px;
+  padding: var(--s-3) var(--s-6);
   border-radius: var(--pill);
   border: 2px solid var(--oat);
   color: var(--ink);
@@ -4601,16 +4563,13 @@ body.in-lobby .title-hint {
 }
 .play-setup span {
   display: grid;
-  line-height: 1.15;
+  line-height: var(--lh-tight);
 }
 .play-setup small {
   font-family: "Nunito", sans-serif;
-  font-size: 0.72rem;
+  font-size: var(--t-caption);
   font-weight: 700;
   color: var(--ink-soft);
-}
-.title-card.play-menu .play-setup {
-  margin-bottom: 4px;
 }
 #lobby-room:not([hidden]) {
   left: 50%;
@@ -4623,36 +4582,22 @@ body.in-lobby .title-hint {
     left: 50%;
     width: min(700px, calc(100vw - 24px));
   }
-  #setup {
-    font-size: 0.88rem;
-  }
   #setup h2 {
     margin: 0;
   }
 }
 
 /* the play menu: big choices first, then the shift, then small tools */
-.play-menu {
-  height: fit-content;
-}
 .title-card.play-menu button:focus:not(:hover) {
   outline: none;
 }
 .title-card.play-menu > #play-solo,
 .title-card.play-menu > #create-room {
-  font-size: 1.22rem;
-}
-.title-card.play-menu .play-setup {
-  border-radius: var(--r-md);
-  font-size: 0.98rem;
-  text-align: left;
-}
-.title-card.play-menu .play-setup:hover {
-  color: var(--ink);
+  font-size: var(--t-head);
 }
 .play-tools {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   border-top: 2px dashed var(--oat);
 }
 .title-card.play-menu .play-tools button {
@@ -4669,32 +4614,22 @@ body.in-lobby .title-hint {
   width: 100%;
   justify-self: stretch;
   min-height: 42px;
-  padding: 6px 14px;
+  padding: var(--s-3) var(--s-7);
   border-radius: var(--pill);
   background: var(--oat);
-  font-size: 1rem;
+  font-size: var(--t-label);
   color: var(--ink);
 }
 @media (max-height: 520px) {
-  .play-menu {
-    max-width: 62vw;
-  }
-  .title-card.play-menu > #play-solo,
-  .title-card.play-menu > #create-room {
-    font-size: 0.95rem;
-  }
   .play-tools,
   .play-setup,
   #lobby-back {
     grid-column: 1 / -1;
   }
-  .title-card.play-menu .play-setup {
-    font-size: 0.86rem;
-  }
   .title-card.play-menu .play-tools button {
     flex-direction: row;
-    gap: 4px;
-    font-size: 0.72rem;
+    gap: var(--s-2);
+    font-size: var(--t-caption);
   }
   .title-card.play-menu .play-tools .icon-svg,
   .title-card.play-menu .play-tools .icon-img {
@@ -4705,49 +4640,57 @@ body.in-lobby .title-hint {
 
 /* more air in the play menu */
 .play-menu {
+  height: fit-content;
   width: 330px;
-  gap: 10px;
-  padding: 26px 24px 18px;
+  gap: var(--s-5);
+  padding: var(--s-10) var(--s-10) var(--s-8);
   top: max(30vh, 12.5rem);
   max-height: calc(100dvh - max(30vh, 12.5rem) - 16px);
 }
 .title-card.play-menu > #play-solo,
 .title-card.play-menu > #create-room {
-  padding: 10px 12px;
+  padding: var(--s-5) var(--s-6);
 }
 .title-card.play-menu .play-setup {
-  margin: 6px 0;
-  padding: 10px 14px;
+  margin-bottom: var(--s-2);
+  border-radius: var(--r-md);
+  font-size: var(--t-label);
+  text-align: left;
+  margin: var(--s-3) 0;
+  padding: var(--s-5) var(--s-7);
 }
 .play-tools {
-  padding-top: 12px;
-  gap: 6px;
+  padding-top: var(--s-6);
+  gap: var(--s-3);
 }
 .title-card.play-menu .play-tools button {
-  padding: 8px 0;
-  gap: 4px;
+  padding: var(--s-4) 0;
+  gap: var(--s-2);
 }
 @media (max-height: 520px) {
   .play-menu {
+    max-width: 62vw;
     top: 66px;
     width: 460px;
-    gap: 6px 10px;
-    padding: 14px 18px 10px;
+    gap: var(--s-3) var(--s-5);
+    padding: var(--s-7) var(--s-8) var(--s-5);
     max-height: calc(100dvh - 74px);
   }
   .title-card.play-menu > #play-solo,
   .title-card.play-menu > #create-room {
-    padding: 6px;
+    font-size: var(--t-label);
+    padding: var(--s-3);
   }
   .title-card.play-menu .play-setup {
+    font-size: var(--t-body);
     margin: 0;
-    padding: 5px 12px;
+    padding: var(--s-2) var(--s-6);
   }
   .play-tools {
-    padding-top: 6px;
+    padding-top: var(--s-3);
   }
   .title-card.play-menu .play-tools button {
-    padding: 4px 0;
+    padding: var(--s-2) 0;
   }
 }
 
@@ -4759,8 +4702,8 @@ body.in-lobby .title-hint {
   width: 340px;
   max-width: calc(100vw - 24px);
   max-height: calc(100dvh - 24px);
-  gap: 10px;
-  padding: 26px 24px 18px;
+  gap: var(--s-5);
+  padding: var(--s-10) var(--s-10) var(--s-8);
 }
 #lobby .title-card.play-menu[hidden] {
   display: none;
@@ -4768,11 +4711,11 @@ body.in-lobby .title-hint {
 @media (max-height: 520px) {
   #lobby .title-card.play-menu {
     width: 470px;
-    gap: 6px 10px;
-    padding: 14px 18px 10px;
+    gap: var(--s-3) var(--s-5);
+    padding: var(--s-7) var(--s-8) var(--s-5);
   }
   body.in-lobby .title-wordmark > span {
-    font-size: 1.5rem;
+    font-size: var(--t-big);
   }
 }
 
@@ -4807,22 +4750,11 @@ body.in-lobby .title-hint {
   background: var(--oat);
   color: var(--ink-faint);
 }
-#lobby-room .chef-card {
-  border-radius: var(--r-md);
-}
 
 /* no lift on anything in these cards (overrides the shared button styles, whatever their state) */
 #lobby-room button,
 #setup button {
   box-shadow: none !important;
-}
-#lobby #lobby-room:not([hidden]) {
-  top: 50%;
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  max-height: calc(100dvh - 24px);
-  transform: translate(-50%, -50%);
 }
 /* the room needs the width: the logo steps aside */
 body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
@@ -4830,20 +4762,17 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 }
 
 /* the room: code on top, choose a chef, who's here, then the two actions */
-#lobby #lobby-room:not([hidden]) {
-  width: min(600px, calc(100vw - 24px));
-}
 #lobby-room .room-line {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s-6);
   margin: 0;
-  padding-bottom: 12px;
+  padding-bottom: var(--s-6);
   border-bottom: 2px dashed var(--oat);
 }
 #lobby-room #room-code-display {
-  margin-left: 6px;
+  margin-left: var(--s-3);
   font-family: var(--font-display);
   font-size: 1.7rem;
   letter-spacing: 0.14em;
@@ -4851,9 +4780,9 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 }
 #lobby-room #copy-link {
   width: auto;
-  padding: 6px 14px;
+  padding: var(--s-3) var(--s-7);
   border-radius: var(--pill);
-  font-size: 0.9rem;
+  font-size: var(--t-body);
 }
 #lobby-room #lobby-roles {
   margin: 0;
@@ -4861,44 +4790,38 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 }
 #lobby-room #lobby-roles legend,
 #lobby-room .room-label {
-  margin: 0 0 6px;
+  margin: 0 0 var(--s-3);
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: var(--t-label);
   font-weight: 600;
   color: var(--ink);
 }
 #lobby-room .chef-card {
+  border-radius: var(--r-md);
   justify-items: center;
   align-content: start;
-  gap: 4px;
-  padding: 14px 10px;
 }
 #lobby-room .chef-card .chef-emoji {
   display: grid;
   place-items: center;
-  margin: 0 auto 2px;
   border-radius: 50%;
   background: var(--paper);
-}
-#lobby-room .chef-card > span {
-  line-height: 1.25;
 }
 #lobby-room #lobby-players {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--s-3);
   margin: 0;
 }
 #lobby-room #lobby-players li {
-  padding: 4px 12px;
   border-radius: var(--pill);
-  font-size: 0.86rem;
+  font-size: var(--t-body);
   font-weight: 700;
 }
 #lobby-room .room-actions {
   display: grid;
   grid-template-columns: 1fr 1.3fr;
-  margin-top: 2px;
+  margin-top: var(--s-1);
 }
 #lobby-room .room-actions button {
   width: 100%;
@@ -4919,61 +4842,42 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 #lobby-room #lobby-status {
   margin: 0;
   text-align: center;
-  font-size: 0.86rem;
+  font-size: var(--t-body);
 }
 #lobby-room #lobby-status:empty {
   display: none;
 }
 @media (max-height: 520px) {
-  #lobby #lobby-room:not([hidden]) {
-    width: min(720px, calc(100vw - 24px));
-  }
   #lobby-room .room-line {
-    padding-bottom: 6px;
+    padding-bottom: var(--s-3);
   }
   #lobby-room #room-code-display {
-    font-size: 1.2rem;
+    font-size: var(--t-head);
   }
   #lobby-room .chef-card {
-    padding: 6px;
+    padding: var(--s-3);
   }
   #lobby-room .chef-card > span {
-    font-size: 0.68rem;
+    font-size: var(--t-caption);
   }
   #lobby-room .room-actions button {
-    padding: 5px 8px;
-    font-size: 0.9rem;
+    padding: var(--s-2) var(--s-4);
+    font-size: var(--t-body);
   }
 }
 
 /* chef cards: one colour, and the same green highlight as the menus when chosen */
-#lobby-room .chef-card.head,
-#lobby-room .chef-card.deaf,
-#lobby-room .chef-card.mute {
-  border: 3px solid transparent;
-}
 #lobby-room .chef-card:hover {
   filter: none;
   background: var(--mint-soft);
-}
-#lobby-room .chef-card .chef-emoji .icon-svg {
-  display: block;
-  padding: 0;
-  margin: 0;
-  background: none;
-  transform: none;
 }
 
 /* same green hover as the menus, and a thin border when chosen */
 #lobby-room .chef-card.head,
 #lobby-room .chef-card.deaf,
 #lobby-room .chef-card.mute {
+  border: 3px solid transparent;
   border-width: 1px;
-}
-#lobby-room .chef-card:not([aria-pressed="true"]):hover,
-#lobby-room #copy-link:hover,
-#lobby-room #room-setup:hover {
-  filter: none;
 }
 
 /* cozy colourway: warm honey for what's chosen, soft peach on hover, dark ink text throughout */
@@ -4981,18 +4885,10 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 #lobby-room .chef-card[aria-pressed="true"]:hover {
   border-color: var(--honey-edge);
 }
-#lobby-room .chef-card[aria-pressed="true"] > span {
-  color: var(--ink);
-}
 #lobby-room .chef-card:not([aria-pressed="true"]):hover,
 #lobby-room #copy-link:hover,
 #lobby-room #room-setup:hover {
-  color: var(--ink);
-}
-#lobby-room .chef-card:not([aria-pressed="true"]):hover > span {
-  color: var(--ink-soft);
-}
-#lobby-room #start-game:not(:disabled) {
+  filter: none;
   color: var(--ink);
 }
 
@@ -5003,9 +4899,6 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 #lobby-room .chef-card[aria-pressed="true"]:hover {
   background: #eedcb8;
   color: var(--ink);
-}
-#lobby-room .chef-card[aria-pressed="true"] {
-  border-color: #cdb07c;
 }
 #lobby-room .chef-card:not([aria-pressed="true"]):hover,
 #lobby-room #copy-link:hover,
@@ -5022,13 +4915,13 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
   background: #fbdfd6;
   color: var(--ink);
 }
-.title-card.play-menu .play-setup {
-  background: #eee6f8;
-}
 .title-card.play-menu .play-setup:hover {
+  color: var(--ink);
   background: #e4d9f5;
 }
 .title-card.play-menu #join-form button {
+  color: var(--ink);
+  padding: var(--s-2) var(--s-8);
   background: #e4d9f5;
 }
 .title-card.play-menu #join-form button:hover {
@@ -5051,6 +4944,7 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
   background: #eee6f8;
 }
 #lobby-room #start-game:not(:disabled) {
+  color: var(--ink);
   background: #f8c9ba;
 }
 #lobby-room #start-game:not(:disabled):hover {
@@ -5058,16 +4952,6 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 }
 
 /* the shift dialog: same flat dashed paper card as the menus */
-#setup {
-  width: min(460px, calc(100vw - 32px));
-  border: none;
-  border-radius: var(--r-lg);
-  background: var(--paper);
-  box-shadow: var(--lift);
-  outline: 2px dashed var(--paper-shadow);
-  outline-offset: -8px;
-  text-align: left;
-}
 #setup::before,
 #setup::after {
   display: none;
@@ -5077,14 +4961,9 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
   backdrop-filter: none;
 }
 #setup h2 {
-  margin: 0 0 10px;
-  font-size: 1.4rem;
+  margin: 0 0 var(--s-5);
+  font-size: var(--t-big);
   text-align: center;
-}
-#setup .field {
-  font-family: var(--font-display);
-  font-weight: 600;
-  text-align: left;
 }
 #setup input,
 #setup select {
@@ -5130,52 +5009,74 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
     display: none;
   }
   #setup #level-blurb {
-    margin-bottom: 8px;
+    margin-bottom: var(--s-4);
   }
 }
 
 /* a little more breathing room */
 #setup {
-  padding: 32px 34px 28px;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  width: min(460px, calc(100vw - 32px));
+  border: none;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--lift);
+  outline: 2px dashed var(--paper-shadow);
+  outline-offset: -8px;
+  text-align: left;
+  padding: var(--s-11) 34px var(--s-10);
 }
 #setup h2 {
-  margin-bottom: 16px;
+  margin-bottom: var(--s-8);
 }
 #setup .field {
-  gap: 7px;
-  margin: 14px 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-align: left;
+  gap: var(--s-3);
+  margin: var(--s-7) 0;
 }
 #setup .venue-picker {
-  gap: 10px;
-  margin: 14px 0;
+  gap: var(--s-5);
+  margin: var(--s-7) 0;
 }
 #setup #level-blurb {
-  margin: 8px 0 20px;
+  margin: var(--s-4) 0 var(--s-9);
 }
 #lobby #lobby-room:not([hidden]) {
-  gap: 16px;
-  padding: 30px 32px 26px;
+  top: 50%;
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  max-height: calc(100dvh - 24px);
+  transform: translate(-50%, -50%);
+  width: min(600px, calc(100vw - 24px));
+  gap: var(--s-8);
+  padding: var(--s-11) var(--s-11) var(--s-10);
 }
 #lobby-room #lobby-roles {
-  gap: 10px;
+  gap: var(--s-5);
 }
 #lobby-room .room-actions {
-  gap: 10px;
+  gap: var(--s-5);
 }
 @media (max-height: 520px) {
   #setup {
-    padding: 14px 22px;
+    font-size: var(--t-body);
+    padding: var(--s-7) var(--s-9);
   }
   #setup .field,
   #setup .venue-picker {
-    margin: 6px 0;
+    margin: var(--s-3) 0;
   }
   #setup #level-blurb {
-    margin: 4px 0 8px;
+    margin: var(--s-2) 0 var(--s-4);
   }
   #lobby #lobby-room:not([hidden]) {
-    gap: 6px;
-    padding: 14px 18px;
+    width: min(720px, calc(100vw - 24px));
+    gap: var(--s-3);
+    padding: var(--s-7) var(--s-8);
   }
 }
 
@@ -5198,7 +5099,7 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 /* the pause menu: same flat, dashed pastel card as the other menus */
 #pause-menu {
   width: min(400px, calc(100vw - 32px));
-  padding: 30px 30px 24px;
+  padding: var(--s-11) var(--s-11) var(--s-10);
   border: none;
   border-radius: var(--r-lg);
   background: var(--paper);
@@ -5255,53 +5156,40 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 #pause-menu .menu-actions {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-#pause-menu .menu-actions #resume {
-  grid-column: 1 / -1;
-  flex-direction: row;
+  gap: var(--s-4);
 }
 #pause-menu .menu-actions button {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--s-2);
   margin: 0;
-  padding: 10px 2px;
-  font-size: 0.8rem;
+  padding: var(--s-5) var(--s-1);
+  font-size: var(--t-small);
 }
 #pause-menu .menu-actions #resume {
-  padding: 10px;
-  font-size: 1.1rem;
+  grid-column: 1 / -1;
+  flex-direction: row;
+  padding: var(--s-5);
+  font-size: var(--t-title);
 }
 #pause-menu #role-picker {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  margin: 12px 0 8px;
+  gap: var(--s-3);
+  margin: var(--s-6) 0 var(--s-4);
   padding: 0;
   border: none;
 }
 #pause-menu #role-picker legend {
-  margin-bottom: 6px;
+  margin-bottom: var(--s-3);
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: var(--t-body);
 }
 #pause-menu #role-picker label {
   margin: 0;
-}
-#pause-menu #role-picker label > span {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 7px 0;
-  border: 1px solid transparent;
-  border-radius: var(--r-md);
-  background: var(--oat);
-  box-shadow: none;
 }
 #pause-menu #role-picker label:hover > span {
   background: #fbdfd6;
@@ -5310,23 +5198,11 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
   background: #fbe9b7;
   border-color: #d9b45c;
 }
-#pause-menu #role-picker .icon-svg,
-#pause-menu #role-picker .icon-img {
-  padding: 0;
-}
 #pause-menu .menu-actions:has(#quit) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-}
-#pause-menu .menu-actions #quit {
-  padding: 7px 18px;
-  font-size: 0.9rem;
-  white-space: nowrap;
-}
-#pause-menu .menu-actions:has(#quit) a {
-  white-space: nowrap;
+  gap: var(--s-7);
 }
 
 #lobby .title-card.play-menu #lobby-back:hover,
@@ -5339,10 +5215,6 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 #role-avatar {
   display: grid;
   place-items: center;
-}
-#role-avatar .icon-svg {
-  padding: 0;
-  background: none;
 }
 
 /* small labels: plain rounded type, larger and darker, so they read at a glance */
@@ -5357,28 +5229,37 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
   color: var(--ink);
 }
 #pause-menu .menu-actions button:not(#resume) {
-  font-size: 0.98rem;
+  font-size: var(--t-label);
 }
 #pause-menu #role-picker label > span {
-  font-size: 0.88rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-1);
+  padding: var(--s-3) 0;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: var(--oat);
+  box-shadow: none;
+  font-size: var(--t-body);
 }
 .title-card.play-menu .play-tools button {
-  font-size: 0.86rem;
+  font-size: var(--t-body);
 }
 .title-card.play-menu .play-setup small,
 #lobby-room .chef-card > span,
 #setup #level-blurb {
   color: var(--ink);
-  font-size: 0.86rem;
+  font-size: var(--t-body);
 }
 #lobby-room .chef-card > strong {
-  font-size: 1.05rem;
+  font-size: var(--t-title);
 }
 
 /* settings: a list of rows, a label on the left and its control on the right */
 #settings {
   width: min(420px, calc(100vw - 32px));
-  padding: 28px 30px 24px;
+  padding: var(--s-10) var(--s-11) var(--s-10);
   border: none;
   border-radius: var(--r-lg);
   background: var(--paper);
@@ -5394,22 +5275,22 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
   backdrop-filter: none;
 }
 #settings h2 {
-  margin: 0 0 14px;
+  margin: 0 0 var(--s-7);
   text-align: center;
-  font-size: 1.4rem;
+  font-size: var(--t-big);
 }
 .setting-list {
   display: grid;
-  gap: 8px;
-  margin-bottom: 18px;
+  gap: var(--s-4);
+  margin-bottom: var(--s-8);
 }
 .setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s-6);
   margin: 0;
-  padding: 10px 12px;
+  padding: var(--s-5) var(--s-6);
   border: none;
   border-radius: var(--r-md);
   background: var(--oat);
@@ -5418,16 +5299,16 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
   float: left;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-4);
   padding: 0;
   font-weight: 800;
   color: var(--ink);
 }
 .segmented {
   display: flex;
-  gap: 2px;
+  gap: var(--s-1);
   margin-left: auto;
-  padding: 3px;
+  padding: var(--s-1);
   border-radius: var(--pill);
   background: var(--paper);
 }
@@ -5441,10 +5322,10 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 }
 .segmented span {
   display: block;
-  padding: 5px 16px;
+  padding: var(--s-2) var(--s-8);
   border-radius: var(--pill);
   font-weight: 800;
-  font-size: 0.92rem;
+  font-size: var(--t-label);
   color: var(--ink);
 }
 .segmented label:hover span {
@@ -5485,7 +5366,7 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 #shop,
 #briefing,
 #game-over {
-  padding: 30px 32px 26px;
+  padding: var(--s-11) var(--s-11) var(--s-10);
   border: none;
   border-radius: var(--r-lg);
   background: var(--paper);
@@ -5581,7 +5462,7 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 }
 @media (max-height: 520px) {
   #help, #how-to-play, #shop, #briefing, #game-over {
-    padding: 16px 20px;
+    padding: var(--s-8) var(--s-9);
   }
 }
 
@@ -5611,16 +5492,14 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
 }
 #pause-menu #role-picker .icon-svg,
 #pause-menu #role-picker .icon-img {
+  padding: 0;
   width: 32px;
   height: 32px;
 }
-#lobby-room .chef-card .chef-emoji {
-  width: 66px;
-  height: 66px;
-}
 #lobby-room .chef-card .chef-emoji .icon-svg {
-  width: 44px;
-  height: 44px;
+  display: block;
+  margin: 0;
+  transform: none;
   min-width: 44px;
 }
 #lobby-room #copy-link .icon-svg,
@@ -5634,6 +5513,8 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
   height: 30px;
 }
 #role-avatar .icon-svg {
+  padding: 0;
+  background: none;
   width: 76%;
   height: 76%;
 }
@@ -5666,6 +5547,7 @@ body.in-lobby:has(#lobby-room:not([hidden])) .title-wordmark {
   display: none;
 }
 .title-card.play-menu .play-setup {
+  background: #eee6f8;
   justify-content: center;
 }
 
@@ -5725,39 +5607,39 @@ body.touch #emote-wheel button {
 
 /* how to play: four steps, three chefs, a few keys */
 .how-lead {
-  margin: 0 0 16px;
+  margin: 0 0 var(--s-8);
   text-align: center;
   font-weight: 700;
   color: var(--ink);
 }
 #how-to-play li strong {
   font-family: var(--font-display);
-  font-size: 1.02rem;
+  font-size: var(--t-title);
 }
 #how-to-play li span {
-  font-size: 0.86rem;
+  font-size: var(--t-body);
   font-weight: 600;
-  line-height: 1.25;
+  line-height: var(--lh-label);
   color: var(--ink);
 }
 #how-to-play .menu-actions {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin-top: 18px;
+  gap: var(--s-5);
+  margin-top: var(--s-8);
 }
 #how-to-play .menu-actions button {
   margin: 0;
 }
 /* messages from the lobby stay readable over the kitchen */
 #lobby-error:not(:empty) {
-  padding: 6px 16px;
+  padding: var(--s-3) var(--s-8);
   border-radius: var(--pill);
   background: var(--paper);
 }
 @media (max-height: 520px) {
   #how-to-play li span {
-    font-size: 0.76rem;
+    font-size: var(--t-caption);
   }
 }
 
@@ -5770,11 +5652,11 @@ body.touch #emote-wheel button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: var(--s-5);
   background: #fbe9d7;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 1.4rem;
+  font-size: var(--t-big);
   font-weight: 600;
   text-align: center;
 }
@@ -5798,18 +5680,14 @@ body.touch #emote-wheel button {
 }
 .load-steam path:nth-child(2) { animation-delay: 0.45s; }
 .load-steam path:nth-child(3) { animation-delay: 0.9s; }
-.load-flames path {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-}
 .load-flames path:nth-child(2) { animation-delay: 0.15s; }
 .load-flames path:nth-child(3) { animation-delay: 0.3s; }
 .load-text {
-  margin: 8px 0 0;
+  margin: var(--s-4) 0 0;
 }
 .load-dots {
   display: flex;
-  gap: 8px;
+  gap: var(--s-4);
 }
 .load-dots i {
   width: 12px;
@@ -5850,8 +5728,8 @@ body.touch #emote-wheel button {
 /* How to play on a sideways phone: chefs' details stay short so it needs less scrolling */
 @media (max-height: 520px) {
   .how-lead {
-    margin: 4px 0;
-    font-size: 0.86rem;
+    margin: var(--s-2) 0;
+    font-size: var(--t-body);
   }
 }
 
@@ -5864,18 +5742,18 @@ body.touch #emote-wheel button {
   display: none;
 }
 #how-to-play h2 {
-  margin: 0 0 6px;
+  margin: 0 0 var(--s-3);
   font-size: 1.7rem;
   text-align: center;
 }
 #how-to-play .how-lead {
-  margin: 0 0 24px;
-  font-size: 1.05rem;
+  margin: 0 0 var(--s-10);
+  font-size: var(--t-title);
 }
 .how-row {
   display: flex;
   justify-content: center;
-  gap: 22px;
+  gap: var(--s-9);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -5884,16 +5762,16 @@ body.touch #emote-wheel button {
   display: grid;
   justify-items: center;
   align-content: start;
-  gap: 8px;
+  gap: var(--s-4);
   min-width: 72px;
   font-family: var(--font-display);
-  font-size: 1.08rem;
+  font-size: var(--t-title);
   font-weight: 600;
 }
 .how-row small {
   margin-top: -6px;
   font-family: "Nunito", sans-serif;
-  font-size: 0.84rem;
+  font-size: var(--t-small);
   font-weight: 700;
   color: var(--ink-soft);
 }
@@ -5906,15 +5784,15 @@ body.touch #emote-wheel button {
   place-items: center;
   min-width: 56px;
   height: 56px;
-  padding: 0 8px;
+  padding: 0 var(--s-4);
   border-radius: var(--r-md);
-  font-size: 1.1rem;
+  font-size: var(--t-title);
 }
 .how-dots {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  margin: 26px 0 18px;
+  gap: var(--s-4);
+  margin: var(--s-10) 0 var(--s-8);
 }
 .how-dots i {
   width: 10px;
@@ -5928,7 +5806,7 @@ body.touch #emote-wheel button {
 .how-actions {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: var(--s-5);
 }
 .how-actions button {
   margin: 0;
@@ -5938,12 +5816,12 @@ body.touch #emote-wheel button {
 }
 @media (max-height: 520px) {
   #how-to-play .how-lead {
-    margin-bottom: 10px;
-    font-size: 0.92rem;
+    margin-bottom: var(--s-5);
+    font-size: var(--t-label);
   }
   #how-to-play h2 {
-    font-size: 1.3rem;
-    margin-bottom: 2px;
+    font-size: var(--t-head);
+    margin-bottom: var(--s-1);
   }
   #how-to-play .how-row .icon-svg,
   .how-row kbd {
@@ -5955,12 +5833,14 @@ body.touch #emote-wheel button {
     min-width: 42px;
   }
   .how-dots {
-    margin: 12px 0 10px;
+    margin: var(--s-6) 0 var(--s-5);
   }
 }
 
 /* the fire: layered red, orange and gold flames that lick upward */
 .load-flames path {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
   animation: none;
 }
 .load-flame {
@@ -5983,7 +5863,7 @@ body.touch #emote-wheel button {
 /* our own dropdown: a soft pill that opens a list in place */
 .dropdown {
   display: grid;
-  gap: 6px;
+  gap: var(--s-3);
   font-weight: 700;
 }
 .dropdown button,
@@ -5992,17 +5872,17 @@ body.touch #emote-wheel button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--s-5);
   width: 100%;
   margin: 0;
-  padding: 8px 14px;
+  padding: var(--s-4) var(--s-7);
   border-radius: var(--r-md);
   box-shadow: none !important;
   transform: none;
   background: transparent;
   color: var(--ink);
   font-family: "Nunito", sans-serif;
-  font-size: 0.98rem;
+  font-size: var(--t-label);
   font-weight: 700;
   text-align: left;
 }
@@ -6011,20 +5891,10 @@ body.touch #emote-wheel button {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-.dd-arrow {
-  width: 9px;
-  height: 9px;
-  margin: -3px 2px 0 2px;
-  border-right: 3px solid var(--ink);
-  border-bottom: 3px solid var(--ink);
-  border-radius: 1px;
-  transform: rotate(45deg);
-  transition: transform 0.15s, margin 0.15s;
+  gap: var(--s-5);
 }
 .dropdown.open .dd-arrow {
-  margin-top: 4px;
+  margin-top: var(--s-2);
   transform: rotate(225deg);
 }
 .dd-list {
@@ -6034,16 +5904,9 @@ body.touch #emote-wheel button {
 .dd-list[hidden] {
   display: none;
 }
-.dropdown .dd-list button:hover,
-.dropdown .dd-list button:focus {
-  outline: none;
-}
 .dd-stars {
   display: inline-flex;
   flex: none;
-}
-.dropdown .dd-stars .icon-svg {
-  padding: 0;
 }
 .dd-stars .icon-svg.empty {
   filter: grayscale(1) brightness(1.25);
@@ -6059,21 +5922,18 @@ body.touch #emote-wheel button {
   flex: 1;
   min-width: 0;
 }
-.dd-number {
-  flex: none;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #fff;
-  font-family: var(--font-display);
-  font-size: 0.9rem;
-  font-weight: 700;
-}
 .dd-stars {
   gap: 1px;
 }
 .dd-arrow {
+  width: 9px;
+  height: 9px;
+  margin: -3px var(--s-1) 0 var(--s-1);
+  border-right: 3px solid var(--ink);
+  border-bottom: 3px solid var(--ink);
+  border-radius: 1px;
+  transform: rotate(45deg);
+  transition: transform 0.15s, margin 0.15s;
   border-color: #b98a4a;
 }
 
@@ -6085,24 +5945,21 @@ body.touch #emote-wheel button {
   position: relative;
 }
 .dd-number {
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  font-family: var(--font-display);
+  font-size: var(--t-body);
+  font-weight: 700;
   display: none;
-}
-.dd-list {
-  position: absolute;
-  z-index: 5;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  gap: 2px;
-  max-height: 260px;
-}
-.dropdown .dd-list button,
-.dropdown .dd-list button:active {
-  background: transparent;
 }
 
 /* stars use the game's own outlined star icon: gold when earned, cream when not */
 .dropdown .dd-stars .icon-svg {
+  padding: 0;
   width: 22px;
   height: 22px;
   filter: none;
@@ -6121,7 +5978,7 @@ body.touch #emote-wheel button {
 .dropdown .dd-face:hover,
 .dropdown.open .dd-face {
   min-height: 46px;
-  padding: 8px 14px 8px 12px;
+  padding: var(--s-4) var(--s-7) var(--s-4) var(--s-6);
 }
 .dropdown .dd-face:focus-visible {
   outline-offset: 1px;
@@ -6130,15 +5987,10 @@ body.touch #emote-wheel button {
   display: grid;
   width: 24px;
   height: 24px;
-  font-size: 0.82rem;
+  font-size: var(--t-small);
 }
 .dropdown .dd-list button.on .dd-name {
   font-weight: 800;
-}
-.dropdown .dd-list button,
-.dropdown .dd-list button:active {
-  min-height: 42px;
-  padding: 6px 12px 6px 10px;
 }
 .dropdown.up .dd-list {
   top: auto;
@@ -6148,10 +6000,6 @@ body.touch #emote-wheel button {
   flex: none;
 }
 /* the name field reads as the same kind of control */
-#setup input,
-#setup input:focus {
-  min-height: 46px;
-}
 
 /* cozy select and name field: warm cream with a soft tan edge and generous corners */
 .dropdown .dd-face,
@@ -6175,16 +6023,22 @@ body.touch #emote-wheel button {
   border-color: #d9a95c;
 }
 .dd-list {
-  padding: 6px;
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  gap: var(--s-1);
+  max-height: 260px;
+  padding: var(--s-3);
   border-radius: 18px;
 }
 .dropdown .dd-list button,
 .dropdown .dd-list button:active {
+  background: transparent;
+  min-height: 42px;
+  padding: var(--s-3) var(--s-6) var(--s-3) var(--s-5);
   border-radius: 13px;
-}
-.dropdown .dd-number,
-.dropdown .dd-list button.on .dd-number {
-  background: #fff;
 }
 
 /* every card stays on screen whatever its size: centred, and scrolls inside if it must */
@@ -6202,25 +6056,21 @@ body.touch #emote-wheel button {
 @media (max-height: 520px) {
   #pause-menu {
     width: min(620px, calc(100vw - 16px));
-    padding: 12px 18px;
+    padding: var(--s-6) var(--s-8);
   }
   #pause-menu h2 {
-    margin: 0 0 6px;
-    font-size: 1.1rem;
+    margin: 0 0 var(--s-3);
+    font-size: var(--t-title);
   }
   #pause-menu .menu-actions:not(:has(#quit)) {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
+    gap: var(--s-3);
   }
   #pause-menu .menu-actions #resume {
-    grid-column: auto;
-    flex-direction: column;
-    padding: 6px 2px;
-    font-size: 0.86rem;
+    font-size: var(--t-body);
   }
   #pause-menu .menu-actions button:not(#resume) {
-    padding: 6px 2px;
-    font-size: 0.86rem;
+    padding: var(--s-3) var(--s-1);
+    font-size: var(--t-body);
   }
   #pause-menu .menu-actions button .icon-svg,
   #pause-menu .menu-actions button .icon-img {
@@ -6228,12 +6078,12 @@ body.touch #emote-wheel button {
     height: 26px !important;
   }
   #pause-menu #role-picker {
-    margin: 6px 0 4px;
+    margin: var(--s-3) 0 var(--s-2);
   }
   #pause-menu #role-picker label > span {
     flex-direction: row;
     justify-content: center;
-    padding: 4px 0;
+    padding: var(--s-2) 0;
   }
   #pause-menu #role-picker .icon-svg {
     width: 20px;
@@ -6246,8 +6096,8 @@ body.touch #emote-wheel button {
 /* narrow phones held upright */
 @media (max-width: 480px) {
   #lobby #lobby-room:not([hidden]) {
-    padding: 18px 16px;
-    gap: 10px;
+    padding: var(--s-8) var(--s-8);
+    gap: var(--s-5);
   }
   #lobby-room .room-line {
     flex-wrap: wrap;
@@ -6256,13 +6106,13 @@ body.touch #emote-wheel button {
     grid-template-columns: 1fr;
   }
   #lobby-room .chef-card {
-    padding: 10px 4px;
+    padding: var(--s-5) var(--s-2);
   }
   #lobby-room .chef-card > span {
     display: none;
   }
   .how-row {
-    gap: 10px;
+    gap: var(--s-5);
     flex-wrap: wrap;
   }
   .how-row li {
@@ -6273,7 +6123,7 @@ body.touch #emote-wheel button {
     height: 44px;
   }
   #settings, #help, #how-to-play, #shop, #briefing, #game-over, #pause-menu, #setup {
-    padding: 22px 18px 18px;
+    padding: var(--s-9) var(--s-8) var(--s-8);
   }
   .setting-row {
     flex-wrap: wrap;
@@ -6289,13 +6139,11 @@ body.touch #emote-wheel button {
 .dd-list {
   border: none;
 }
-.dd-list {
-  box-shadow: 0 6px 16px rgba(45, 28, 12, 0.12);
-}
 
 /* a touch of colour: blush for the name, lilac for the shift */
 #setup input,
 #setup input:focus {
+  min-height: 46px;
   background: #fde8e1;
 }
 #setup input:focus {
@@ -6311,10 +6159,12 @@ body.touch #emote-wheel button {
   background: #fbecbf;
 }
 .dd-list {
+  box-shadow: 0 6px 16px rgba(45, 28, 12, 0.12);
   background: #fffaf0;
 }
 .dropdown .dd-list button:hover,
 .dropdown .dd-list button:focus {
+  outline: none;
   background: #fdf3d3;
 }
 .dropdown .dd-list button.on {
@@ -6322,6 +6172,7 @@ body.touch #emote-wheel button {
 }
 .dropdown .dd-number,
 .dropdown .dd-list button.on .dd-number {
+  background: #fff;
   color: #9a6b2f;
 }
 
@@ -6330,17 +6181,7 @@ body.touch #emote-wheel button {
   width: 26px;
   height: 26px;
 }
-.toast .text {
-  font-weight: 800;
-}
 /* short words, short toast */
-#toasts {
-  align-items: flex-start;
-}
-.toast {
-  width: fit-content;
-  max-width: 100%;
-}
 
 /* toast icons sit directly on the paper */
 .toast .icon,
@@ -6352,15 +6193,19 @@ body.touch #emote-wheel button {
   background: none;
 }
 .toast {
-  padding: 6px 12px 6px 10px;
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--s-3) var(--s-6) var(--s-3) var(--s-5);
 }
 
 /* a longer message wraps to a second line instead of being cut off */
 .toast .text {
+  font-weight: 800;
   -webkit-line-clamp: 2;
-  line-height: 1.25;
+  line-height: var(--lh-label);
 }
 #toasts {
+  align-items: flex-start;
   max-width: min(320px, calc(100vw - 24px));
 }
 
@@ -6398,13 +6243,13 @@ input[type="checkbox"]:focus-visible,
   text-align: center;
 }
 #briefing h2 {
-  margin: 2px 0 16px;
-  font-size: 1.6rem;
+  margin: var(--s-1) 0 var(--s-8);
+  font-size: var(--t-huge);
 }
 #briefing .briefing-lines {
   display: grid;
-  gap: 12px;
-  margin: 0 0 16px;
+  gap: var(--s-6);
+  margin: 0 0 var(--s-8);
   padding: 0;
   list-style: none;
   text-align: left;
@@ -6412,12 +6257,12 @@ input[type="checkbox"]:focus-visible,
 #briefing .briefing-lines li {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--s-7);
   padding: 0;
   border: none;
   background: none;
   font-weight: 700;
-  font-size: 1.02rem;
+  font-size: var(--t-title);
   color: var(--ink);
 }
 #briefing .briefing-lines li::before {
@@ -6432,14 +6277,14 @@ input[type="checkbox"]:focus-visible,
 #briefing .briefing-role {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 0 0 18px;
-  padding: 10px 14px;
+  gap: var(--s-6);
+  margin: 0 0 var(--s-8);
+  padding: var(--s-5) var(--s-7);
   border-radius: var(--r-md);
   background: var(--oat);
   color: var(--ink);
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: var(--t-label);
   text-align: left;
 }
 #briefing .briefing-role .icon-svg {
@@ -6451,20 +6296,20 @@ input[type="checkbox"]:focus-visible,
 }
 @media (max-height: 520px) {
   #briefing h2 {
-    margin-bottom: 8px;
-    font-size: 1.2rem;
+    margin-bottom: var(--s-4);
+    font-size: var(--t-head);
   }
   #briefing .briefing-lines {
-    gap: 6px;
-    margin-bottom: 8px;
+    gap: var(--s-3);
+    margin-bottom: var(--s-4);
   }
   #briefing .briefing-lines .icon-svg {
     width: 28px;
     height: 28px;
   }
   #briefing .briefing-role {
-    margin-bottom: 8px;
-    padding: 6px 12px;
+    margin-bottom: var(--s-4);
+    padding: var(--s-3) var(--s-6);
   }
 }
 
@@ -6473,8 +6318,8 @@ input[type="checkbox"]:focus-visible,
   text-align: center;
 }
 #help h2 {
-  margin: 0 0 14px;
-  font-size: 1.6rem;
+  margin: 0 0 var(--s-7);
+  font-size: var(--t-huge);
 }
 .cook-steps {
   display: flex;
@@ -6488,17 +6333,17 @@ input[type="checkbox"]:focus-visible,
   flex: 1;
   display: grid;
   justify-items: center;
-  gap: 5px;
+  gap: var(--s-2);
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 0.98rem;
+  font-size: var(--t-label);
 }
 .cook-steps li:not(:last-child)::after {
   content: "›";
   position: absolute;
   top: 8px;
   right: -5px;
-  font-size: 1.5rem;
+  font-size: var(--t-big);
   line-height: 1;
   color: var(--ink-soft);
 }
@@ -6510,28 +6355,28 @@ input[type="checkbox"]:focus-visible,
 .key-list {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 7px 22px;
-  margin: 0 0 16px;
-  padding: 14px 16px;
+  gap: var(--s-3) var(--s-9);
+  margin: 0 0 var(--s-8);
+  padding: var(--s-7) var(--s-8);
   border-radius: var(--r-md);
   background: var(--oat);
   list-style: none;
   text-align: left;
   font-weight: 700;
-  font-size: 0.94rem;
+  font-size: var(--t-label);
   color: var(--ink);
 }
 .key-list li {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--s-5);
 }
 .key-list li > span {
   flex: none;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 3px;
+  gap: var(--s-1);
   min-width: 96px;
 }
 .key-list .icon-svg {
@@ -6540,19 +6385,19 @@ input[type="checkbox"]:focus-visible,
 }
 .cook-notes {
   display: grid;
-  gap: 8px;
-  margin: 0 0 16px;
+  gap: var(--s-4);
+  margin: 0 0 var(--s-8);
   padding: 0;
   list-style: none;
   text-align: left;
   font-weight: 700;
-  font-size: 0.94rem;
+  font-size: var(--t-label);
   color: var(--ink);
 }
 .cook-notes li {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--s-5);
 }
 .cook-notes .icon-svg {
   flex: none;
@@ -6573,9 +6418,9 @@ body.touch .key-list li > span {
     min-width: 76px;
   }
   .key-list {
-    gap: 5px 10px;
-    padding: 10px;
-    font-size: 0.84rem;
+    gap: var(--s-2) var(--s-5);
+    padding: var(--s-5);
+    font-size: var(--t-small);
   }
   .cook-steps .icon-svg,
   .cook-steps .icon-img {
@@ -6583,7 +6428,7 @@ body.touch .key-list li > span {
     height: 32px;
   }
   .cook-steps li {
-    font-size: 0.8rem;
+    font-size: var(--t-small);
   }
   .cook-steps li:not(:last-child)::after {
     display: none;
@@ -6595,30 +6440,27 @@ body.touch .key-list li > span {
   }
   .key-list {
     grid-template-columns: repeat(3, 1fr);
-    margin: 8px 0;
+    margin: var(--s-4) 0;
   }
   .cook-notes {
     grid-template-columns: repeat(3, 1fr);
-    margin-bottom: 8px;
-    font-size: 0.8rem;
+    margin-bottom: var(--s-4);
+    font-size: var(--t-small);
   }
 }
 
 /* how to cook: two tabs, so only one thing is on screen at a time */
 #help .help-tabs {
   display: inline-flex;
-  margin: 0 auto 20px;
+  margin: 0 auto var(--s-9);
   background: var(--oat);
-}
-#help .help-tabs span {
-  padding: 7px 24px;
 }
 #help .help-tabs input:checked + span {
   background: #fbe9b7;
 }
 .help-panel {
   min-height: 268px;
-  margin-bottom: 18px;
+  margin-bottom: var(--s-8);
 }
 .help-panel[hidden] {
   display: none;
@@ -6632,26 +6474,18 @@ body.touch .key-list li > span {
   width: fit-content;
   margin: 0 auto;
 }
-.key-groups {
-  display: grid;
-  text-align: left;
-}
 .key-groups h3 {
-  margin: 0 0 10px;
+  margin: 0 0 var(--s-5);
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: var(--t-title);
   font-weight: 600;
 }
 .key-groups p {
   display: flex;
-  margin: 0 0 10px;
+  margin: 0 0 var(--s-5);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: var(--t-body);
   color: var(--ink);
-}
-.key-groups p > span {
-  display: flex;
-  align-items: center;
 }
 body.touch #help .key-groups {
   display: none;
@@ -6661,11 +6495,11 @@ body.touch #help .key-groups {
     width: min(620px, calc(100vw - 16px));
   }
   #help .help-tabs {
-    margin-bottom: 8px;
+    margin-bottom: var(--s-4);
   }
   .help-panel {
     min-height: 0;
-    margin-bottom: 8px;
+    margin-bottom: var(--s-4);
   }
   .help-panel .cook-steps .icon-svg,
   .help-panel .cook-steps .icon-img {
@@ -6673,56 +6507,58 @@ body.touch #help .key-groups {
     height: 32px;
   }
   .help-panel .cook-notes {
-    margin-top: 10px;
+    margin-top: var(--s-5);
     width: auto;
   }
   .key-groups p {
     flex-direction: row;
     align-items: center;
-    font-size: 0.78rem;
+    font-size: var(--t-small);
   }
   .key-groups h3 {
-    margin-bottom: 4px;
-    font-size: 0.9rem;
+    margin-bottom: var(--s-2);
+    font-size: var(--t-body);
   }
 }
 @media (max-width: 480px) {
   .key-groups {
-    gap: 10px;
-    font-size: 0.86rem;
+    gap: var(--s-5);
+    font-size: var(--t-body);
   }
 }
 
 /* controls: each key sits beside what it does, with the words lined up */
-.key-groups {
-  gap: 22px;
-}
 .key-groups p {
   flex-direction: row;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  line-height: 1.2;
+  gap: var(--s-5);
+  margin-bottom: var(--s-5);
+  line-height: var(--lh-label);
 }
 .key-groups p > span {
+  display: flex;
+  align-items: center;
   flex: none;
   justify-content: flex-start;
-  gap: 2px;
+  gap: var(--s-1);
 }
 .key-groups {
+  display: grid;
+  text-align: left;
+  gap: var(--s-9);
   grid-template-columns: auto auto auto;
   justify-content: space-between;
 }
 @media (max-height: 520px) {
   .key-groups p {
-    gap: 6px;
-    margin-bottom: 3px;
+    gap: var(--s-3);
+    margin-bottom: var(--s-1);
   }
 }
 @media (max-width: 620px) {
   .key-groups {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: var(--s-5);
   }
 }
 .help-panel[data-tab="keys"] {
@@ -6733,9 +6569,6 @@ body.touch #help .key-groups {
 #help,
 #help:has(input[value="keys"]:checked) {
   width: min(720px, calc(100vw - 16px));
-}
-.help-panels {
-  display: grid;
 }
 .help-panels .help-panel,
 .help-panels .help-panel[data-tab="keys"] {
@@ -6748,17 +6581,17 @@ body.touch #help .key-groups {
   visibility: hidden;
 }
 #help .help-panel .cook-steps {
-  margin-bottom: 4px;
+  margin-bottom: var(--s-2);
 }
 #help .help-panel .cook-notes {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   width: auto;
-  gap: 12px;
-  font-size: 0.88rem;
+  gap: var(--s-6);
+  font-size: var(--t-body);
 }
 .cook-notes li {
-  line-height: 1.2;
+  line-height: var(--lh-label);
 }
 @media (max-width: 620px) {
   #help .help-panel .cook-notes {
@@ -6772,7 +6605,7 @@ body.touch #help .key-groups {
   place-items: center;
   min-width: 28px;
   height: 28px;
-  padding: 0 6px 2px;
+  padding: 0 var(--s-3) var(--s-1);
   margin: 0;
   border: 2px solid var(--ink);
   border-bottom-width: 4px;
@@ -6780,7 +6613,7 @@ body.touch #help .key-groups {
   background: #fffaf0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 0.82rem;
+  font-size: var(--t-small);
   font-weight: 600;
   line-height: 1;
 }
@@ -6791,14 +6624,14 @@ body.touch #help .key-groups {
 .key-groups > div:nth-child(2) p > span { width: 76px; }
 .key-groups > div:nth-child(3) p > span { width: 30px; }
 #help .key-groups p {
-  margin-bottom: 8px;
+  margin-bottom: var(--s-4);
 }
 @media (max-height: 520px) {
   #help .key-groups kbd {
     min-width: 22px;
     height: 22px;
-    padding: 0 4px 1px;
-    font-size: 0.72rem;
+    padding: 0 var(--s-2) 1px;
+    font-size: var(--t-caption);
   }
   #help .key-groups .icon-svg {
     width: 22px;
@@ -6807,7 +6640,7 @@ body.touch #help .key-groups {
   .key-groups > div:nth-child(2) p > span { width: 60px; }
   .key-groups > div:nth-child(3) p > span { width: 24px; }
   #help .key-groups p {
-    margin-bottom: 3px;
+    margin-bottom: var(--s-1);
   }
 }
 
@@ -6823,10 +6656,6 @@ body.touch #help .key-groups {
 }
 
 /* the Cooking tab spreads out to fill the same height as Controls */
-.help-panels .help-panel[data-tab="cook"] {
-  display: flex;
-  flex-direction: column;
-}
 .help-panels .help-panel[data-tab="cook"][hidden] {
   display: flex;
   visibility: hidden;
@@ -6853,76 +6682,67 @@ body.touch #help .key-groups {
 
 /* Cooking tab: steps and tip together, then three soft reminder tiles fill the rest */
 .help-panels .help-panel[data-tab="cook"] {
-  justify-content: flex-start;
-  gap: 14px;
-}
-#help .help-panel[data-tab="cook"] .cook-notes {
-  flex: 1;
-  gap: 10px;
-}
-#help .help-panel[data-tab="cook"] .cook-notes li {
+  display: flex;
   flex-direction: column;
-  justify-content: center;
-  border-radius: var(--r-md);
-  text-align: center;
-  font-size: 0.92rem;
+  justify-content: flex-start;
+  gap: var(--s-7);
 }
 #help .cook-notes li:nth-child(1) { background: #eef3fb; }
 #help .cook-notes li:nth-child(2) { background: #fde8e1; }
 #help .cook-notes li:nth-child(3) { background: #fdf3d3; }
 .help-panels {
-  margin-bottom: 20px;
-}
-@media (max-height: 520px) {
-  #help .help-panel[data-tab="cook"] .cook-notes li {
-    flex-direction: row;
-    text-align: left;
-    font-size: 0.8rem;
-  }
+  display: grid;
+  margin-bottom: var(--s-9);
 }
 
 /* reminder cards: an icon in a white circle, a short title and one small line */
 #help .help-panel[data-tab="cook"] .cook-notes li {
-  gap: 2px;
-  padding: 14px 10px;
-}
-#help .help-panel[data-tab="cook"] .cook-notes .icon-svg {
-  box-sizing: content-box;
+  flex-direction: column;
+  justify-content: center;
+  border-radius: var(--r-md);
+  text-align: center;
+  font-size: var(--t-label);
+  gap: var(--s-1);
+  padding: var(--s-7) var(--s-5);
 }
 #help .cook-notes strong {
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: var(--t-title);
   font-weight: 600;
 }
 #help .cook-notes span {
-  font-size: 0.86rem;
+  font-size: var(--t-body);
   font-weight: 700;
   color: var(--ink-soft);
 }
 @media (max-height: 520px) {
   #help .help-panel[data-tab="cook"] .cook-notes li {
+    flex-direction: row;
+    text-align: left;
+    font-size: var(--t-small);
     display: grid;
     grid-template-columns: auto 1fr;
-    column-gap: 8px;
-    padding: 6px 8px;
+    column-gap: var(--s-4);
+    padding: var(--s-3) var(--s-4);
   }
   #help .help-panel[data-tab="cook"] .cook-notes .icon-svg {
     grid-row: span 2;
-    padding: 5px;
+    padding: var(--s-2);
   }
   #help .cook-notes strong {
-    font-size: 0.82rem;
+    font-size: var(--t-small);
   }
   #help .cook-notes span {
-    font-size: 0.72rem;
+    font-size: var(--t-caption);
   }
 }
 
 /* reminder icons: no circle, just bigger */
 #help .help-panel[data-tab="cook"] .cook-notes .icon-svg {
+  box-sizing: content-box;
   width: 52px;
   height: 52px;
-  margin-bottom: 8px;
+  margin-bottom: var(--s-4);
   padding: 0;
   border-radius: 0;
   background: none;
@@ -6937,11 +6757,13 @@ body.touch #help .key-groups {
 
 /* more room between the steps and the reminder cards */
 #help .help-panel[data-tab="cook"] .cook-notes {
-  margin-top: 16px;
+  flex: 1;
+  gap: var(--s-5);
+  margin-top: var(--s-8);
 }
 @media (max-height: 520px) {
   #help .help-panel[data-tab="cook"] .cook-notes {
-    margin-top: 6px;
+    margin-top: var(--s-3);
   }
 }
 
@@ -6950,45 +6772,45 @@ body.touch #help .key-groups {
 @media (min-height: 521px) {
   :is(#settings, #help, #how-to-play, #shop, #briefing, #game-over, #setup, #pause-menu),
   #lobby #lobby-room:not([hidden]) {
-    padding: 32px 32px 28px;
+    padding: var(--s-11) var(--s-11) var(--s-10);
   }
   #lobby .title-card.play-menu {
-    padding: 28px 24px 20px;
+    padding: var(--s-10) var(--s-10) var(--s-9);
   }
   :is(#settings, #help, #how-to-play, #shop, #briefing, #game-over, #setup, #pause-menu) h2 {
-    margin: 0 0 16px;
-    font-size: 1.6rem;
+    margin: 0 0 var(--s-8);
+    font-size: var(--t-huge);
   }
   #briefing-level {
-    margin: 0 0 4px;
+    margin: 0 0 var(--s-2);
   }
   #how-to-play .how-lead {
-    margin: -8px 0 20px;
+    margin: -8px 0 var(--s-9);
   }
   #settings .setting-list,
   .help-panels,
   #briefing .briefing-role,
   #setup #level-blurb {
-    margin-bottom: 20px;
+    margin-bottom: var(--s-9);
   }
   .how-dots {
-    margin: 20px 0;
+    margin: var(--s-9) 0;
   }
   #final-stars,
   #final-score {
-    margin: 0 0 12px;
+    margin: 0 0 var(--s-6);
   }
   #final-stats {
-    margin: 0 0 20px;
+    margin: 0 0 var(--s-9);
   }
   #pause-menu .menu-actions:not(:has(#quit)) {
-    gap: 8px;
+    gap: var(--s-4);
   }
   #pause-menu #role-picker {
-    margin: 16px 0 12px;
+    margin: var(--s-8) 0 var(--s-6);
   }
   #pause-menu .toggle {
-    margin-bottom: 12px;
+    margin-bottom: var(--s-6);
   }
   /* main action buttons all share one height */
   #settings-done, #close-help, #how-next, #how-tutorial, #briefing-go, #setup-done, #resume,
@@ -7003,8 +6825,8 @@ body.touch #help .key-groups {
     min-height: 44px;
   }
   #title-menu .title-card:not(.play-menu) {
-    padding: 20px 16px;
-    gap: 4px;
+    padding: var(--s-9) var(--s-8);
+    gap: var(--s-2);
   }
 }
 
@@ -7038,7 +6860,7 @@ body.touch #help .key-groups {
   box-shadow: none;
   transform: none;
   translate: none;
-  font-size: 1.6rem;
+  font-size: var(--t-huge);
   font-weight: 800;
   line-height: 1;
   z-index: 6;
@@ -7061,7 +6883,7 @@ body.touch #help .key-groups {
     width: 44px;
     height: 44px;
     margin-top: -22px;
-    font-size: 1.3rem;
+    font-size: var(--t-head);
   }
 }
 #recipe-book .page-corner.prev,
@@ -7094,36 +6916,8 @@ body.touch #help .key-groups {
 }
 /* upright phones: too narrow for buttons at the sides, so they sit below the book */
 @media (max-width: 640px) and (min-height: 521px) {
-  #recipe-book {
-    max-width: calc(100vw - 16px);
-    margin-top: 10px;
-  }
-  #recipe-book .page-corner,
-  #recipe-book .page-corner:hover,
-  #recipe-book .page-corner:active {
-    top: auto;
-    margin: 0;
-  }
-}
-@media (max-width: 640px) and (min-height: 521px) {
-  #recipe-book .page-corner,
-  #recipe-book .page-corner:hover,
-  #recipe-book .page-corner:active {
-    position: absolute;
-  }
-}
-@media (max-width: 640px) and (min-height: 521px) {
   #recipe-book[open] {
     display: flex;
-  }
-  #recipe-book {
-    height: calc(100dvh - 104px);
-    flex-direction: column;
-  }
-  #recipe-book .book-spread {
-    flex: 1;
-    min-height: 0;
-    height: auto;
   }
   #recipe-book .page-corner {
     z-index: 20;
@@ -7131,29 +6925,33 @@ body.touch #help .key-groups {
 }
 
 /* upright phones: the buttons live in a strip of leather below the pages */
-@media (max-width: 640px) and (min-height: 521px) {
-  #recipe-book {
-    height: calc(100dvh - 40px);
-    max-height: none;
-    margin: 26px auto auto;
-    padding-bottom: 64px;
-  }
-  #recipe-book .book-spread {
-    max-height: none;
-  }
-}
 
 /* the page buttons now belong to the book itself, so the pages can clip and scroll freely */
 @media (max-width: 640px) and (min-height: 521px) {
   #recipe-book {
+    max-width: calc(100vw - 16px);
+    margin-top: var(--s-5);
+    height: calc(100dvh - 104px);
+    flex-direction: column;
+    height: calc(100dvh - 40px);
+    max-height: none;
+    margin: var(--s-10) auto auto;
+    padding-bottom: 64px;
     overflow: visible;
   }
   #recipe-book .book-spread {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    max-height: none;
     overflow: hidden;
   }
   #recipe-book .page-corner,
   #recipe-book .page-corner:hover,
   #recipe-book .page-corner:active {
+    top: auto;
+    margin: 0;
+    position: absolute;
     bottom: 10px;
   }
 }
@@ -7211,28 +7009,16 @@ body.touch #help .key-groups {
   padding: 0;
   list-style: none;
 }
-#recipe-book .book-ingredients > li {
-  display: flex;
-  align-items: center;
-  padding-block: 5px;
-  border-radius: 0;
-}
 #recipe-book .book-ingredients .icon-img,
 #recipe-book .book-ingredients li > img {
   flex: none;
 }
 #recipe-book .book-ingredients b {
-  font-size: 1.02rem;
+  font-size: var(--t-title);
   white-space: nowrap;
 }
 #recipe-book .book-ingredients b::after {
   content: none;
-}
-#recipe-book .book-ingredients li::after {
-  order: 1;
-  flex: 1;
-  min-width: 16px;
-  border-bottom: 2px dotted #d9c39c;
 }
 #recipe-book .book-ingredients .where {
   order: 2;
@@ -7246,23 +7032,19 @@ body.touch #help .key-groups {
 #recipe-book .book-ingredients .where.cold {
   color: var(--sky-ink);
 }
-@media (max-height: 520px) {
-  #recipe-book .book-ingredients > li {
-    padding-block: 2px;
-  }
-}
 
 /* ingredient rows: the name with what to do with it underneath, on a soft round icon spot */
 #recipe-book .book-ingredients > li {
+  display: flex;
+  align-items: center;
+  padding-block: var(--s-2);
+  border-radius: 0;
   min-height: 54px;
-  gap: 14px;
+  gap: var(--s-7);
 }
 #recipe-book .book-ingredients .ing-name {
   display: grid;
-  line-height: 1.15;
-}
-#recipe-book .book-ingredients small {
-  color: var(--ink-soft);
+  line-height: var(--lh-tight);
 }
 #recipe-book .book-ingredients .icon-img,
 #recipe-book .book-ingredients li > img {
@@ -7274,8 +7056,9 @@ body.touch #help .key-groups {
 }
 @media (max-height: 520px) {
   #recipe-book .book-ingredients > li {
+    padding-block: var(--s-1);
     min-height: 40px;
-    gap: 10px;
+    gap: var(--s-5);
   }
   #recipe-book .book-ingredients .icon-img,
   #recipe-book .book-ingredients li > img {
@@ -7286,20 +7069,23 @@ body.touch #help .key-groups {
 
 /* no dotted line or gap: the location sits right beside the ingredient */
 #recipe-book .book-ingredients li::after {
+  order: 1;
+  flex: 1;
+  min-width: 16px;
+  border-bottom: 2px dotted #d9c39c;
   content: none;
-}
-#recipe-book .book-ingredients .where {
-  margin-left: 6px;
 }
 
 /* ingredient rows: icon, the name, and one small line with the prep and where it lives */
 #recipe-book .book-ingredients small {
+  color: var(--ink-soft);
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 0.84rem;
+  gap: var(--s-2);
+  font-size: var(--t-small);
 }
 #recipe-book .book-ingredients .where {
+  margin-left: var(--s-3);
   margin: 0;
 }
 
@@ -7311,16 +7097,16 @@ body.touch #help .key-groups {
 #recipe-book .book-method li {
   position: relative;
   grid-template-columns: 26px 36px 1fr auto;
-  gap: 12px;
+  gap: var(--s-6);
   min-height: 56px;
-  padding: 8px 2px;
-  font-size: 0.96rem;
+  padding: var(--s-4) var(--s-1);
+  font-size: var(--t-label);
 }
 #recipe-book .book-method li::before {
   z-index: 1;
   width: 26px;
   height: 26px;
-  font-size: 0.82rem;
+  font-size: var(--t-small);
   background: #eeb9a6;
   color: var(--ink);
 }
@@ -7336,26 +7122,7 @@ body.touch #help .key-groups {
   width: 36px;
   height: 36px;
 }
-#recipe-book .book-method .step-where {
-  padding: 0;
-  border: none;
-  background: none;
-  box-shadow: none;
-  font-weight: 700;
-  color: var(--ink-soft);
-}
 /* the tip: a plain flat note, not a stuck-on card */
-#recipe-book .book-tip {
-  margin-top: 14px;
-  padding: 12px 14px;
-  transform: none;
-  rotate: 0deg;
-  border: none;
-  border-radius: var(--r-md);
-  background: #fdf3d3;
-  box-shadow: none;
-  line-height: 1.35;
-}
 #recipe-book .book-tip .icon-svg {
   flex: none;
   width: 28px;
@@ -7364,10 +7131,10 @@ body.touch #help .key-groups {
 @media (max-height: 520px), (max-width: 640px) {
   #recipe-book .book-method li {
     grid-template-columns: 22px 28px 1fr auto;
-    gap: 8px;
+    gap: var(--s-4);
     min-height: 40px;
-    padding: 4px 2px;
-    font-size: 0.88rem;
+    padding: var(--s-2) var(--s-1);
+    font-size: var(--t-body);
   }
   #recipe-book .book-method li::before {
     width: 22px;
@@ -7394,6 +7161,12 @@ body.touch #help .key-groups {
 
 /* method: the place is just its icon (the name stays for hover and screen readers) */
 #recipe-book .book-method .step-where {
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  font-weight: 700;
+  color: var(--ink-soft);
   gap: 0;
   font-size: 0;
 }
@@ -7432,6 +7205,15 @@ body.touch #help .key-groups {
   font-weight: 500;
 }
 #recipe-book .book-tip {
+  margin-top: var(--s-7);
+  padding: var(--s-6) var(--s-7);
+  transform: none;
+  rotate: 0deg;
+  border: none;
+  border-radius: var(--r-md);
+  background: #fdf3d3;
+  box-shadow: none;
+  line-height: var(--lh-text);
   font-weight: 500;
 }
 
@@ -7520,7 +7302,7 @@ body.touch #help .key-groups {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: var(--s-3);
   pointer-events: none;
 }
 
@@ -7528,9 +7310,9 @@ body.touch #help .key-groups {
 .rush-tag {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--s-2);
   height: 34px;
-  padding: 0 14px 0 8px;
+  padding: 0 var(--s-7) 0 var(--s-4);
   border-radius: var(--pill);
   background: #fdf1d4;
   font: 600 1rem var(--font-display);
@@ -7623,14 +7405,14 @@ body.touch #momentum {
 body.touch .combo-tag,
 body.touch .rush-tag {
   height: 28px;
-  font-size: 0.86rem;
+  font-size: var(--t-body);
 }
 
 /* the end of a shift: one award for each chef */
 .awards {
   display: grid;
-  gap: 6px;
-  margin: 10px 0 2px;
+  gap: var(--s-3);
+  margin: var(--s-5) 0 var(--s-1);
   padding: 0;
   list-style: none;
   text-align: left;
@@ -7643,8 +7425,8 @@ body.touch .rush-tag {
 .awards li {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: var(--s-5);
+  padding: var(--s-4) var(--s-6);
   border-radius: var(--r-md);
   background: var(--lilac-soft);
 }
@@ -7667,7 +7449,7 @@ body.touch .rush-tag {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  column-gap: 6px;
+  column-gap: var(--s-3);
   min-width: 0;
 }
 
@@ -7682,7 +7464,7 @@ body.touch .rush-tag {
 
 .award-words small {
   flex-basis: 100%;
-  font-size: 0.78rem;
+  font-size: var(--t-small);
   font-weight: 700;
   color: var(--ink-soft);
 }
@@ -7690,11 +7472,11 @@ body.touch .rush-tag {
 @media (max-height: 520px) {
   .awards {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    margin-top: 6px;
+    margin-top: var(--s-3);
   }
 
   .awards li {
-    padding: 6px 10px;
+    padding: var(--s-3) var(--s-5);
   }
 
   .awards .icon-svg {
@@ -7704,15 +7486,13 @@ body.touch .rush-tag {
 }
 
 /* the daily special: a butter card under Restaurant & Shift, with your streak on the right */
-.title-card.play-menu .play-daily {
-  background: #fdf1d4;
-}
 
 .title-card.play-menu .play-daily:hover {
   background: #fbe5b0;
 }
 
 .title-card.play-menu .play-daily {
+  background: #fdf1d4;
   position: relative;
 }
 
@@ -7723,7 +7503,7 @@ body.touch .rush-tag {
   translate: 0 -50%;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--s-1);
   font: 600 1rem var(--font-display);
   color: var(--peach-ink);
 }
@@ -7739,7 +7519,7 @@ body.touch .rush-tag {
 
 /* the shift dialog: Normal or today's Daily special, above the restaurant and shift */
 #setup #shift-kind {
-  margin-bottom: 12px;
+  margin-bottom: var(--s-6);
 }
 
 #setup #shift-kind .segmented input:disabled + span {
@@ -7755,9 +7535,9 @@ body.touch .rush-tag {
 .report {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px 14px;
-  margin: 0 0 12px;
-  padding: 10px 14px;
+  gap: var(--s-2) var(--s-7);
+  margin: 0 0 var(--s-6);
+  padding: var(--s-5) var(--s-7);
   list-style: none;
   text-align: left;
   border-radius: var(--r-md);
@@ -7771,9 +7551,9 @@ body.touch .rush-tag {
 .report li {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s-3);
   min-width: 0;
-  font-size: 0.86rem;
+  font-size: var(--t-body);
 }
 
 .report .icon-svg {
@@ -7803,13 +7583,13 @@ body.touch .rush-tag {
 .final-tip {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 12px;
-  padding: 8px 12px;
+  gap: var(--s-4);
+  margin: 0 0 var(--s-6);
+  padding: var(--s-4) var(--s-6);
   border-radius: var(--r-md);
   background: var(--sky-soft);
   color: var(--sky-ink);
-  font-size: 0.86rem;
+  font-size: var(--t-body);
   text-align: left;
 }
 
@@ -7824,18 +7604,14 @@ body.touch .rush-tag {
 }
 
 /* the sticker album: a grid of round stickers, greyed out until earned */
-#album h2 small {
-  font-size: 0.9rem;
-  color: var(--ink-soft);
-}
 
 .album {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-  gap: 12px 10px;
+  gap: var(--s-6) var(--s-5);
   max-height: min(60vh, 520px);
-  margin: 0 0 20px;
-  padding: 4px 2px;
+  margin: 0 0 var(--s-9);
+  padding: var(--s-2) var(--s-1);
   overflow-y: auto;
   list-style: none;
 }
@@ -7844,45 +7620,28 @@ body.touch .rush-tag {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--s-2);
   text-align: center;
 }
 
 .sticker-face {
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
-  border: 3px solid #fff;
   border-radius: 50%;
-  background: var(--tint, var(--oat));
-  box-shadow: 0 2px 0 var(--paper-shadow);
   transform: rotate(var(--tilt, 0deg));
-}
-
-.sticker-face .icon-svg {
-  width: 32px;
-  height: 32px;
 }
 
 .album strong {
   font-family: var(--font-display);
-  font-size: 0.86rem;
+  font-size: var(--t-body);
   font-weight: 600;
-  line-height: 1.15;
+  line-height: var(--lh-tight);
 }
 
 .album small {
-  font-size: 0.72rem;
-  line-height: 1.25;
+  font-size: var(--t-caption);
+  line-height: var(--lh-label);
   color: var(--ink-soft);
-}
-
-.album li.locked .sticker-face {
-  border: 2px dashed var(--paper-shadow);
-  background: var(--oat);
-  box-shadow: none;
-  transform: none;
 }
 
 .album li.locked .sticker-face .icon-svg {
@@ -7902,8 +7661,8 @@ body.touch .rush-tag {
   z-index: 30;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 18px 6px 6px;
+  gap: var(--s-5);
+  padding: var(--s-3) var(--s-8) var(--s-3) var(--s-3);
   border: 2px solid var(--paper-shadow);
   border-radius: var(--pill);
   background: var(--paper);
@@ -7919,12 +7678,12 @@ body.touch .rush-tag {
 #sticker-pop span {
   display: flex;
   flex-direction: column;
-  line-height: 1.15;
+  line-height: var(--lh-tight);
   text-align: left;
 }
 
 #sticker-pop small {
-  font-size: 0.7rem;
+  font-size: var(--t-caption);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-soft);
@@ -7932,7 +7691,7 @@ body.touch .rush-tag {
 
 #sticker-pop strong {
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: var(--t-title);
   font-weight: 600;
 }
 
@@ -7987,12 +7746,12 @@ body.touch .rush-tag {
 .final-stickers {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 10px 0 2px;
-  padding: 6px 12px;
+  gap: var(--s-3);
+  margin: var(--s-5) 0 var(--s-1);
+  padding: var(--s-3) var(--s-6);
   border-radius: var(--r-md);
   background: var(--lilac-soft);
-  font-size: 0.86rem;
+  font-size: var(--t-body);
   text-align: left;
 }
 
@@ -8013,17 +7772,17 @@ body.touch .rush-tag {
 }
 
 .final-stickers span {
-  margin-left: 4px;
+  margin-left: var(--s-2);
 }
 
 /* the shop's sections: chef looks and terrace decor under the upgrades */
 .shop-section {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 20px 0 8px;
+  gap: var(--s-4);
+  margin: var(--s-9) 0 var(--s-4);
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: var(--t-title);
   font-weight: 600;
   text-align: left;
 }
@@ -8036,8 +7795,8 @@ body.touch .rush-tag {
 .hat-colors {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 10px 0 0;
+  gap: var(--s-4);
+  margin: var(--s-5) 0 0;
 }
 
 .hat-colors .swatch {
@@ -8057,12 +7816,12 @@ body.touch .rush-tag {
 /* Quick Play: under the two big choices, across the whole menu */
 .title-card.play-menu > #quick-play {
   grid-column: 1 / -1;
-  font-size: 1rem;
+  font-size: var(--t-label);
 }
 
 .title-card.play-menu > #quick-play small {
-  margin-left: 2px;
-  font-size: 0.74rem;
+  margin-left: var(--s-1);
+  font-size: var(--t-caption);
   color: var(--ink-soft);
 }
 
@@ -8090,8 +7849,8 @@ html.reduce-motion *::after {
 .level-map {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-  gap: 8px;
-  margin: 12px 0;
+  gap: var(--s-4);
+  margin: var(--s-6) 0;
 }
 
 .level-card {
@@ -8099,9 +7858,9 @@ html.reduce-motion *::after {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: var(--s-1);
   min-height: 0;
-  padding: 8px 10px 8px 36px;
+  padding: var(--s-4) var(--s-5) var(--s-4) 36px;
   border: 2px solid transparent;
   border-radius: var(--r-md);
   background: var(--oat);
@@ -8123,18 +7882,18 @@ html.reduce-motion *::after {
   height: 22px;
   border-radius: 50%;
   background: var(--paper);
-  font-size: 0.8rem;
+  font-size: var(--t-small);
 }
 
 .level-card strong {
   font-family: var(--font-display);
-  font-size: 0.9rem;
+  font-size: var(--t-body);
   font-weight: 600;
-  line-height: 1.15;
+  line-height: var(--lh-tight);
 }
 
 .level-card small {
-  font-size: 0.7rem;
+  font-size: var(--t-caption);
   color: var(--ink-soft);
 }
 
@@ -8164,13 +7923,13 @@ body.touch [data-label]::after {
   top: calc(100% + 2px);
   left: 50%;
   transform: translateX(-50%);
-  padding: 1px 6px;
+  padding: 1px var(--s-3);
   border-radius: var(--pill);
   background: var(--paper);
   color: var(--ink-soft);
-  font-size: 0.6rem;
+  font-size: var(--t-micro);
   font-weight: 800;
-  line-height: 1.3;
+  line-height: var(--lh-label);
   white-space: nowrap;
   pointer-events: none;
 }
@@ -8220,7 +7979,7 @@ body.touch [data-label]::after {
   width: 22px;
 }
 :is(.card-dialog, .title-card, #settings, #setup, .album)::-webkit-scrollbar-track {
-  margin: 28px 0;
+  margin: var(--s-10) 0;
   background: transparent;
 }
 :is(.card-dialog, .title-card, #settings, #setup, .album)::-webkit-scrollbar-thumb {
@@ -8239,8 +7998,8 @@ body.touch [data-label]::after {
   position: sticky;
   bottom: -26px;
   z-index: 1;
-  margin: 14px -12px 0;
-  padding: 12px 12px 4px;
+  margin: var(--s-7) -12px 0;
+  padding: var(--s-6) var(--s-6) var(--s-2);
   background: var(--paper);
 }
 #shop #close-shop {
@@ -8249,7 +8008,7 @@ body.touch [data-label]::after {
   margin: 0 auto;
 }
 #shop .shop-section {
-  margin-top: 22px;
+  margin-top: var(--s-9);
 }
 
 /* the play menu on laptops and up: a roomy two-column card in the middle; the logo stays put */
@@ -8263,8 +8022,8 @@ body.touch [data-label]::after {
       "setup daily"
       "tools tools"
       "back back";
-    gap: 14px 16px;
-    padding: 28px 28px 22px;
+    gap: var(--s-7) var(--s-8);
+    padding: var(--s-10) var(--s-10) var(--s-9);
   }
   #lobby #lobby-start > #play-solo { grid-area: solo; }
   #lobby #lobby-start > #create-room { grid-area: create; }
@@ -8310,14 +8069,14 @@ body.touch [data-label]::after {
   }
   #lobby #lobby-start .play-tools {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--s-5);
   }
   #lobby #lobby-start .play-tools button {
     flex-direction: column;
-    gap: 6px;
-    padding: 12px 4px 10px;
-    font-size: 0.95rem;
+    gap: var(--s-3);
+    padding: var(--s-6) var(--s-2) var(--s-5);
+    font-size: var(--t-label);
   }
   #lobby #lobby-start .play-tools .icon-svg,
   #lobby #lobby-start .play-tools .icon-img {
@@ -8347,7 +8106,7 @@ body:has(#setup[open]) #lobby-start {
 #album {
   width: min(760px, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
-  padding: 28px 28px 22px;
+  padding: var(--s-10) var(--s-10) var(--s-9);
   border: none;
   border-radius: var(--r-lg);
   background: var(--paper);
@@ -8366,30 +8125,30 @@ body:has(#setup[open]) #lobby-start {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin: 0 0 16px;
-  font-size: 1.6rem;
+  gap: var(--s-4);
+  margin: 0 0 var(--s-8);
+  font-size: var(--t-huge);
 }
 #album h2 small {
-  padding: 2px 10px;
+  padding: var(--s-1) var(--s-5);
   border-radius: var(--pill);
   background: #fbe9b7;
   font-family: "Nunito", sans-serif;
-  font-size: 0.85rem;
+  font-size: var(--t-body);
   font-weight: 800;
   color: var(--ink);
 }
 #album .album {
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
+  gap: var(--s-6);
   max-height: min(58vh, 520px);
-  margin: 0 0 18px;
-  padding: 6px 4px;
+  margin: 0 0 var(--s-8);
+  padding: var(--s-3) var(--s-2);
 }
 /* each sticker sits on a soft tile; earned ones take their sticker's pastel */
 #album .album li {
-  gap: 6px;
-  padding: 14px 8px 12px;
+  gap: var(--s-3);
+  padding: var(--s-7) var(--s-4) var(--s-6);
   border-radius: var(--r-md);
   background: var(--oat);
 }
@@ -8397,10 +8156,10 @@ body:has(#setup[open]) #lobby-start {
   background: color-mix(in srgb, var(--tint-bg, #fbe09a) 30%, var(--paper));
 }
 #album .album strong {
-  font-size: 0.95rem;
+  font-size: var(--t-label);
 }
 #album .album small {
-  font-size: 0.76rem;
+  font-size: var(--t-caption);
 }
 #album #close-album,
 #album #close-album:hover,
@@ -8413,7 +8172,7 @@ body:has(#setup[open]) #lobby-start {
   box-shadow: none;
   transform: none;
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: var(--t-title);
   color: var(--ink);
 }
 #album #close-album:hover {
@@ -8478,7 +8237,7 @@ body:has(#setup[open]) #lobby-start {
   top: -10px;
   left: -6px;
   display: flex;
-  gap: 2px;
+  gap: var(--s-1);
 }
 .crew-chip {
   display: grid;
@@ -8506,8 +8265,8 @@ body:has(#setup[open]) #lobby-start {
 .chef-card .senses {
   display: flex;
   justify-content: center;
-  gap: 6px;
-  margin: 4px 0 2px;
+  gap: var(--s-3);
+  margin: var(--s-2) 0 var(--s-1);
 }
 .chef-card .senses i {
   position: relative;
@@ -8549,7 +8308,7 @@ body:has(#setup[open]) #lobby-start {
     display: grid;
     width: min(860px, calc(100vw - 48px));
     grid-template-columns: 1fr 1fr;
-    column-gap: 26px;
+    column-gap: var(--s-10);
     align-items: start;
   }
   #setup > h2,
@@ -8559,7 +8318,7 @@ body:has(#setup[open]) #lobby-start {
   #setup .setup-col {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--s-5);
   }
   #setup .setup-col > * {
     margin-top: 0;
@@ -8568,7 +8327,7 @@ body:has(#setup[open]) #lobby-start {
   #setup > #setup-done {
     justify-self: center;
     width: min(320px, 100%);
-    margin-top: 14px;
+    margin-top: var(--s-7);
   }
 }
 
@@ -8613,7 +8372,7 @@ body:has(#setup[open]) #lobby-start {
 }
 .daily-shift {
   align-self: start;
-  padding: 14px 16px;
+  padding: var(--s-7) var(--s-8);
   border-radius: var(--r-md);
   background: #fdf1d4;
   text-align: left;
@@ -8621,8 +8380,8 @@ body:has(#setup[open]) #lobby-start {
 .daily-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: var(--s-6);
+  margin-bottom: var(--s-5);
 }
 .daily-badge {
   flex: none;
@@ -8642,26 +8401,26 @@ body:has(#setup[open]) #lobby-start {
 }
 .daily-head strong {
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: var(--t-title);
   font-weight: 600;
 }
 .daily-head small {
   color: var(--ink-soft);
-  font-size: 0.85rem;
+  font-size: var(--t-body);
 }
 .daily-shift ul {
   display: grid;
-  gap: 6px;
+  gap: var(--s-3);
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 0.9rem;
+  font-size: var(--t-body);
   font-weight: 700;
 }
 .daily-shift li {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-4);
 }
 .daily-shift li .icon-svg {
   flex: none;
@@ -8674,15 +8433,15 @@ body:has(#setup[open]) #lobby-start {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  margin-top: 6px;
-  padding: 3px 10px;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+  padding: var(--s-1) var(--s-5);
   border-radius: var(--pill);
   background: var(--paper);
   font-style: normal;
-  font-size: 0.78rem;
+  font-size: var(--t-small);
   font-weight: 800;
-  line-height: 1.2;
+  line-height: var(--lh-label);
 }
 .chef-card .strength .icon-svg {
   flex: none;
@@ -8699,8 +8458,8 @@ body:has(#setup[open]) #lobby-start {
   transform: translateY(-50%);
   display: grid;
   justify-items: center;
-  gap: 6px;
-  padding: 8px;
+  gap: var(--s-3);
+  padding: var(--s-4);
   border-radius: var(--r-lg);
   background: rgba(255, 250, 240, 0.92);
   color: var(--ink);
@@ -8756,11 +8515,11 @@ body:has(#setup[open]) #lobby-start {
   border-top-width: 6px;
 }
 #pour .pour-edge {
-  padding: 1px 8px;
+  padding: 1px var(--s-4);
   border-radius: var(--pill);
   background: var(--lilac-soft);
   font-family: "Nunito", sans-serif;
-  font-size: 0.68rem;
+  font-size: var(--t-caption);
   font-weight: 800;
 }
 #pour .pour-edge[hidden] {
@@ -8781,9 +8540,9 @@ body:has(#setup[open]) #lobby-start {
   position: absolute;
   bottom: calc(100% + 8px);
   left: 50%;
-  padding: 4px 12px;
+  padding: var(--s-2) var(--s-6);
   border-radius: var(--pill);
-  font-size: 0.95rem;
+  font-size: var(--t-label);
   white-space: nowrap;
   opacity: 0;
   transform: translateX(-50%);
@@ -8808,7 +8567,7 @@ body.touch #pour {
   left: auto;
   right: calc(50% - 160px);
   top: 52%;
-  padding: 10px;
+  padding: var(--s-5);
 }
 body.touch #pour .pour-bar {
   width: 34px;
@@ -8826,33 +8585,23 @@ body:not(.keyboard-nav) input:focus-visible + span {
 #lobby-room .chef-card {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  padding: 14px;
-  text-align: left;
   color: var(--ink);
 }
 #lobby-room .chef-card > span,
 #lobby-room .chef-card[aria-pressed="true"] > span,
 #lobby-room .chef-card:not([aria-pressed="true"]):hover > span {
   color: var(--ink);
-  font-size: 0.78rem;
+  font-size: var(--t-small);
   font-weight: 600;
-  line-height: 1.3;
+  line-height: var(--lh-label);
 }
 #lobby-room .chef-card .cc-head {
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 #lobby-room .chef-card .chef-emoji {
   flex: none;
   margin: 0;
-}
-#lobby-room .chef-card .chef-emoji .icon-svg {
-  width: 44px;
-  height: 44px;
-  padding: 8px;
 }
 #lobby-room .chef-card .cc-name {
   display: grid;
@@ -8860,39 +8609,29 @@ body:not(.keyboard-nav) input:focus-visible + span {
 }
 #lobby-room .chef-card .cc-name strong {
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: var(--t-title);
 }
 #lobby-room .chef-card .cc-name small {
-  font-size: 0.7rem;
+  font-size: var(--t-caption);
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
 /* the four senses, labelled: green for what they have, struck through for what they don't */
-#lobby-room .chef-card .cc-senses {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-}
 #lobby-room .chef-card .cc-sense {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
+  gap: var(--s-2);
   border-radius: var(--pill);
   background: rgba(255, 255, 255, 0.75);
-  font-size: 0.72rem;
+  font-size: var(--t-caption);
   font-weight: 800;
   white-space: nowrap;
 }
 #lobby-room .chef-card .cc-sense .icon-svg {
   width: 15px;
   height: 15px;
-}
-#lobby-room .chef-card .cc-sense.no {
-  background: rgba(59, 47, 39, 0.08);
-  color: #b0533f;
 }
 #lobby-room .chef-card .cc-sense.no .icon-svg {
   opacity: 0.55;
@@ -8901,14 +8640,13 @@ body:not(.keyboard-nav) input:focus-visible + span {
   color: var(--ink-soft) !important;
 }
 #lobby-room .chef-card .cc-list {
-  display: grid;
-  gap: 5px;
-  padding: 10px;
+  gap: var(--s-2);
+  padding: var(--s-5);
   border-radius: var(--r-md);
   background: rgba(255, 255, 255, 0.75);
 }
 #lobby-room .chef-card .cc-list b {
-  font-size: 0.66rem;
+  font-size: var(--t-micro);
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -8917,7 +8655,7 @@ body:not(.keyboard-nav) input:focus-visible + span {
 #lobby-room .chef-card .cc-list span {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--s-3);
 }
 #lobby-room .chef-card .cc-list .icon-svg,
 #lobby-room .chef-card .cc-limit .icon-svg {
@@ -8926,16 +8664,15 @@ body:not(.keyboard-nav) input:focus-visible + span {
   height: 16px;
 }
 #lobby-room .chef-card .cc-limit {
-  display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--s-3);
   margin-top: auto;
-  font-size: 0.72rem !important;
+  font-size: var(--t-caption) !important;
   color: #b0533f !important;
 }
 #lobby-room .chef-card .cc-list span:last-child {
   color: var(--ink);
-  font-size: 0.78rem;
+  font-size: var(--t-small);
 }
 
 /* the cards stay short (who they are, what they sense); the details open underneath */
@@ -8946,14 +8683,14 @@ body:not(.keyboard-nav) input:focus-visible + span {
 }
 #chef-detail {
   display: grid;
-  margin-top: 10px;
-  padding: 14px;
+  margin-top: var(--s-5);
+  padding: var(--s-7);
   border-radius: var(--r-md);
   background: var(--oat);
   color: var(--ink);
-  font-size: 0.82rem;
+  font-size: var(--t-small);
   font-weight: 600;
-  line-height: 1.35;
+  line-height: var(--lh-text);
 }
 #chef-detail.head { background: #fdf1d4; }
 #chef-detail.deaf { background: var(--peach-soft); }
@@ -8966,7 +8703,7 @@ body:not(.keyboard-nav) input:focus-visible + span {
   /* name, job, then the limit right under them (the spare height goes below it, so a long
      strengths list never pushes the limit down) */
   grid-template-rows: auto auto 1fr;
-  gap: 8px 14px;
+  gap: var(--s-4) var(--s-7);
   align-content: start;
   visibility: hidden;
 }
@@ -8989,7 +8726,7 @@ body:not(.keyboard-nav) input:focus-visible + span {
 #chef-detail .cd-pane > strong {
   grid-column: 1;
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: var(--t-label);
 }
 #chef-detail .cc-job {
   grid-column: 1;
@@ -8999,21 +8736,21 @@ body:not(.keyboard-nav) input:focus-visible + span {
   grid-column: 1;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--s-3);
   color: #b0533f;
-  font-size: 0.78rem;
+  font-size: var(--t-small);
 }
 #chef-detail .cc-list {
   grid-column: 2;
   grid-row: 1 / span 3;
   display: grid;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: var(--s-3);
+  padding: var(--s-5) var(--s-6);
   border-radius: var(--r-md);
   background: rgba(255, 255, 255, 0.75);
 }
 #chef-detail .cc-list b {
-  font-size: 0.66rem;
+  font-size: var(--t-micro);
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -9022,7 +8759,7 @@ body:not(.keyboard-nav) input:focus-visible + span {
 #chef-detail .cc-list span {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--s-3);
 }
 #chef-detail .icon-svg {
   flex: none;
@@ -9040,49 +8777,36 @@ body:not(.keyboard-nav) input:focus-visible + span {
 #lobby-room #lobby-roles > * {
   min-width: 0;
 }
-#lobby-room .chef-card {
-  min-width: 0;
-}
 #lobby-room .chef-card .cc-senses {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 #lobby-room .chef-card .cc-sense {
   min-width: 0;
-  padding: 4px 6px;
+  padding: var(--s-2) var(--s-3);
   overflow: hidden;
   text-overflow: ellipsis;
 }
-#lobby-room .chef-card .cc-name {
-  min-width: 0;
-}
 /* compact cards: centred, the senses they have as small icons, the one they lack spelled out */
 #lobby-room .chef-card {
+  min-width: 0;
   align-items: center;
   text-align: center;
-  gap: 8px;
-  padding: 12px 8px;
+  gap: var(--s-4);
+  padding: var(--s-6) var(--s-4);
 }
 #lobby-room .chef-card .cc-head {
   flex-direction: column;
-  gap: 6px;
+  gap: var(--s-3);
 }
 #lobby-room .chef-card .cc-name {
+  min-width: 0;
   justify-items: center;
 }
 #lobby-room .chef-card .cc-senses {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 4px;
-}
-#lobby-room .chef-card .cc-sense.yes {
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  justify-content: center;
-  gap: 0; /* the hidden word still counts as a flex item: no gap, so the icon sits centred */
-  font-size: 0;
-  border-radius: 50%;
+  gap: var(--s-2);
 }
 #lobby-room .chef-card .cc-sense em {
   font-style: normal;
@@ -9095,9 +8819,18 @@ body:not(.keyboard-nav) input:focus-visible + span {
   clip-path: inset(50%);
 }
 #lobby-room .chef-card .cc-sense.yes {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+  font-size: 0;
+  border-radius: 50%;
   position: relative;
 }
 #lobby-room .chef-card .cc-sense.no {
+  background: rgba(59, 47, 39, 0.08);
+  color: #b0533f;
   order: 1;
   flex-basis: 100%;
   justify-content: center;
@@ -9132,11 +8865,11 @@ body:not(.keyboard-nav) input:focus-visible + span {
   top: 6px;
   right: 6px;
   max-width: calc(100% - 12px);
-  padding: 2px 8px;
+  padding: var(--s-1) var(--s-4);
   border-radius: var(--pill);
   background: var(--ink);
   color: var(--paper) !important;
-  font-size: 0.66rem !important;
+  font-size: var(--t-micro) !important;
   font-weight: 800;
   white-space: nowrap;
   overflow: hidden;
@@ -9163,19 +8896,17 @@ body:not(.keyboard-nav) input:focus-visible + span {
 }
 
 /* who's here: a pill per chef in their colour, with their icon */
+/* the same height with or without a chef icon, so picking one moves nothing */
 #lobby-room #lobby-players li {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px 4px 4px;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-6) var(--s-2) var(--s-2);
   background: var(--oat);
-}
-/* the same height with or without a chef icon, so picking one moves nothing */
-#lobby-room #lobby-players li {
   box-sizing: border-box;
   height: 34px;
 }
-#lobby-room #lobby-players li.choosing { padding-left: 12px; }
+#lobby-room #lobby-players li.choosing { padding-left: var(--s-6); }
 #lobby-room #lobby-players li.head { background: #fdf1d4; }
 #lobby-room #lobby-players li.deaf { background: var(--peach-soft); }
 #lobby-room #lobby-players li.mute { background: var(--lilac-soft); }
@@ -9189,27 +8920,27 @@ body:not(.keyboard-nav) input:focus-visible + span {
 #lobby-room #lobby-players li .chef-emoji .icon-svg {
   width: 26px;
   height: 26px;
-  padding: 5px;
+  padding: var(--s-2);
 }
 #lobby-room #lobby-players li span {
   font-weight: 600;
   color: var(--ink-soft);
 }
 #lobby-room #lobby-players li small {
-  padding: 1px 7px;
+  padding: 1px var(--s-3);
   border-radius: var(--pill);
   background: rgba(255, 255, 255, 0.7);
-  font-size: 0.7rem;
+  font-size: var(--t-caption);
   font-weight: 800;
 }
 
 /* players: the count next to the kitchen code; a disconnected chef's badge greys out */
 #room-count {
-  margin-left: 8px;
-  padding: 2px 10px;
+  margin-left: var(--s-4);
+  padding: var(--s-1) var(--s-5);
   border-radius: var(--pill);
   background: var(--oat);
-  font-size: 0.78rem;
+  font-size: var(--t-small);
   font-weight: 800;
   color: var(--ink-soft);
   white-space: nowrap;
@@ -9229,16 +8960,16 @@ body:not(.keyboard-nav) input:focus-visible + span {
   background: none;
 }
 #lobby-room .chef-card .cc-head {
-  margin-top: 14px;
+  margin-top: var(--s-7);
 }
 
 /* ====================================================================== picker chips: clean and even (desktop) */
 body:not(.touch) #picker .pick {
-  gap: 8px;
+  gap: var(--s-4);
   height: 38px;
-  padding: 0 16px 0 5px;
+  padding: 0 var(--s-8) 0 var(--s-2);
   border-radius: 999px;
-  font-size: 0.86rem;
+  font-size: var(--t-body);
   font-weight: 700;
   line-height: 1;
 }
@@ -9253,7 +8984,7 @@ body:not(.touch) #picker .pick kbd {
   height: 28px;
   padding: 0;
   border-radius: 50%;
-  font-size: 0.8rem;
+  font-size: var(--t-small);
   line-height: 1;
   box-shadow: none;
   background: #fde7b4;
@@ -9272,12 +9003,12 @@ body:not(.touch) #picker .pick.on kbd {
 
 /* icon-only chips (unchosen spices, narrow screens): the same inset on both sides */
 body:not(.touch) #picker.spice .pick:not(.on) {
-  padding-right: 8px;
+  padding-right: var(--s-4);
 }
 
 @media (max-width: 760px) {
   body:not(.touch) #picker .pick {
-    padding-right: 8px;
+    padding-right: var(--s-4);
   }
 }
 
@@ -9296,7 +9027,7 @@ body:not(.touch) #picker .pick.done::after {
 #game-over .next-locked {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s-3);
   margin: 0;
   font-weight: 700;
 }
@@ -9336,10 +9067,10 @@ body.touch #coach {
   max-width: none;
   transform: none;
   justify-content: center;
-  gap: 6px;
-  padding: 4px 12px 4px 4px;
-  font-size: 0.78rem;
-  line-height: 1.2;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-6) var(--s-2) var(--s-2);
+  font-size: var(--t-small);
+  line-height: var(--lh-label);
 }
 
 body.touch #coach #coach-text {
@@ -9350,8 +9081,8 @@ body.touch #coach #coach-text {
 }
 
 body.touch #coach .coach-step {
-  padding: 2px 8px;
-  font-size: 0.72rem;
+  padding: var(--s-1) var(--s-4);
+  font-size: var(--t-caption);
 }
 
 @keyframes coach-in-touch {
@@ -9374,13 +9105,10 @@ body:has(#emote-wheel:not([hidden])) #coach {
    each card's main button stays in reach */
 @media (orientation: landscape) and (max-height: 520px) and (min-width: 600px) {
   /* Settings: the rows in two columns */
-  #settings[open] {
-    width: min(760px, calc(100vw - 24px));
-  }
   #settings .setting-list {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 6px 14px;
+    gap: var(--s-3) var(--s-7);
   }
   #settings .setting-list > .setting-row {
     margin: 0;
@@ -9391,7 +9119,7 @@ body:has(#emote-wheel:not([hidden])) #coach {
     display: grid;
     width: min(820px, calc(100vw - 24px));
     grid-template-columns: 1fr 1fr;
-    column-gap: 18px;
+    column-gap: var(--s-8);
     align-items: start;
   }
   #setup > h2,
@@ -9401,7 +9129,7 @@ body:has(#emote-wheel:not([hidden])) #coach {
   #setup .setup-col {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--s-4);
   }
   #setup .setup-col > * {
     margin-top: 0;
@@ -9425,9 +9153,9 @@ body:has(#emote-wheel:not([hidden])) #coach {
     width: min(820px, calc(100vw - 24px));
     grid-template-columns: 1fr 1fr;
     grid-auto-flow: row dense;
-    column-gap: 20px;
+    column-gap: var(--s-9);
     align-items: start;
-    padding: 18px 22px 14px;
+    padding: var(--s-8) var(--s-9) var(--s-7);
   }
   #game-over > :is(#over-chet, h2, #final-stars, #final-score, #final-stats) {
     grid-column: 1;
@@ -9450,7 +9178,7 @@ body:has(#emote-wheel:not([hidden])) #coach {
     position: sticky;
     bottom: -8px;
     z-index: 3;
-    padding: 6px 0 4px;
+    padding: var(--s-3) 0 var(--s-2);
     background: var(--paper);
     box-shadow: 0 -10px 12px var(--paper);
   }
@@ -9496,17 +9224,17 @@ body.touch:has(#lobby-room:not([hidden])) #lobby-fullscreen {
 @media (max-height: 520px) {
   /* short phones: trim the card's own spacing so the bigger buttons still fit without scrolling */
   body.touch #lobby .title-card.play-menu {
-    padding-top: 10px;
-    padding-bottom: 6px;
-    row-gap: 4px;
+    padding-top: var(--s-5);
+    padding-bottom: var(--s-3);
+    row-gap: var(--s-2);
   }
   body.touch .title-card.play-menu .play-tools {
-    padding-top: 6px;
+    padding-top: var(--s-3);
   }
   body.touch .title-card.play-menu :is(#play-daily, #lobby-back) {
     min-height: 40px;
-    padding-top: 4px;
-    padding-bottom: 4px;
+    padding-top: var(--s-2);
+    padding-bottom: var(--s-2);
   }
 }
 
@@ -9517,16 +9245,16 @@ body.touch:has(#lobby-room:not([hidden])) #lobby-fullscreen {
   bottom: calc(var(--safe-b, 12px) + 4px);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-4);
   max-width: 300px;
   margin: 0;
-  padding: 6px 6px 6px 12px;
+  padding: var(--s-3) var(--s-3) var(--s-3) var(--s-6);
   border-radius: var(--pill);
   background: var(--paper);
   color: var(--ink);
-  font-size: 0.78rem;
+  font-size: var(--t-small);
   font-weight: 700;
-  line-height: 1.2;
+  line-height: var(--lh-label);
 }
 .ios-tip[hidden] {
   display: none;
@@ -9553,28 +9281,28 @@ body.touch:has(#lobby-room:not([hidden])) #lobby-fullscreen {
   top: calc(var(--safe-t, 0px) + 14px);
   right: calc(var(--safe-r, 0px) + 16px);
   display: flex;
-  gap: 8px;
+  gap: var(--s-4);
 }
 body.in-lobby .title-links {
   display: none;
 }
 .title-lang,
 .title-lang:hover {
-  padding: 6px 14px;
+  padding: var(--s-3) var(--s-7);
   border-radius: var(--pill);
   background: var(--honey);
   color: var(--ink);
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: var(--t-body);
   box-shadow: none;
 }
 .title-about {
-  padding: 6px 14px;
+  padding: var(--s-3) var(--s-7);
   border-radius: var(--pill);
   background: rgba(255, 250, 240, 0.86);
   color: var(--ink);
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: var(--t-body);
   text-decoration: none;
 }
 .title-about:hover {
@@ -9625,10 +9353,10 @@ html[lang="my"] body :is(p, li, dd, .how-lead, .cc-job, .cc-list span, .cc-limit
    their size), keep short labels on one line (Burmese otherwise breaks between syllables), and on
    short screens stack the play menu's tools, icon over word */
 html[lang="my"] body {
-  line-height: 1.5;
+  line-height: var(--lh-text);
 }
 html[lang="my"] body :is(button, input, select, .chip, .segmented span, .pick span, .prompt, .cc-sense, .cc-badge) {
-  line-height: 1.35;
+  line-height: var(--lh-text);
 }
 html[lang="my"] body :is(button, .segmented span, .prompt, .cc-badge, #hand-slot, .chip) {
   overflow-wrap: normal;
@@ -9640,8 +9368,8 @@ html[lang="my"] .cc-badge {
 }
 html[lang="my"] .title-card.play-menu .play-tools button {
   flex-direction: column;
-  gap: 2px;
-  font-size: 0.74rem;
+  gap: var(--s-1);
+  font-size: var(--t-caption);
 }
 /* touch picker tiles: a long Burmese name takes two short lines instead of being cut off */
 html[lang="my"] body.touch #picker .pick > span:last-child {
@@ -9649,8 +9377,8 @@ html[lang="my"] body.touch #picker .pick > span:last-child {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  font-size: 0.6rem;
-  line-height: 1.25;
+  font-size: var(--t-micro);
+  line-height: var(--lh-label);
   text-align: center;
 }
 
@@ -9664,8 +9392,8 @@ html[lang="my"] body.touch #picker .pick > span:last-child {
 #settings .setting-list {
   flex: 1;
   min-height: 0;
-  margin: 0 -8px 14px;
-  padding: 0 8px;
+  margin: 0 -8px var(--s-7);
+  padding: 0 var(--s-4);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -9673,9 +9401,9 @@ html[lang="my"] body.touch #picker .pick > span:last-child {
   flex: none;
 }
 .setting-group {
-  margin: 10px 4px 0;
+  margin: var(--s-5) var(--s-2) 0;
   font-family: var(--font-display);
-  font-size: 0.95rem;
+  font-size: var(--t-label);
   font-weight: 600;
   color: var(--ink-soft);
 }
@@ -9684,12 +9412,12 @@ html[lang="my"] body.touch #picker .pick > span:last-child {
 }
 .setting-row {
   flex-wrap: wrap;
-  row-gap: 4px;
+  row-gap: var(--s-2);
 }
 .setting-note {
   flex-basis: 100%;
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--t-small);
   font-weight: 700;
   color: var(--ink-soft);
 }
@@ -9698,29 +9426,26 @@ html[lang="my"] body.touch #picker .pick > span:last-child {
 }
 #settings .reset-progress {
   justify-self: center;
-  margin-top: 8px;
-  padding: 8px 18px;
+  margin-top: var(--s-4);
+  padding: var(--s-4) var(--s-8);
   border-radius: var(--pill);
-  font-size: 0.88rem;
-}
-#settings .reset-progress[hidden] {
-  display: none;
+  font-size: var(--t-body);
 }
 /* phones: the name and its choices stay on one line */
 @media (max-width: 480px) {
   #settings {
-    padding: 22px 16px 16px;
+    padding: var(--s-9) var(--s-8) var(--s-8);
   }
   .setting-row {
-    padding: 8px 10px;
-    gap: 6px;
+    padding: var(--s-4) var(--s-5);
+    gap: var(--s-3);
   }
   .setting-row legend {
-    font-size: 0.9rem;
+    font-size: var(--t-body);
   }
   .setting-row .segmented span {
-    padding: 5px 10px;
-    font-size: 0.86rem;
+    padding: var(--s-2) var(--s-5);
+    font-size: var(--t-body);
   }
 }
 
@@ -9729,7 +9454,7 @@ html[lang="my"] body.touch #picker .pick > span:last-child {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 18px;
+  gap: var(--s-8);
   text-align: center;
 }
 .help-panels .help-panel[data-tab="basics"][hidden] {
@@ -9745,12 +9470,12 @@ html[lang="my"] body.touch #picker .pick > span:last-child {
   height: 56px;
 }
 #help .help-tabs span {
-  padding: 7px 18px;
+  padding: var(--s-3) var(--s-8);
 }
 .help-actions {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: var(--s-5);
   flex-wrap: wrap;
 }
 .help-actions button[hidden] {
@@ -9759,7 +9484,7 @@ html[lang="my"] body.touch #picker .pick > span:last-child {
 /* a key combo wider than the column's key slot: the name starts after it */
 #help .key-groups p.wide-key > span {
   width: auto;
-  margin-right: 8px;
+  margin-right: var(--s-4);
 }
 
 /* --- pause menu: what the chef switch is for, and the two quick toggles ---------------------- */
@@ -9771,7 +9496,7 @@ html[lang="my"] body.touch #picker .pick > span:last-child {
 .pause-toggles {
   display: flex;
   justify-content: center;
-  gap: 18px;
+  gap: var(--s-8);
   flex-wrap: wrap;
 }
 .pause-toggles .toggle[hidden] {
@@ -9786,14 +9511,14 @@ html[lang="my"] body.touch #picker .pick > span:last-child {
 /* --- the room: your name, help and settings -------------------------------------------------- */
 .room-me {
   flex-wrap: nowrap;
-  gap: 8px;
-  margin: 6px 0 0;
+  gap: var(--s-4);
+  margin: var(--s-3) 0 0;
 }
 .room-me .room-name {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-4);
   min-width: 0;
   margin: 0;
   font-weight: 700;
@@ -9843,11 +9568,11 @@ body:not(.keyboard-nav) .title-card.play-menu button.on:not(:hover) {
 #briefing .briefing-skip,
 #briefing .briefing-skip:hover {
   display: block;
-  margin: 10px auto 0;
-  padding: 4px 10px;
+  margin: var(--s-5) auto 0;
+  padding: var(--s-2) var(--s-5);
   background: none;
   box-shadow: none;
-  font-size: 0.86rem;
+  font-size: var(--t-body);
   font-weight: 700;
   color: var(--ink-soft);
   text-decoration: underline;
@@ -9893,14 +9618,14 @@ body.touch #fullscreen-button {
 
 /* words on the buttons: big enough to read at arm's length */
 .touch-use {
-  font-size: 0.78rem;
+  font-size: var(--t-small);
 }
 .touch-sat,
 body.touch #touch [data-label]::after {
-  font-size: 0.75rem;
+  font-size: var(--t-caption);
 }
 #touch-use-hold {
-  font-size: 0.68rem;
+  font-size: var(--t-caption);
   opacity: 0.75;
 }
 #touch-use-hold[hidden] {
@@ -9973,9 +9698,9 @@ body:not(.touch) .touch-setting {
 
 /* pause menu: the View button, and rows a thumb can hit on a sideways phone */
 .view-toggle {
-  padding: 6px 14px;
+  padding: var(--s-3) var(--s-7);
   border-radius: var(--pill);
-  font-size: 0.86rem;
+  font-size: var(--t-body);
 }
 .pause-toggles {
   align-items: center;
@@ -10021,8 +9746,8 @@ html {
 /* an open ticket's Recipe chip opens the book at that dish */
 body.touch .order .book-hint {
   min-height: 32px;
-  padding: 4px 12px 4px 8px;
-  font-size: 0.78rem;
+  padding: var(--s-2) var(--s-6) var(--s-2) var(--s-4);
+  font-size: var(--t-small);
   color: var(--ink);
   background: var(--honey);
   cursor: pointer;
@@ -10072,13 +9797,13 @@ body.touch #hud:has(#orders .order.open) #checklist {
    card shows above Shift / Warm-up / Start */
 @media (orientation: landscape) and (max-height: 520px) {
   #lobby-room .chef-card {
-    gap: 6px;
-    padding: 8px;
+    gap: var(--s-3);
+    padding: var(--s-4);
   }
   #lobby-room .chef-card .cc-head {
     flex-direction: row;
     justify-content: center;
-    gap: 8px;
+    gap: var(--s-4);
   }
   #lobby-room .chef-card .cc-name {
     justify-items: start;
@@ -10107,7 +9832,7 @@ body.touch #hud:has(#orders .order.open) #checklist {
     width: min(620px, calc(100vw - 16px));
   }
   #pause-menu > #role-picker {
-    margin: 8px 0;
+    margin: var(--s-4) 0;
   }
   #pause-menu > .pause-toggles {
     justify-content: center;
@@ -10120,8 +9845,8 @@ body.touch #hud:has(#orders .order.open) #checklist {
   #pause-menu .menu-actions #resume {
     grid-column: 1 / -1;
     flex-direction: row;
-    gap: 8px;
-    padding: 8px;
+    gap: var(--s-4);
+    padding: var(--s-4);
   }
 }
 
@@ -10132,7 +9857,7 @@ body.touch #hud:has(#orders .order.open) #checklist {
     grid-row: span 2;
   }
   #game-over > #final-stats {
-    margin-top: 4px;
+    margin-top: var(--s-2);
   }
 }
 
@@ -10169,7 +9894,7 @@ body.touch .segmented span {
 /* phones held upright: only the open page takes room, so the buttons sit right under it */
 @media (max-width: 480px) {
   #help {
-    padding: 22px 16px 16px;
+    padding: var(--s-9) var(--s-8) var(--s-8);
   }
   .help-panels .help-panel[hidden],
   .help-panels .help-panel[data-tab][hidden] {
@@ -10178,16 +9903,13 @@ body.touch .segmented span {
   #help .help-tabs {
     display: flex;
   }
-  #help .help-tabs label {
-    flex: 1;
-  }
 }
 @media (max-width: 480px) {
   /* Cooking: the six steps in two rows of three, the reminders as short rows */
   #help .help-panel[data-tab="cook"] .cook-steps {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px 6px;
+    gap: var(--s-5) var(--s-3);
   }
   #help .help-panel[data-tab="cook"] .cook-steps :is(.icon-svg, .icon-img) {
     width: 40px;
@@ -10199,8 +9921,8 @@ body.touch .segmented span {
   #help .help-panel[data-tab="cook"] .cook-notes li {
     display: grid;
     grid-template-columns: auto 1fr;
-    column-gap: 12px;
-    padding: 10px 12px;
+    column-gap: var(--s-6);
+    padding: var(--s-5) var(--s-6);
     text-align: left;
   }
   #help .help-panel[data-tab="cook"] .cook-notes li > i {
@@ -10220,7 +9942,7 @@ body.touch .segmented span {
   #setup,
   #briefing,
   #game-over {
-    padding-inline: 16px;
+    padding-inline: var(--s-8);
   }
   /* stickers two across */
   #album .album {
@@ -10244,7 +9966,7 @@ body.touch .segmented span {
     position: sticky;
     bottom: -8px;
     z-index: 3;
-    padding: 6px 0 4px;
+    padding: var(--s-3) 0 var(--s-2);
     background: var(--paper);
   }
   #lobby-room .room-actions::after {
@@ -10256,9 +9978,9 @@ body.touch .segmented span {
   }
   #lobby-room .room-actions :is(#room-setup, #warm-up) {
     flex-direction: row;
-    gap: 6px;
-    padding: 8px 6px;
-    font-size: 0.82rem;
+    gap: var(--s-3);
+    padding: var(--s-4) var(--s-3);
+    font-size: var(--t-small);
     white-space: nowrap;
   }
   #lobby-room .room-actions :is(#room-setup, #warm-up) .icon-svg {
@@ -10289,21 +10011,22 @@ body.touch .segmented span {
     zoom: 0.75;
   }
   html[lang="my"] #game-over > #final-score {
-    font-size: 0.84rem;
+    font-size: var(--t-small);
   }
   html[lang="my"] #game-over #final-stats dt {
-    font-size: 0.6rem;
+    font-size: var(--t-micro);
     white-space: nowrap;
   }
 }
 @media (max-width: 480px) {
   /* How to play's three tabs share the width evenly, long Burmese names included */
   #help .help-tabs label {
+    flex: 1;
     min-width: 0;
   }
   #help .help-tabs span {
-    padding-inline: 4px;
-    font-size: 0.82rem;
+    padding-inline: var(--s-2);
+    font-size: var(--t-small);
     white-space: nowrap;
   }
 }
@@ -10319,14 +10042,13 @@ body.touch .segmented span {
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 6px 10px;
-    padding: 8px 12px;
+    gap: var(--s-3) var(--s-5);
+    padding: var(--s-4) var(--s-6);
     text-align: left;
   }
   #lobby-room .chef-card .cc-head {
-    flex: 1 1 150px;
     flex-direction: row;
-    gap: 10px;
+    gap: var(--s-5);
   }
   #lobby-room .chef-card .cc-name {
     justify-items: start;
@@ -10346,6 +10068,438 @@ body.touch .segmented span {
     display: flex;
     flex: 0 0 auto;
     flex-wrap: nowrap;
-    gap: 4px;
+    gap: var(--s-2);
   }
+}
+
+/* --- icons on every button, and rows that line up (UI audit, §20) --- */
+/* pause menu: Read aloud, the view and the microphone are one row of equal chips */
+#pause-menu .pause-toggles .toggle,
+#pause-menu .pause-toggles .view-toggle {
+  display: inline-flex;
+  flex-direction: row;
+  white-space: nowrap;
+  align-items: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 var(--s-7);
+  border-radius: var(--pill);
+  line-height: var(--lh-label);
+}
+#pause-menu .pause-toggles {
+  gap: var(--s-5);
+  align-items: center;
+}
+/* the gallery link sits under Restart and Leave, so the pair stays centred */
+#pause-menu .menu-actions:has(#quit) {
+  flex-wrap: wrap;
+}
+#pause-menu .menu-actions:has(#quit) a {
+  white-space: nowrap;
+  flex-basis: 100%;
+  text-align: center;
+}
+#pause-menu .pause-toggles .toggle {
+  background: var(--oat);
+}
+#pause-menu .pause-toggles .toggle[hidden] {
+  display: none;
+}
+#pause-menu .pause-toggles .icon-svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+/* Restart and Leave: the same size, each led by its icon */
+#pause-menu #restart-shift,
+#pause-menu .menu-actions #quit {
+  display: inline-flex;
+  flex-direction: row;
+  width: auto;
+  white-space: nowrap;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-4) var(--s-8);
+  border-radius: var(--pill);
+}
+#pause-menu #restart-shift[hidden] {
+  display: none;
+}
+#pause-menu .menu-actions button#restart-shift:not(#resume) .icon-svg,
+#pause-menu .menu-actions button#quit:not(#resume) .icon-svg {
+  display: block;
+  margin: 0;
+  width: 19px;
+  height: 19px;
+  flex: none;
+}
+/* the end screen's buttons are one height */
+#game-over .menu-actions button {
+  min-height: 44px;
+}
+#settings .reset-progress {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+}
+#settings .reset-progress[hidden] {
+  display: none;
+}
+#settings .reset-progress .icon-svg {
+  width: 18px;
+  height: 18px;
+}
+#close-shop,
+#close-album {
+  min-height: 44px;
+}
+/* Leave and Restart ask twice without moving anything */
+#pause-menu .menu-actions:has(#quit) {
+  position: relative;
+  padding-bottom: var(--s-7);
+}
+/* it sits in the card's own bottom padding, so it takes no room of its own */
+#pause-menu .confirm-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% - 6px);
+  height: 1.3em;
+  margin: 0;
+  pointer-events: none;
+  font-size: var(--t-small);
+  line-height: var(--lh-label);
+  text-align: center;
+  white-space: nowrap;
+  color: var(--peach-ink);
+}
+/* asking: Restart is Yes (it does the thing, so it takes Leave's warning colour), Leave is No */
+#pause-menu .menu-actions.asking #restart-shift,
+#pause-menu .menu-actions.asking #restart-shift:hover {
+  background: #f39a82;
+  color: #fff;
+}
+#pause-menu .menu-actions.asking #quit,
+#pause-menu .menu-actions.asking #quit:hover {
+  background: var(--oat);
+  color: var(--ink);
+}
+#pause-menu .menu-actions.asking #restart-shift[hidden] {
+  display: inline-flex;
+}
+
+/* ============================================================ layout rhythm (§22)
+   Cards on a laptop or tablet: groups sit --stack apart, the controls inside a group --group
+   apart, an icon --inline from its label. Phone layouts keep their own tighter values above.
+   The id is repeated to outrank the older per-dialog blocks. */
+@media (min-width: 700px) and (min-height: 560px) {
+  #pause-menu#pause-menu > :is(h2, p, .menu-actions, fieldset, .pause-toggles) {
+    margin-block: 0;
+  }
+  #pause-menu#pause-menu > * + :is(p, .menu-actions, fieldset, .pause-toggles) {
+    margin-top: var(--stack);
+  }
+  #pause-menu#pause-menu > .menu-actions,
+  #pause-menu#pause-menu > #role-picker,
+  #pause-menu#pause-menu > .pause-toggles,
+  #game-over#game-over .menu-actions,
+  #help#help .help-actions {
+    gap: var(--group);
+  }
+  #pause-menu#pause-menu #role-picker legend {
+    margin-bottom: var(--group);
+  }
+  #pause-menu#pause-menu > .menu-actions:has(#quit) {
+    padding-bottom: var(--stack);
+  }
+  #help#help > .help-tabs {
+    margin-bottom: 0;
+  }
+  #help#help > .help-panels {
+    margin-top: var(--stack);
+  }
+  /* end screen: heading (title, stars, verdict), report (score, losses, tip, awards), buttons */
+  #game-over#game-over > h2 {
+    margin-bottom: 0;
+  }
+  #game-over#game-over > :is(#final-stars, #final-score, #final-stats, #final-report, #final-tip, #final-awards, #final-stickers, .menu-actions) {
+    margin-block: 0;
+  }
+  #game-over#game-over > :is(#final-stars, #final-score, #final-report, #final-tip, #final-awards, #final-stickers) {
+    margin-top: var(--group);
+  }
+  #game-over#game-over > :is(#final-stats, .menu-actions) {
+    margin-top: var(--stack);
+  }
+  /* shop: blurb, coins, then each section's heading with its list */
+  #shop#shop > :is(p, .shop-coins, .shop-list, .shop-section, .hat-colors) {
+    margin-block: 0;
+  }
+  #shop#shop > * + :is(p, .shop-coins, .shop-section) {
+    margin-top: var(--stack);
+  }
+  #shop#shop > .shop-coins + .shop-list {
+    margin-top: var(--stack);
+  }
+  #shop#shop > .shop-section + .shop-list,
+  #shop#shop > .hat-colors {
+    margin-top: var(--group);
+  }
+  /* play menu: a grid of large buttons, then the row of tiles under its divider */
+  #lobby#lobby #lobby-start {
+    gap: var(--group-lg);
+  }
+  #lobby#lobby .play-tools {
+    gap: var(--group);
+    padding-top: var(--group-lg);
+  }
+  /* the footer button of a card: one --stack under whatever comes before it */
+  dialog.card-dialog#settings > :has(+ #settings-done),
+  dialog.card-dialog#shop > :has(+ .shop-foot),
+  dialog.card-dialog#help > :has(+ .help-actions),
+  dialog.card-dialog#briefing > :has(+ #briefing-go),
+  dialog.card-dialog#album > :has(+ #close-album) {
+    margin-bottom: 0;
+  }
+  #settings#settings > #settings-done,
+  #shop#shop > .shop-foot,
+  #help#help > .help-actions,
+  #briefing#briefing > #briefing-go,
+  #album#album > #close-album {
+    margin-top: var(--stack);
+  }
+}
+/* icon to label, everywhere a button carries both */
+#pause-menu .pause-toggles .toggle,
+#pause-menu .pause-toggles .view-toggle,
+#pause-menu #restart-shift,
+#pause-menu .menu-actions #quit,
+#settings .reset-progress {
+  gap: var(--inline);
+}
+/* the pause chips and the Restart / Leave pair share one text style */
+#pause-menu .pause-toggles .toggle,
+#pause-menu .pause-toggles .view-toggle,
+#pause-menu #restart-shift,
+#pause-menu .menu-actions #quit {
+  font-family: "Nunito", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: var(--t-body);
+}
+#pause-menu .pause-toggles .toggle,
+#pause-menu .pause-toggles .view-toggle {
+  height: var(--control-sm);
+  min-height: var(--control-sm);
+}
+#pause-menu #restart-shift,
+#pause-menu .menu-actions #quit {
+  height: var(--control);
+  min-height: var(--control);
+}
+
+/* the picker's chosen item: a filled chip, no border; the rest step back */
+#picker#picker .pick.on {
+  color: var(--ink);
+  background: var(--honey);
+  box-shadow: none;
+  font-weight: 800;
+}
+#picker#picker .pick.on kbd {
+  background: var(--paper);
+  color: var(--ink);
+}
+#picker#picker .pick:not(.on):not(.done) {
+  opacity: 0.8;
+}
+
+/* ============================================================ settings rows (§23)
+   One row: icon and name on the left, its choices on the right, any note under the name. */
+#settings#settings .setting-row {
+  align-items: center;
+  row-gap: var(--s-2);
+  padding: var(--s-5) var(--s-6);
+}
+#settings#settings .setting-note {
+  order: 3;
+  flex-basis: 100%;
+  padding-left: calc(30px + var(--inline)); /* in line with the name, past the icon */
+  text-align: left;
+  font-size: var(--t-small);
+  font-weight: 700;
+  line-height: var(--lh-label);
+  color: var(--ink-soft);
+}
+#settings#settings .setting-group {
+  margin: var(--stack) var(--s-2) 0;
+  text-align: left;
+  font-size: var(--t-small);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+#settings#settings .setting-group:first-child {
+  margin-top: 0;
+}
+/* every choice is the same height and at least the same width, whatever the script */
+#settings#settings .segmented {
+  align-items: center;
+  flex: none;
+}
+#settings#settings .segmented span {
+  display: grid;
+  place-items: center;
+  min-width: 56px;
+  height: 32px;
+  padding: 0 var(--s-7);
+  font-size: var(--t-body);
+  line-height: 1;
+  white-space: nowrap;
+}
+#settings#settings .segmented span[lang="my"] {
+  font-size: var(--t-body);
+  line-height: 1;
+  padding-top: 2px; /* Burmese sits high on its line */
+}
+
+/* ============================================================ scrollbars inside cards
+   Our own slim pill instead of the browser's bar. */
+dialog,
+dialog * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--paper-shadow) transparent;
+}
+@supports selector(::-webkit-scrollbar) {
+  dialog,
+  dialog * {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+  dialog::-webkit-scrollbar,
+  dialog *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  dialog::-webkit-scrollbar-track,
+  dialog *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  dialog::-webkit-scrollbar-thumb,
+  dialog *::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: var(--pill);
+    background: var(--paper-shadow) content-box;
+  }
+  dialog::-webkit-scrollbar-thumb:hover,
+  dialog *::-webkit-scrollbar-thumb:hover {
+    background: var(--honey-edge) content-box;
+  }
+  dialog::-webkit-scrollbar-button,
+  dialog *::-webkit-scrollbar-button {
+    display: none;
+  }
+}
+
+/* Reset progress: a quiet text button at the end of the list, flat like everything else in the card */
+#settings#settings .reset-progress,
+#settings#settings .reset-progress:hover,
+#settings#settings .reset-progress:active {
+  justify-self: center;
+  height: var(--control-sm);
+  min-height: var(--control-sm);
+  margin: var(--stack) 0 var(--group);
+  padding: 0 var(--s-8);
+  border: none;
+  border-radius: var(--pill);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  color: var(--peach-ink);
+  font-size: var(--t-body);
+  font-weight: 800;
+}
+#settings#settings .reset-progress:hover {
+  background: var(--peach-soft);
+}
+#settings#settings .reset-progress.armed,
+#settings#settings .reset-progress.armed:hover {
+  background: #f39a82;
+  color: #fff;
+}
+
+/* the title's two pills: one height, their words centred whatever the script */
+.title-links {
+  align-items: center;
+}
+.title-links .title-lang,
+.title-links .title-lang:hover,
+.title-links .title-about {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-sm);
+  min-height: var(--control-sm);
+  padding: 0 var(--s-8);
+  line-height: 1;
+  white-space: nowrap;
+}
+.title-links :lang(my) {
+  padding-top: 3px; /* Burmese sits high on its line */
+}
+
+/* the book's menu: a dish name is always one line (cut with … if it's too long), so every row
+   is the same height on every page and nothing moves when the book is turned */
+#recipe-book .menu-words {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+#recipe-book .menu-name {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: var(--lh-text);
+}
+#recipe-book .menu-name .toc-dot {
+  margin-left: var(--s-3);
+  vertical-align: middle;
+}
+/* the book's pages scroll without a bar (wheel, touch and keys still work), so the menu keeps
+   its full width for long dish names */
+#recipe-book,
+#recipe-book * {
+  scrollbar-width: none;
+}
+#recipe-book::-webkit-scrollbar,
+#recipe-book *::-webkit-scrollbar {
+  display: none;
+}
+
+/* "Coming up on later shifts": the same room above as below */
+#recipe-book .menu-later-head {
+  margin: var(--group) 0;
+}
+
+/* ============================================================ Burmese: room for taller letters (§24)
+   Burmese stacks marks above and below the line, so its letters are about 1.4 times the font
+   size tall. Latin-sized line heights cut them wherever text is clipped to one line. */
+html[lang="my"] {
+  --lh-tight: 1.4;
+  --lh-label: 1.5;
+  --lh-text: 1.6;
+}
+/* every place that cuts text to a line (… or a line clamp) gets a full Burmese line */
+html[lang="my"] :is(
+    .order strong,
+    .menu-what,
+    #touch-use-label,
+    .toast .text,
+    .report li span,
+    #lobby-room .chef-card .cc-sense,
+    #lobby-room .chef-card .cc-badge,
+    #coach #coach-text,
+    #recipe-book .menu-name,
+    #picker .pick > span:last-child
+  ) {
+  line-height: 1.5;
 }

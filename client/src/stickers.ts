@@ -123,7 +123,7 @@ export function checkProgress(): Sticker[] {
     allThreeStars("street") && "street",
     allThreeStars("burmese") && "burmese",
     !!burmese && !!lastStreet && business.totalSales >= burmese.unlockSales && bestStars(lastStreet.n) > 0 && "burmese-open",
-    UPGRADES.every((u) => business.upgrades.includes(u.id)) && "equipped",
+    UPGRADES.every((u) => u.needs || business.upgrades.includes(u.id)) && "equipped",
     daily.playedToday && "daily",
     daily.streak >= 7 && "streak-7",
   ]);

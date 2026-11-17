@@ -21,6 +21,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" />
+    <script>
+      // the same choice as the game: ?lang=, then what the player picked, then the browser's language
+      (function () {
+        var lang = "en";
+        try {
+          var asked = new URLSearchParams(location.search).get("lang");
+          var saved = localStorage.getItem("kitchen.lang");
+          if (asked === "en" || asked === "my") {
+            lang = asked;
+            localStorage.setItem("kitchen.lang", asked);
+          } else if (saved === "en" || saved === "my") lang = saved;
+          else if ((navigator.languages || []).some(function (l) { return /^my\b/i.test(l); })) lang = "my";
+        } catch (e) {}
+        document.documentElement.lang = lang;
+        if (lang === "my") document.title = "ချက်မယ် အကြောင်း – တစ်ယောက်မှ သုံးယောက်အထိ အတူချက်ဂိမ်း";
+      })();
+    </script>
     <style>
       :root {
         --ink: #3b2f27;
@@ -153,10 +170,84 @@
           margin: 0 auto;
         }
       }
+      /* two languages in one page: only the chosen one shows */
+      html[lang="my"] main[data-lang="en"],
+      html:not([lang="my"]) main[data-lang="my"] {
+        display: none;
+      }
+      html[lang="my"] body,
+      html[lang="my"] h1,
+      html[lang="my"] h2,
+      html[lang="my"] h3,
+      html[lang="my"] .play,
+      html[lang="my"] dt {
+        font-family: "Noto Sans Myanmar", "Myanmar Sangam MN", "Padauk", "Nunito", system-ui, sans-serif;
+      }
+      html[lang="my"] body {
+        line-height: 1.9;
+      }
+      html[lang="my"] h1 {
+        font-size: clamp(1.7rem, 4.2vw, 2.5rem);
+        line-height: 1.5;
+      }
+      html[lang="my"] h2,
+      html[lang="my"] h3 {
+        line-height: 1.6;
+      }
+      .top-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 16px 16px 0;
+      }
+      .lang-switch {
+        display: flex;
+        gap: 6px;
+      }
+      .top-bar a {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 40px;
+        padding: 0 16px;
+        border-radius: 999px;
+        font: 700 0.9rem/1 "Nunito", "Noto Sans Myanmar", "Myanmar Sangam MN", system-ui, sans-serif;
+        color: inherit;
+        text-decoration: none;
+        background: #fffaf0;
+      }
+      .top-bar a:hover {
+        background: #fbe9b7;
+      }
+      .top-bar a[lang="my"],
+      .top-bar span[lang="my"] {
+        padding-top: 3px; /* Burmese sits high on its line */
+      }
+      html[lang="my"] .top-bar [data-lang="en"],
+      html:not([lang="my"]) .top-bar [data-lang="my"] {
+        display: none;
+      }
+      html[lang="my"] .lang-switch a[data-pick="my"],
+      html:not([lang="my"]) .lang-switch a[data-pick="en"] {
+        background: var(--honey);
+      }
     </style>
   </head>
   <body>
-    <main>
+    <nav class="top-bar">
+      <a class="back" href="/">
+        <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true"><path d="M14 6L4 16l10 10v-6h13v-8H14z" fill="#f2b84b" stroke="#2a2420" stroke-width="2" stroke-linejoin="round" /></svg>
+        <span data-lang="en">Back to the game</span><span data-lang="my" lang="my">ဂိမ်းဆီ ပြန်သွားမယ်</span>
+      </a>
+      <span class="lang-switch" role="group" aria-label="Language">
+        <a href="?lang=en" lang="en" data-pick="en">English</a>
+        <a href="?lang=my" lang="my" data-pick="my">မြန်မာ</a>
+      </span>
+    </nav>
+    <main lang="en" data-lang="en">
       <header class="hero">
         <img src="/chet.svg" width="120" height="120" alt="Chet, the Chet Mal cooking pot" />
         <div>
@@ -208,11 +299,11 @@
       <div class="cards">
         <section class="card street">
           <h3>Street food stand</h3>
-          <p>Where it all starts: salads, toasties, grills, fish and chips, soups and a full breakfast.</p>
+          <p>Where it all starts: salads, sandwiches, grills, fish and chips, soups and a full breakfast.</p>
         </section>
         <section class="card burmese">
           <h3>Burmese tea shop</h3>
-          <p>A tea-shop kitchen in Yangon: mohinga, tea leaf salad, shan noodles, chicken curry and Burmese fried rice. It opens once your stand has sold enough.</p>
+          <p>A tea-shop kitchen in Yangon: mohinga, coconut chicken noodles, tea leaf salad, shan noodles, Shan tofu fritters and curries. It opens once your stand has sold enough.</p>
         </section>
       </div>
 
@@ -241,6 +332,93 @@
 
       <footer>
         <p><a href="/">Play Chet Mal</a> · A cozy co-op kitchen</p>
+      </footer>
+    </main>
+    <main lang="my" data-lang="my">
+      <header class="hero">
+        <img src="/chet.svg" width="120" height="120" alt="ချက်မယ် ဂိမ်းရဲ့ ဟင်းအိုးလေး Chet" />
+        <div>
+          <h1>ချက်မယ်: စားဖိုမှူးတစ်ယောက်စီ မတူတာတွေ သိမြင်ရတဲ့ အတူချက်ဂိမ်း</h1>
+          <p class="lead">
+            ဘရောက်ဇာထဲမှာ အခမဲ့ ကစားနိုင်တယ်။ တစ်ယောက်ကနေ သုံးယောက်အထိ။ ဒေါင်းလုဒ် မလို၊ အကောင့် မလို။ ကွန်ပျူတာ၊
+            တက်ဘလက်နဲ့ ဖုန်းမှာ ကစားလို့ရတယ်။
+          </p>
+          <a class="play" href="/?lang=my">ချက်မယ် ကစားမယ်</a>
+        </div>
+      </header>
+
+      <h2>ဘယ်လို ကစားရလဲ</h2>
+      <p>
+        သူငယ်ချင်း သုံးယောက်အထိ အလုပ်များတဲ့ မီးဖိုချောင်တစ်ခုကို အတူ ဦးစီးရတယ်။ အော်ဒါတွေက စာရွက်နဲ့ရော ဖုန်းနဲ့ရော
+        ဝင်လာပြီး၊ ဧည့်သည် စိတ်မရှည်ခင် ပစ္စည်းယူ၊ လှီး၊ ချက်၊ အရသာထည့်၊ ပန်းကန်ထဲထည့်ပြီး ချပေးရတယ်။ အဆင့်တစ်ခုက
+        သုံးမိနစ်လောက် ကြာပြီး ကြယ်၊ ဒင်္ဂါး၊ ပစ္စည်းအဆင့်မြှင့်တာနဲ့ စတစ်ကာတွေ ရနိုင်တယ်။
+      </p>
+      <p>
+        ထူးခြားချက်က ဘယ်သူမှ အချက်အလက် အကုန် မသိဘူး။ စာရွက်အော်ဒါကို မြင်မှ သိရတယ်၊ ဖုန်းအော်ဒါကို ကြားမှ သိရတယ်၊
+        အကောင်းဆုံး ကျက်ချိန်ကလည်း အသံနဲ့ပဲ သိရတယ်။ ဒါကြောင့် စားဖိုမှူးတွေက ကိုယ်သိတာကို စကားနဲ့၊ လက်ညှိုးထိုးပြီး၊
+        လက်ဟန်နဲ့၊ ခေါင်းလောင်းနဲ့ တစ်ယောက်ကိုတစ်ယောက် ပြောပြရတယ်။ အချင်းချင်း ဆက်သွယ်တာ<em>ကိုက</em> ဂိမ်းပဲ။
+      </p>
+
+      <h2>စားဖိုမှူး သုံးယောက်</h2>
+      <div class="cards">
+        <section class="card head">
+          <h3>စားဖိုမှူးချုပ်</h3>
+          <p>ဟင်းထုတ်ကောင်တာကို ဦးစီးတယ်။ အော်ဒါတွေ အော်ပြော၊ ပန်းကန်ပြင်၊ နောက်ဆုံးအရသာထည့်ပြီး ချပေးတယ်၊ ငွေလည်း ရှင်းပေးတယ်။ ကိုယ်တိုင် မချက်ဘူး။</p>
+          <p><strong>အားသာချက်:</strong> သူချပေးတဲ့ ဟင်းတိုင်း အမှတ် ငါးမှတ် ပိုရတယ်။</p>
+        </section>
+        <section class="card deaf">
+          <h3>နားမကြားတဲ့ စားဖိုမှူး</h3>
+          <p>မျက်စိနဲ့ ကြည့်ပြီး ချက်တယ်။ စာရွက်အော်ဒါ၊ အရောင်နဲ့ မီးခိုးကို မြင်ရပေမယ့် ဖုန်းအော်ဒါနဲ့ အသံသတိပေးချက်တွေကို မကြားရဘူး။</p>
+          <p><strong>အားသာချက်:</strong> ၃၀% ပိုမြန်မြန် လှီးနိုင်ပြီး မီးပေါ်က ချရမယ့် အကောင်းဆုံးအချိန်ကို မြင်ရတယ်။</p>
+        </section>
+        <section class="card mute">
+          <h3>စကားမပြောနိုင်တဲ့ စားဖိုမှူး</h3>
+          <p>အကုန် ကြားရပေမယ့် စကား မပြောနိုင်ဘူး။ ဒါကြောင့် နေရာပြတာ၊ လက်ဟန်နဲ့ ခေါင်းလောင်းနဲ့ ပြန်ဖြေတယ်။</p>
+          <p><strong>အားသာချက်:</strong> မီးဖိုချောင်ရဲ့ အပြေးသမား။ အမြန်ပြေးနိုင်ပြီး လင်ပန်းနဲ့ ဟင်းနှစ်ပွဲ သယ်နိုင်တယ်။</p>
+        </section>
+      </div>
+      <p>
+        အခန်းကဏ္ဍတိုင်းကို အဲဒီ မသန်စွမ်းမှု ရှိသူ ကိုယ်တိုင် ကစားနိုင်အောင် ဖန်တီးထားတယ်။ နားမကြားတဲ့ စားဖိုမှူးက အသံ
+        ဘယ်တော့မှ မလိုဘူး၊ စကားမပြောနိုင်တဲ့ စားဖိုမှူးက မိုက်ခရိုဖုန်း ဘယ်တော့မှ မလိုဘူး။
+      </p>
+
+      <h2>စားသောက်ဆိုင် နှစ်ဆိုင်</h2>
+      <div class="cards">
+        <section class="card street">
+          <h3>လမ်းဘေးစာဆိုင်</h3>
+          <p>အစပြုရာ နေရာ။ အသုပ်၊ ဆန်းဒဝစ်၊ အကင်၊ ငါးကြော်နဲ့ အာလူးကြော်၊ ဟင်းချိုနဲ့ မနက်စာ အပြည့်အစုံ။</p>
+        </section>
+        <section class="card burmese">
+          <h3>မြန်မာ လက်ဖက်ရည်ဆိုင်</h3>
+          <p>ရန်ကုန်က လက်ဖက်ရည်ဆိုင် မီးဖိုချောင်။ မုန့်ဟင်းခါး၊ အုန်းနို့ခေါက်ဆွဲ၊ လက်ဖက်သုပ်၊ ရှမ်းခေါက်ဆွဲ၊ ရှမ်းတိုဟူးကြော်နဲ့ ဟင်းအမျိုးမျိုး။ လမ်းဘေးဆိုင်က ရောင်းအား လုံလောက်ရင် ပွင့်လာမယ်။</p>
+        </section>
+      </div>
+
+      <h2>ကစားနည်းများ</h2>
+      <ul>
+        <li><strong>တစ်ယောက်တည်း:</strong> အခန်းကဏ္ဍတိုင်းကို ကိုယ်တိုင် ကစားနိုင်တယ်။ လှီးပေး၊ ပန်းကန်ဆေးပေးတဲ့ အကူစက်ရုပ်လည်း ခေါ်လို့ရတယ်။</li>
+        <li><strong>သူငယ်ချင်းတွေနဲ့ အတူ:</strong> မီးဖိုချောင် ဖွင့်ပြီး စာလုံးလေးလုံး ကုဒ် ဒါမှမဟုတ် ဖိတ်ခေါ်လင့်ခ်ကို မျှဝေပါ။</li>
+        <li><strong>အမြန်ကစား:</strong> ဖွင့်ထားတဲ့ မီးဖိုချောင်တစ်ခုထဲ ဝင်ပြီး ဘယ်သူနဲ့မဆို အတူချက်ပါ။</li>
+        <li><strong>နေ့စဉ် အထူး:</strong> နေ့တိုင်း အသစ်အဆန်းတစ်ခု၊ ဆက်တိုက်ကစားတဲ့ ရက်ရေလည်း မှတ်ပေးတယ်။</li>
+        <li><strong>အေးအေးဆေးဆေး ဒါမှမဟုတ် ပုံမှန်:</strong> လမ်းညွှန်ပေးတဲ့ အေးဆေးအဆင့်၊ ဒါမှမဟုတ် အလုပ်ရှုပ်အပြည့်။</li>
+      </ul>
+
+      <h2>မေးခွန်းများ</h2>
+      <dl>
+        <dt>ချက်မယ် က အခမဲ့လား?</dt>
+        <dd>ဟုတ်တယ်။ ဘရောက်ဇာထဲမှာ အခမဲ့ ကစားနိုင်တယ်။ ဒေါင်းလုဒ်လုပ်စရာ မလို၊ အကောင့်လည်း မလိုဘူး။</dd>
+        <dt>ဘယ်နှယောက် ကစားလို့ရလဲ?</dt>
+        <dd>တစ်ယောက်ကနေ သုံးယောက်။ တစ်ယောက်တည်း ဒါမှမဟုတ် သူငယ်ချင်း တစ်ယောက်၊ နှစ်ယောက်နဲ့ အွန်လိုင်းမှာ ကစားနိုင်တယ်။</dd>
+        <dt>ဖုန်းနဲ့ ကစားလို့ရလား?</dt>
+        <dd>ရတယ်။ ဖုန်းကို ဘေးတိုက်လှည့်ပါ။ လက်မနဲ့ ထိန်းတဲ့ ခလုတ်က လမ်းလျှောက်ပေးပြီး "သုံး" ခလုတ်ကြီးက ကျန်တာ အကုန်လုပ်ပေးတယ်။</dd>
+        <dt>"ချက်မယ်" ဆိုတာ ဘာအဓိပ္ပာယ်လဲ?</dt>
+        <dd>"ချက်ကြရအောင်" လို့ ဆိုလိုတာပါ။ အင်္ဂလိပ်လို "let's cook!"။</dd>
+        <dt>မသန်စွမ်းသူတွေ ကစားလို့ရလား?</dt>
+        <dd>အခန်းကဏ္ဍတိုင်းကို အဲဒီစားဖိုမှူး သိမြင်နိုင်တာပေါ် မူတည်ပြီး ဖန်တီးထားတယ်။ စာသား၊ အမြင်သတိပေးချက်၊ အသံသတိပေးချက်၊ အသံထွက်ဖတ်ပြတာနဲ့ စာလုံးကြီးကြီး ရွေးလို့ရတယ်။</dd>
+      </dl>
+
+      <footer>
+        <p><a href="/?lang=my">ချက်မယ် ကစားမယ်</a> · အေးအေးဆေးဆေး အတူချက်တဲ့ မီးဖိုချောင်</p>
       </footer>
     </main>
   </body>

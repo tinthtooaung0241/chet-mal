@@ -225,21 +225,21 @@
         <button id="open-briefing" type="button"><i data-icon="flag"></i> Level tips</button>
       </div>
       <fieldset id="role-picker">
-        <legend>Try a chef <small>Feel what each chef can and can't do</small></legend>
+        <legend>Try a chef</legend>
         <label><input type="radio" name="role" value="full" /><span><i data-icon="star"></i> All</span></label>
         <label><input type="radio" name="role" value="head" /><span><i data-icon="chef"></i> Head</span></label>
         <label><input type="radio" name="role" value="deaf" /><span><i data-icon="ear"></i> Deaf</span></label>
         <label><input type="radio" name="role" value="mute" /><span><i data-icon="voice"></i> Mute</span></label>
       </fieldset>
       <div class="pause-toggles">
-        <label class="toggle"><input type="checkbox" id="speak" /><span>Read aloud</span></label>
-        <button type="button" id="toggle-view" class="view-toggle"></button>
-        <label class="toggle" id="mic-toggle" hidden><input type="checkbox" id="mic" /><span>Microphone</span></label>
+        <label class="toggle"><input type="checkbox" id="speak" /><i data-icon="voice"></i><span>Read aloud</span></label>
+        <button type="button" id="toggle-view" class="view-toggle"><i data-icon="eye"></i> <span id="toggle-view-label"></span></button>
+        <label class="toggle" id="mic-toggle" hidden><input type="checkbox" id="mic" /><i data-icon="phone"></i><span>Microphone</span></label>
       </div>
       <div class="menu-actions">
-        <button id="restart-shift" type="button">Restart shift</button>
-        <button id="quit" type="button" class="danger">Leave kitchen</button>
-        <a class="muted small" href="/gallery.html">Asset gallery</a>
+        <button id="restart-shift" type="button"><i data-icon="restart"></i> <span id="restart-shift-label">Restart</span></button>
+        <button id="quit" type="button" class="danger"><i data-icon="exit"></i> <span id="quit-label">Leave</span></button>
+        <p id="confirm-note" class="confirm-note" aria-live="polite"></p>
       </div>
     </dialog>
 
@@ -387,9 +387,9 @@
           </div>
           <p class="setting-note">Counts shifts and stars. No names.</p>
         </fieldset>
-        <button id="reset-progress" type="button" class="danger reset-progress">Reset progress</button>
+        <button id="reset-progress" type="button" class="danger reset-progress"><i data-icon="bin"></i> Reset progress</button>
       </div>
-      <button id="settings-done" type="button" class="primary">Done</button>
+      <button id="settings-done" type="button" class="primary"><i data-icon="check"></i> Done</button>
     </dialog>
 
     <dialog id="help" class="card-dialog" aria-labelledby="help-title">
@@ -464,7 +464,7 @@
       </div>
       <div class="help-actions">
         <button id="help-tutorial" type="button"><i data-icon="hands"></i> Try the tutorial</button>
-        <button id="close-help" type="button" class="primary">Got it!</button>
+        <button id="close-help" type="button" class="primary"><i data-icon="check"></i> Got it!</button>
       </div>
     </dialog>
 
@@ -478,7 +478,7 @@
       <div id="hat-colors" class="hat-colors" role="radiogroup" aria-label="Hat colour"></div>
       <h3 class="shop-section"><i data-icon="flag"></i> Terrace decor</h3>
       <ul id="decor-list" class="shop-list"></ul>
-      <div class="shop-foot"><button id="close-shop" type="button" class="primary">Back</button></div>
+      <div class="shop-foot"><button id="close-shop" type="button" class="primary"><i data-icon="back"></i> Back</button></div>
     </dialog>
 
     <div id="sticker-pop" aria-hidden="true"></div>
@@ -486,7 +486,7 @@
     <dialog id="album" class="card-dialog wide" aria-labelledby="album-title">
       <h2 id="album-title"><i data-icon="sticker"></i> Stickers <small id="album-count"></small></h2>
       <ul id="album-grid" class="album"></ul>
-      <button id="close-album" type="button">Back</button>
+      <button id="close-album" type="button"><i data-icon="back"></i> Back</button>
     </dialog>
 
     <dialog id="briefing" class="card-dialog" aria-labelledby="briefing-title">
@@ -494,7 +494,7 @@
       <h2 id="briefing-title"></h2>
       <ul id="briefing-lines" class="briefing-lines"></ul>
       <div id="briefing-role" class="briefing-role"></div>
-      <button id="briefing-go" type="button" class="primary big">Let's cook! <kbd>Enter</kbd></button>
+      <button id="briefing-go" type="button" class="primary big"><i data-icon="play"></i> Let's cook! <kbd>Enter</kbd></button>
       <button id="briefing-skip" type="button" class="briefing-skip" hidden>Skip the tutorial</button>
     </dialog>
 
@@ -552,7 +552,7 @@
           <button id="open-album" type="button"><i data-icon="sticker"></i>Stickers</button>
           <button id="lobby-settings" type="button"><i data-icon="gear"></i>Settings</button>
         </div>
-        <button id="lobby-back" type="button">‹ Back</button>
+        <button id="lobby-back" type="button"><i data-icon="back"></i> Back</button>
       </div>
 
       <div id="lobby-room" hidden>
@@ -623,7 +623,7 @@
       </fieldset>
       <p class="muted helper-note">A porter that chops, washes up, mops and puts out fires. Online, it takes an empty seat.</p>
       </div>
-      <button id="setup-done" type="button" class="primary big">Done</button>
+      <button id="setup-done" type="button" class="primary big"><i data-icon="check"></i> Done</button>
     </dialog>
 
     <dialog id="game-over" class="card-dialog" aria-labelledby="game-over-title">
@@ -639,8 +639,8 @@
       <div class="menu-actions">
         <button id="over-menu" type="button"><i data-icon="menu"></i> <span id="over-menu-label">Menu</span></button>
         <button id="over-shop" type="button" hidden><i data-icon="coin"></i> Shop</button>
-        <button id="restart" type="button"><i data-icon="play"></i> <span id="restart-label">Play again</span> <kbd>R</kbd></button>
-        <button id="next-level" type="button" class="primary">Next level <kbd>N</kbd></button>
+        <button id="restart" type="button"><i data-icon="restart"></i> <span id="restart-label">Play again</span> <kbd>R</kbd></button>
+        <button id="next-level" type="button" class="primary"><i data-icon="play"></i> Next level <kbd>N</kbd></button>
         <p id="next-locked" class="muted next-locked" hidden><i data-icon="star"></i> Get 1 star to open the next shift</p>
         <p id="host-picks" class="muted" hidden>Waiting for the host to pick the next shift…</p>
       </div>

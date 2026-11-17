@@ -55,7 +55,7 @@ import { TouchControls, canFullscreen, canTouch, goFullscreen, isFullscreen, kee
 import { Album, StickerPop, showShiftStickers } from "./ui/album";
 import { Briefing } from "./ui/briefing";
 import { $, releasePointer } from "./ui/dom";
-import { hydrateIcons } from "./ui/icons";
+import { glyph, hydrateIcons } from "./ui/icons";
 import { setupMenuKeys } from "./ui/keyboard";
 import { saveViewPref, setupSettings, viewPref } from "./ui/settings";
 import { Shop } from "./ui/shop";
@@ -86,7 +86,7 @@ scene.activeCamera = camera;
 
 const look = setupLook(scene, [pov.camera, camera]);
 const effects = new Effects(scene);
-const { shadows } = look;
+const { shadows, roomShadows } = look;
 const title = new TitleScreen(camera, fitCamera);
 
 const hud = new Hud();
@@ -323,20 +323,64 @@ function leaveKitchen() {
   setSeatedRoom(null);
   location.href = location.pathname;
 }
-// Leave asks twice: a stray tap mid-shift would throw the shift away
-let leaveArmed: ReturnType<typeof setTimeout> | null = null;
-$("quit").addEventListener("click", () => {
-  if (leaveArmed) return leaveKitchen();
-  const button = $("quit");
-  const words = button.textContent;
-  button.textContent = session?.online ? "Tap again to leave" : "Tap again: this shift ends";
-  button.classList.add("armed");
-  leaveArmed = setTimeout(() => {
-    leaveArmed = null;
-    button.textContent = words;
-    button.classList.remove("armed");
-  }, 3000);
-});
+// Leave and Restart ask first: a stray tap mid-shift would throw the shift away. The pair turns
+// into Yes and No in place, each button keeping its size, and the line under them asks the question.
+// No is where Leave was, so a double tap on Leave cancels; Yes ignores taps for a moment after the swap.
+{
+  const yes = $<HTMLButtonElement>("restart-shift");
+  const no = $<HTMLButtonElement>("quit");
+  const row = yes.parentElement!;
+  const note = $("confirm-note");
+  const faces = [
+    { button: yes, label: $("restart-shift-label"), icon: "restart", words: "Restart", asking: "check", answer: "Yes" },
+    { button: no, label: $("quit-label"), icon: "exit", words: "Leave", asking: "cross", answer: "No" },
+  ];
+  let pending: "leave" | "restart" | null = null;
+  let since = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let wasHidden = false;
+  const settle = () => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    if (!pending) return;
+    pending = null;
+    row.classList.remove("asking");
+    note.textContent = "";
+    yes.hidden = wasHidden;
+    for (const f of faces) {
+      f.button.style.width = "";
+      f.button.querySelector("i")!.replaceChildren(glyph(f.icon));
+      f.label.textContent = f.words;
+    }
+  };
+  const ask = (what: "leave" | "restart") => {
+    // online there's no Restart: Yes borrows its place, as wide as Leave
+    const widths = faces.map((f) => (f.button.hidden ? no : f.button).getBoundingClientRect().width);
+    wasHidden = yes.hasAttribute("hidden");
+    yes.hidden = false;
+    pending = what;
+    since = performance.now();
+    row.classList.add("asking");
+    note.textContent = what === "restart" ? "Start this shift over?" : session?.online ? "Leave the kitchen?" : "Leave? This shift ends.";
+    faces.forEach((f, i) => {
+      f.button.style.width = `${widths[i]}px`;
+      f.button.querySelector("i")!.replaceChildren(glyph(f.asking));
+      f.label.textContent = f.answer;
+    });
+    timer = setTimeout(settle, 5000);
+  };
+  yes.addEventListener("click", () => {
+    if (!pending) return ask("restart");
+    if (performance.now() - since < 400) return;
+    const what = pending;
+    settle();
+    if (what === "leave") return leaveKitchen();
+    closeMenu();
+    restart();
+  });
+  no.addEventListener("click", () => (pending ? settle() : ask("leave")));
+  pauseMenu.addEventListener("close", settle);
+}
 
 /** A solo shift is over (or skipped): back to the play menu, without loading the page again. */
 function backToMenu() {
@@ -357,29 +401,6 @@ $("over-menu").addEventListener("click", () => {
   if (!session || session.online) return leaveKitchen();
   backToMenu();
 });
-
-// Restart shift (solo): asks twice, like Leave
-{
-  const button = $<HTMLButtonElement>("restart-shift");
-  let armed: ReturnType<typeof setTimeout> | null = null;
-  const disarm = () => {
-    if (armed) clearTimeout(armed);
-    armed = null;
-    button.textContent = "Restart shift";
-  };
-  button.addEventListener("click", () => {
-    if (!armed) {
-      button.textContent = "Tap again to start over";
-      armed = setTimeout(disarm, 3000);
-      return;
-    }
-    disarm();
-    closeMenu();
-    restart();
-  });
-  pauseMenu.addEventListener("close", disarm);
-}
-
 
 /** The title's Continue: straight into the next shift, once there are stars to continue from. */
 let continueLevel = 0;
@@ -435,7 +456,7 @@ function beginRound(resumed = false) {
   $("role-picker").hidden = session?.online ?? false;
   $("mic-toggle").hidden = !session?.online;
   $("restart-shift").hidden = !!session?.online;
-  $("toggle-view").textContent = pov.active ? "View: chef's eyes" : "View: from above";
+  $("toggle-view-label").textContent = pov.active ? "Chef's eyes" : "From above";
   // the camera from Settings (phones default to third person: one thumb walks)
   setFirstPerson(viewPref() === "fpp");
   canvas.focus();
@@ -677,12 +698,64 @@ function applyPref(name: PrefName) {
     voice.setMicOn(pref("mic") === "on");
     $<HTMLInputElement>("mic").checked = pref("mic") === "on";
   } else if (name === "graphics") {
-    // phones get the fast setting unless told otherwise: fewer pixels and no shadows
-    const fast = pref("graphics") === "low" || (pref("graphics") === "auto" && matchMedia("(pointer: coarse)").matches);
-    engine.setHardwareScalingLevel(fast ? 1.5 : 1);
-    scene.shadowsEnabled = !fast;
-    look.setFast(fast);
+    applyGraphics();
   }
+}
+
+// --- graphics: three steps, and Auto finds the right one by watching the frame rate -----------
+// 0 High: the screen's own sharpness (up to 2x), shadows, ambient occlusion and bloom.
+// 1 Fast: one pixel per CSS pixel, none of those effects (soft discs stand in for shadows).
+// 2 Fastest: two thirds of that sharpness, for phones that still struggle.
+type Tier = 0 | 1 | 2;
+const TIER_KEY = "kitchen.autoTier";
+const TRIED_HIGH_KEY = "kitchen.autoTriedHigh";
+const touchScreen = matchMedia("(pointer: coarse)").matches;
+/** a tablet has the pixels and usually the chip for High: worth one try (a phone never is) */
+const bigTouchScreen = touchScreen && Math.min(screen.width, screen.height) >= 700;
+const savedTier = readText(TIER_KEY);
+let autoTier: Tier = savedTier === "0" ? 0 : savedTier === "1" ? 1 : savedTier === "2" ? 2 : touchScreen ? 1 : 0;
+const graphicsTier = (): Tier => (pref("graphics") === "high" ? 0 : pref("graphics") === "low" ? 1 : autoTier);
+
+function applyGraphics() {
+  const tier = graphicsTier();
+  const sharp = Math.min(window.devicePixelRatio || 1, 2);
+  // the scaling level is screen pixels per drawn pixel: under 1 draws more than the CSS size
+  engine.setHardwareScalingLevel(tier === 0 ? 1 / sharp : tier === 1 ? 1 : 1.5);
+  scene.shadowsEnabled = tier === 0;
+  look.setFast(tier > 0);
+}
+
+const frames = { warmUp: 3, time: 0, count: 0, changes: 0 };
+/** Auto graphics: a few seconds into a shift, step down if it's choppy (or, once, up on a smooth tablet). */
+function watchFrameRate(dt: number) {
+  const playing = session?.game?.phase === "playing" && !paused && !document.hidden && document.hasFocus();
+  // a long gap is the tab being throttled or a hitch while loading, not the kitchen being slow
+  if (pref("graphics") !== "auto" || frames.changes >= 3 || !playing || dt > 0.25) {
+    frames.warmUp = 3;
+    frames.time = frames.count = 0;
+    return;
+  }
+  if ((frames.warmUp -= dt) > 0) return;
+  frames.time += dt;
+  frames.count += 1;
+  if (frames.time < 4) return;
+  const fps = frames.count / frames.time;
+  frames.warmUp = 3;
+  frames.time = frames.count = 0;
+  let next: Tier = autoTier;
+  if (autoTier === 0 && fps < 40) next = 1;
+  else if (autoTier === 1 && fps < 32) next = 2;
+  else if (autoTier === 1 && fps >= 57 && bigTouchScreen && readText(TRIED_HIGH_KEY) !== "1") {
+    writeText(TRIED_HIGH_KEY, "1");
+    next = 0;
+  }
+  // settled: this step holds the frame rate, so stop watching for this visit
+  if (next === autoTier) return void (frames.changes = 3);
+  autoTier = next;
+  frames.changes += 1;
+  writeText(TIER_KEY, String(next));
+  applyGraphics();
+  track("graphics_auto", { tier: next, fps: Math.round(fps) });
 }
 for (const name of Object.keys(PREFS) as PrefName[]) applyPref(name);
 for (const id of ["open-settings", "lobby-settings", "title-settings", "room-settings"]) {
@@ -1096,8 +1169,6 @@ scene.onBeforeRenderObservable.add(() => {
   }
 });
 
-// the asset gallery is a tool for building the game, not for players
-if (!import.meta.env.DEV) document.querySelector('#pause-menu a[href="/gallery.html"]')?.remove();
 if (import.meta.env.DEV) Object.assign(window, { getSession: () => session, isPaused: () => paused, scene, pov, voice }); // console debugging
 
 // Footprint of the floating island in Kitchen_Room.glb (metres).
@@ -1151,7 +1222,10 @@ function firstVisit(): boolean {
   return [WELCOMED_KEY, "kitchen.stars", "kitchen.business"].every((key) => readText(key) === null) && !hasSticker("tutorial");
 }
 
-engine.runRenderLoop(() => scene.render());
+engine.runRenderLoop(() => {
+  scene.render();
+  watchFrameRate(engine.getDeltaTime() / 1000);
+});
 window.addEventListener("resize", () => {
   engine.resize();
   fitCamera();
@@ -1196,13 +1270,16 @@ function buildKitchen(game: Game): boolean {
   room.computeWorldMatrix(true);
   for (const mesh of room.getChildMeshes()) {
     mesh.receiveShadows = true;
-    if (/Terrace|Nature|RangeHood|Shelves|Window|WallDecor|Decor/.test(mesh.name)) shadows.addShadowCaster(mesh);
+    if (/Terrace|Nature|RangeHood|Shelves|Window|WallDecor|Decor/.test(mesh.name)) roomShadows.addShadowCaster(mesh);
     // the room never moves: work out where each part is once, not every frame
     mesh.freezeWorldMatrix();
     mesh.doNotSyncBoundingInfo = true;
   }
   // stations never move during a shift, so the game's layout builds the kitchen
-  view = new GameView(scene, library, shadows, game);
+  view = new GameView(scene, library, shadows, roomShadows, game);
+  // the room's shadows are drawn once: now, and again once every model has reached the graphics card
+  look.redrawRoomShadows();
+  for (const ms of [400, 1500]) setTimeout(() => look.redrawRoomShadows(), ms);
   view.onFootstep = (chefId, x, z) => {
     const me = meNow();
     if (me && session?.game) feedback.footstep(x, z, me, session.game, chefId === me.id);

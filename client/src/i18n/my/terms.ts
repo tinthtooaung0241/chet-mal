@@ -31,6 +31,8 @@ export const FOOD: Record<string, string> = {
   TeaLeaf: "လက်ဖက်",
   Noodles: "ဆန်ခေါက်ဆွဲ",
   Rice: "ဆန်",
+  Tofu: "ရှမ်းတိုဟူး",
+  Coconut: "အုန်းနို့",
 };
 
 /**
@@ -50,6 +52,7 @@ const PREPARED: Partial<Record<string, Partial<Record<FoodState, string>>>> = {
   Fish: { chopped: "ငါးတုံး" },
   Egg: { cooked: "ကြက်ဥကြော်" },
   Chicken: { chopped: "ကြက်သားတုံး" },
+  Tofu: { chopped: "တိုဟူးလှီး", cooked: "တိုဟူးကြော်", burnt: "တူးသွားတဲ့ တိုဟူးကြော်" },
 };
 
 /** A food in a state: raw is just its name; chopped is "<name>လှီး"; cooked and burnt describe it. */
@@ -91,12 +94,14 @@ export const DISH: Record<string, string> = {
   "Fried mushrooms": "မှိုကြော်",
   "Grilled fish": "ငါးကင်",
   "Cheese toastie": "ဒိန်ခဲ ပေါင်မုန့်ကင်",
+  "Cheese & tomato sandwich": "ဒိန်ခဲ ခရမ်းချဉ်သီး ဆန်းဒဝစ်ချ်",
   "Steak & fries": "အမဲသားကင်နဲ့ အာလူးချောင်းကြော်",
   "Steak & onions": "အမဲသားကင်နဲ့ ကြက်သွန်နီကြော်",
   "Steak salad": "အမဲသားသုပ်",
   "Fish & chips": "ငါးကြော်နဲ့ အာလူးချောင်းကြော်",
   "Full breakfast": "မနက်စာ အပြည့်အစုံ",
   "Soy-glazed fish": "ပဲငံပြာရည် ငါးကြော်",
+  "Soy fish & mushrooms": "ပဲငံပြာရည်ငါးနဲ့ မှိုကြော်",
   "Mushroom stir-fry": "မှိုနဲ့ ကြက်သွန် ကြော်",
   "Tomato soup": "ခရမ်းချဉ်သီး စွပ်ပြုတ်",
   "Vegetable soup": "ဟင်းသီးဟင်းရွက် စွပ်ပြုတ်",
@@ -106,6 +111,11 @@ export const DISH: Record<string, string> = {
   "Shan noodles": "ရှမ်းခေါက်ဆွဲ",
   "Chicken curry & rice": "ကြက်သားဟင်းနဲ့ ထမင်း",
   "Burmese fried rice": "မြန်မာ ထမင်းကြော်",
+  "Tomato salad": "ခရမ်းချဉ်သီးသုပ်",
+  "Shan tofu fritters": "တိုဟူးကြော်",
+  "Coconut chicken noodles": "အုန်းနို့ခေါက်ဆွဲ",
+  "Egg curry & rice": "ကြက်ဥဟင်းနဲ့ ထမင်း",
+  "Nan gyi thoke": "နန်းကြီးသုပ်",
 };
 
 // --- the kitchen ---------------------------------------------------------------------------

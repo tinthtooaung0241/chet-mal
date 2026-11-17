@@ -29,10 +29,10 @@ import {
   CHEF_RADIUS,
   CHEF_SPEED,
   CHOP_TIME,
-  EXPIRED_PENALTY,
+  expiredPenalty,
+  speedBonus,
+  comboBonus,
   FOOD_RULES,
-  COMBO_MAX,
-  COMBO_STEP,
   COMBO_WINDOW,
   OVERTIME_MAX,
   paceOf,
@@ -55,7 +55,6 @@ import {
   KID_CHANCE,
   plainRecipe,
   CRITIC_PATIENCE,
-  CRITIC_PENALTY,
   CRITIC_RAVE,
   CRITIC_TIP,
   criticsAt,
@@ -581,9 +580,11 @@ export function findChef(g: Game, id: string | null | undefined): Chef | undefin
 
 /** Whether the restaurant owns this upgrade. */
 export const hasUpgrade = (g: Game, id: string) => g.upgrades?.includes(id) ?? false;
+/** An upgrade's strength: `first` with it, `second` with its second tier, 1 with neither. */
+const upgraded = (g: Game, id: string, first: number, second: number) => (hasUpgrade(g, `${id}2`) ? second : hasUpgrade(g, id) ? first : 1);
 
 /** Seconds a cooked food takes to burn (heavy pans and a cozy pace give more leeway). */
-export const burnTimeFor = (g: Game, kind: string) => (FOOD_RULES[kind]?.burnTime ?? 6) * (hasUpgrade(g, "pans") ? 1.5 : 1) * paceOf(g).leeway;
+export const burnTimeFor = (g: Game, kind: string) => (FOOD_RULES[kind]?.burnTime ?? 6) * upgraded(g, "pans", 1.5, 2) * paceOf(g).leeway;
 
 /** Seconds a ready soup takes to boil dry. */
 export const soupBurnFor = (g: Game) => SOUP_BURN * paceOf(g).leeway;
@@ -1032,7 +1033,7 @@ export function stepWorld(g: Game, dt: number) {
     if (!FOOD_RULES[food.kind]?.chop || food.state !== "raw") continue;
     chef.chopping = true;
     const before = Math.floor(food.chop * 6);
-    food.chop = Math.min(1, food.chop + (dt / CHOP_TIME) * (hasUpgrade(g, "knives") ? 1.35 : 1) * ROLES[chef.role].chopRate);
+    food.chop = Math.min(1, food.chop + (dt / CHOP_TIME) * upgraded(g, "knives", 1.35, 1.7) * ROLES[chef.role].chopRate);
     if (food.chop >= 1) {
       food.state = "chopped";
       chef.stats.chopped += 1;
@@ -1133,7 +1134,7 @@ export function stepWorld(g: Game, dt: number) {
     if (order.timeLeft <= 0) {
       g.orders.splice(g.orders.indexOf(order), 1);
       dinerGivesUp(g, order.id);
-      const penalty = order.critic ? CRITIC_PENALTY : EXPIRED_PENALTY;
+      const penalty = expiredPenalty(order.recipe, order.critic);
       const before = g.score;
       g.score = Math.max(0, g.score - penalty);
       g.tally.lost += 1;
@@ -1388,7 +1389,7 @@ function addOrder(g: Game, recipe?: Recipe, channel?: OrderChannel, critic = fal
   // booster shifts bring families more often, so the head chef gets a few seats to set out
   const kid = !critic && !level.tutorial && level.n >= 3 && Math.random() < KID_CHANCE * (boosters ? 1.75 : 1);
   if (kid) recipe = plainRecipe(recipe);
-  const wait = recipe.time * (level.patience ?? 1) * (twistOf(g)?.patience ?? 1) * paceOf(g).patience * (hasUpgrade(g, "sign") ? 1.25 : 1) * (critic ? CRITIC_PATIENCE : 1);
+  const wait = recipe.time * (level.patience ?? 1) * (twistOf(g)?.patience ?? 1) * paceOf(g).patience * upgraded(g, "sign", 1.25, 1.5) * (critic ? CRITIC_PATIENCE : 1);
   g.orders.push({ id, recipe: { ...recipe, time: wait }, timeLeft: wait, channel, warned: false, ...(critic ? { critic } : {}), ...(kid ? { kid } : {}) });
   addDiner(g, id, kid, boosters);
   const pass = g.stations.find((s) => s.kind === "serve") ?? { x: 0, z: 0 };
@@ -1476,9 +1477,12 @@ export function plateCheck(g: Game, dish: Plate | Bowl): "ready" | "track" | "wr
 /** @param plating how the head chef's plating swirl went (their presentation points) */
 function serve(g: Game, chef: Chef, dish: Plate | Bowl, at: Station, plating: Pinch = "good") {
   chef.held = null;
+  // two tickets can want the same food seasoned differently (a kid's plain one, say): the dish
+  // goes to the one it's seasoned for, and among equals to whoever has waited longest
   const order = g.orders
     .filter((o) => sameDish(o.recipe, dish))
-    .sort((a, b) => a.timeLeft - b.timeLeft)[0];
+    .map((o) => ({ o, fit: tasteDish(o.recipe, dish).points }))
+    .sort((a, b) => b.fit - a.fit || a.o.timeLeft - b.o.timeLeft)[0]?.o;
   if (!order) {
     breakCombo(g);
     g.tally.wrong += 1;
@@ -1504,7 +1508,7 @@ function serve(g: Game, chef: Chef, dish: Plate | Bowl, at: Station, plating: Pi
   const perfect = dish.type === "bowl" ? (dish.perfect ? ["soup"] : []) : dish.contents.filter((f) => f.perfect).map((f) => f.kind.toLowerCase());
   const bonus = perfect.length * PERFECT_BONUS;
   const taste = tasteDish(order.recipe, dish);
-  const speed = Math.ceil((order.timeLeft / order.recipe.time) * 10);
+  const speed = speedBonus(order.timeLeft, order.recipe.time);
   // picky eaters: every seasoning mistake costs more; at a cozy pace, slips cost nothing
   const slips = taste.points >= 0 ? taste.points : paceOf(g).forgiving ? 0 : taste.points * (twistOf(g)?.picky ?? 1);
   const seasoning = slips + taste.pinch;
@@ -1535,7 +1539,7 @@ function serve(g: Game, chef: Chef, dish: Plate | Bowl, at: Station, plating: Pi
   g.perfects += perfect.length;
   chef.stats.served += 1;
   g.orders.splice(g.orders.indexOf(order), 1);
-  dinerServed(g, order.id, dish, false, Math.round(points * (hasUpgrade(g, "tipjar") ? 1.2 : 1) * (rave ? CRITIC_TIP : 1)));
+  dinerServed(g, order.id, dish, false, Math.round(points * upgraded(g, "tipjar", 1.2, 1.4) * (rave ? CRITIC_TIP : 1)));
   const praise = perfect.length ? ` Perfect ${perfect.join(" and ")}!` : "";
   const plated = !ROLES[chef.role].presentation ? "" : plating === "perfect" ? " A picture-perfect plate!" : plating === "good" ? " Beautifully presented!" : "";
   emit(g, "served", `Served ${order.recipe.name}!${praise}${taste.note}${plated} Plus ${points} points.`, at, EVERYONE, [chef.id]);
@@ -1545,12 +1549,12 @@ function serve(g: Game, chef: Chef, dish: Plate | Bowl, at: Station, plating: Pi
       : `The critic's verdict: "${taste.points < 0 ? "The seasoning was off" : "Tasty, but slow"}." No rave review this time.`;
     emit(g, "critic", verdict, at, EVERYONE, [chef.id]);
   }
-  // a combo: the second dish in a row earns COMBO_STEP more, the third twice that...
+  // a combo: the second dish in a row earns COMBO_STEP more, the next ones up to COMBO_MAX
   g.combo = g.comboLeft > 0 ? g.combo + 1 : 1;
   g.comboLeft = comboWindow(g);
   t.bestCombo = Math.max(t.bestCombo, g.combo);
   if (g.combo >= 2) {
-    const extra = Math.min(COMBO_MAX, (g.combo - 1) * COMBO_STEP) * (twistOf(g)?.combo ?? 1);
+    const extra = comboBonus(g.combo) * (twistOf(g)?.combo ?? 1);
     g.score += extra;
     t.combo += extra;
     emit(g, "combo", `Combo ×${g.combo}! Plus ${extra} bonus points. Serve the next dish within ${Math.round(g.comboLeft)} seconds to keep it going.`, at, SEEN_HEARD, [chef.id]);
@@ -1806,7 +1810,7 @@ function warmUp(g: Game, dt: number) {
     // you can see it sweating, and whoever holds it can feel it's no longer cold
     const senses: Sense[] = holder ? ["sight", "touch"] : ["sight"];
     const actors = holder ? [holder.id] : undefined;
-    const limit = (hasUpgrade(g, "fridge") ? 2 : 1) * paceOf(g).leeway;
+    const limit = upgraded(g, "fridge", 2, 3) * paceOf(g).leeway;
     if (food.out >= COLD_LIMIT * limit) {
       food.spoiled = true;
       emit(g, "warm", `The ${kind} sat out of the fridge too long and has gone off. Bin it!`, at, senses, actors, true);
@@ -1837,7 +1841,7 @@ export function describePot(pot: Pot): string {
   if (!pot.contents.length) return "nothing yet";
   const counts = new Map<string, number>();
   for (const f of pot.contents) counts.set(f.kind, (counts.get(f.kind) ?? 0) + 1);
-  const list = [...counts].map(([k, n]) => `${n > 1 ? `${n} ` : ""}chopped ${k.toLowerCase()}`).join(", ");
+  const list = [...counts].map(([k, n]) => `${n > 1 ? `${n} ` : ""}${potState(k) === "raw" ? describeFood(k, "raw") : `chopped ${k.toLowerCase()}`}`).join(", ");
   if (pot.state === "filling") return `${list} (${pot.contents.length} of ${SOUP_SIZE})`;
   return `${soupName(pot.contents.map((f) => f.kind))}${pot.state === "done" ? ", ready" : ", boiling"}`;
 }

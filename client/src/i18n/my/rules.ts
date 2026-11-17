@@ -612,6 +612,7 @@ const SPECIFIC: Rule[] = [
   rule(/^Finish (?:the plate|it) with (.+)\.$/, (m, t) => `${t.P(m[1])} ထည့်ပြီး အဆုံးသတ်ပါ။`),
   rule(/^(\d+) of (\d+)\.$/, (m) => `${m[2]} မှာ ${m[1]}။`),
   rule(/^The pot needs exactly (\d+) chopped vegetables\.$/, (m) => `အိုးထဲကို ဟင်းသီးဟင်းရွက်လှီး ${m[1]} ခု အတိအကျ လိုတယ်။`),
+  rule(/^Only chop the (.+): the rest goes in the pot as it is\.$/, (m, t) => `${t.P(m[1])}ကိုပဲ လှီးပါ — ကျန်တာကို အိုးထဲ ဒီအတိုင်း ထည့်ပါ။`),
   rule(/^Bring a bowl as soon as it's boiled, before it burns\.$/, () => "ဆူပြီးတာနဲ့ မတူးခင် ပန်းကန်လုံး ယူလာပါ။"),
   rule(/^Season the (.+) before it goes in the pan, not after\.$/, (m, t) => `${t.P(m[1])}ကို ဒယ်အိုးထဲ မထည့်ခင် ဟင်းခတ်ပါ၊ ပြီးမှ မဟုတ်ဘူး။`),
   rule(/^Ask a friend to grab the (.+) while you cook\.$/, (m, t) => `ချက်နေတုန်း သူငယ်ချင်းကို ${t.P(m[1])} ယူပေးခိုင်းပါ။`),

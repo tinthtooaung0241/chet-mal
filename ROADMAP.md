@@ -651,6 +651,434 @@ a quick double tap could zoom the browser in on a menu.
 23. **The stick has one speed curve.** Fine for walking; worth a look on a real phone for small
     moves next to a station (the dead zone is 15%).
 
+## 16. Audit: graphics (planned, Nov 2026)
+
+Measured in a solo shift at the street food stand, High graphics: **721 meshes drawn, 278
+materials, about 730,000 triangles, 702 shadow casters**, shadow map redrawn every frame. The
+look itself (pastel sky, warm sun, string lights, toy-like room) is good. What's wrong is
+sharpness, cost, and how easy it is to read what matters.
+
+### Step 1: sharpness and cost (done, but for sharing meshes)
+
+Done: High draws at the screen's own sharpness (up to 2×) and Fast at one pixel per CSS pixel,
+with a Fastest step below it (what phones used to get). Auto watches the frame rate a few seconds
+into a shift and steps down if it's under 40 (32 on Fast); a tablet running smoothly gets one try
+at High. The room's shadows are drawn once per kitchen (695 meshes); only the movers' shadows
+(about 7 meshes) are redrawn each frame. Characters get a soft disc on the floor when shadows are
+off. Ambient occlusion is 8 samples with the cheap blur. Models were simplified
+(`client/scripts/slim-models.mjs`): a shift went from about 730,000 triangles to about 239,000,
+and the models folder from 14 MB to 9.5 MB. Station parts that never move no longer have their
+position worked out every frame.
+
+Not done: station models were left as they were (simplifying them made the steel tops blotchy).
+Materials are not frozen (power cuts change the lights, and frozen materials can miss that), and
+stations are not merged or instanced, because each station lights up on its own when you face it.
+So the kitchen is still about 720 draws a frame. Frame rate was not measured on a real device.
+
+
+1. **The game renders at half the screen's sharpness.** The engine ignores the device pixel ratio
+   (`client/src/main.ts:71`), so a Retina laptop draws 1 pixel where it has 4. Phones on Fast
+   also scale down 1.5× (`main.ts:682`): an 844×390 phone draws about 563×260, then stretches it.
+   This is the main reason the kitchen looks soft next to the crisp HUD. *Fix:* render at
+   `min(devicePixelRatio, 2)` on High, and about 1.25× the CSS size on Fast, paid for by items 2–4.
+2. **Shadows are drawn from scratch every frame for 702 objects**, most of which never move
+   (walls, shelves, decor: `main.ts:1199`, `view.ts:361`). That's a second full pass over the
+   scene. *Fix:* two shadow maps: one for the room, drawn once per kitchen; one small one for
+   chefs, customers and carried things.
+3. **Phones get no shadows at all** (`main.ts:683`), so chefs and plates float. *Fix:* a soft dark
+   disc under each chef and customer on Fast. Almost free, and it grounds everything.
+4. **Small props are heavy.** A bowl is about 4,000 triangles, a plate 3,000, lettuce and carrots
+   more; together props outweigh the whole room. They're a few centimetres on screen. *Fix:*
+   decimate props in Blender to 300–600 triangles each. Target under 250,000 triangles a shift.
+5. **Nothing is shared.** Only 30 of 859 meshes are instances, and no material is frozen. Still
+   open from §13: merge the room's static meshes by material, freeze materials, instance repeated
+   props (plates, chairs, string-light bulbs).
+6. **Ambient occlusion is the most expensive effect on High** (16 samples, expensive blur,
+   `look.ts:88-92`). *Fix:* 8 samples and the cheap blur; nobody will see the difference from above.
+7. **One graphics switch for everything.** Auto means "Fast on touch, High otherwise", so a new
+   iPad gets Fast and an old laptop gets High. *Fix:* start on High, watch the frame rate for the
+   first few seconds of a shift, and drop to Fast if it's under about 40.
+
+### Step 2: reading the kitchen
+
+8. **Your chef is small and looks like the others.** From above on a laptop the whole island is
+   framed and the chef is about 40 pixels tall. *Fix:* a coloured ring under your own chef, and
+   each teammate's colour on their ring and name tag. On laptops, frame the kitchen a little
+   tighter.
+9. **The lit-up station is faint.** The station in front of you gets a white wash at 22%
+   (`view.ts`, `syncHighlight`), easy to miss from above on pale counters. *Fix:* a brighter rim
+   or a small lift, in your chef's colour.
+10. **Food states look alike from above.** Raw, chopped, cooked and burnt differ by a small model
+    swap. *Fix:* a small state badge over food on counters and in hand (knife, flame, burnt), and
+    darker, smoking burnt food.
+11. **Danger has no colour.** A stove about to burn, cold food warming up and an order about to
+    expire all rely on small bars. *Fix:* the stove's flame turns from orange to red and the pan
+    shakes in the last seconds; a ticket's table gets a pulsing marker when its order turns red.
+### Step 3: life and mood
+
+13. **Both restaurants share one sky and one time of day.** *Fix:* a light preset per shift
+    (morning, noon, golden hour, night with the string lights carrying the scene). It's only the
+    sun colour, sky gradient and exposure in `look.ts`, and it makes ten shifts feel like ten days.
+14. **A power cut is just dark.** Storms have lightning and rain on the screen; a power cut only
+    fades the lights (`look.ts:95-100`). *Fix:* a small warm light on the pass and on each chef,
+    so the dark is tense, not blind. In a storm, wet highlights on the terrace floor.
+15. **Cooking effects are there but small.** Steam, smoke, flying bits and fire exist
+    (`client/src/game/effects.ts`), sized for a close camera; from above they're specks. *Fix:*
+    scale them with camera distance, and make steam thicken as food nears done. (The perfect
+    moment stays sound-only, as designed.)
+16. **A big combo looks like a first dish.** Points float up from the pass and the score pops,
+    the same way every time. *Fix:* the burst and the number grow with the combo, and coins
+    burst at the till when a customer pays.
+17. **Customer moods are easy to miss.** Happy, angry and sick customers animate, and a "Hungry!"
+    bubble shows, but from above an angry table looks like a calm one. *Fix:* tint the table's
+    marker by mood, and make the walk-out bigger.
+
+## 17. Audit: gameplay systems (planned, Nov 2026)
+
+Read from `shared/src/rules.ts` and `shared/src/state.ts`. The core loop and the roles are sound.
+The issues are in balance, order flow and how little of the best idea gets used.
+
+### Step 1: balance (done)
+
+Built with Step 4's tests first (`pnpm test:rules`, `shared/test/rules.ts`):
+
+- **Crew size:** a level's pace and stars are set for two chefs. Solo gets orders 15% less often
+  and star goals at 85% (`CREW_PACE`, `CREW_GOALS` in `rules.ts`). Solo with the helper bot counts as two.
+- **Lost customers:** half the dish's price, at least 10 (a critic: at least 20) — `expiredPenalty`.
+- **Combo and speed:** combo capped at 10 a dish (was 20); speed pays up to 15 (was 10) —
+  `comboBonus`, `speedBonus`.
+- **Upgrades:** a second tier of each (knife set, walk-in chiller, cast-iron range, card reader,
+  rooftop billboard; 1,140 coins in all), on sale once the first is owned (`upgradesOnSale`).
+- **Star goals:** shifts 3 and 6–10 rescaled by how much their menus' average price moved in §18–19
+  (3: 65/130/190, 6: 60/125/190, 7: 40/85/125, 8: 50/100/150, 9: 55/115/170, 10: 60/120/180).
+- **Still to do:** these are sums, not play data. Tune against `shift_end` in PostHog once people play.
+
+The findings this step answered:
+
+
+1. **One chef and two chefs get the same shift.** Order pace and star goals are identical for a
+   crew of one and two; only three chefs change anything (`rules.ts:667-668`). So either solo is
+   too hard or a pair cruises. *Fix:* solo gets about 15% fewer orders and lower star goals, and
+   tune with the `shift_end` numbers in PostHog.
+2. **Letting an order expire is cheap.** It costs 10 points whatever the dish (`rules.ts:14`),
+   while a steak plate pays 35–45. The best play is to cook only easy dishes and let hard ones
+   time out. *Fix:* the penalty is half the dish's reward, at least 10.
+3. **Combos outweigh cooking well.** By the fifth dish in a row each serve adds 20, as much as a
+   whole salad, while serving fast adds at most 10 and a perfect sizzle 10. *Fix:* cap the combo
+   at 10–12 a dish, and let speed pay up to 15.
+4. **Upgrades run out fast.** Five upgrades, 420 coins, then coins only buy hats. *Fix:* a second
+   tier of each upgrade, or a per-restaurant set, priced so they last through all the shifts.
+
+### Step 2: order flow
+
+5. **Orders are picked at random with no memory** (`state.ts:1384`). You can get three salads in
+   a row, or never see the dish the shift is teaching. *Fix:* deal dishes like a shuffled deck,
+   and make the first order the shift's new dish.
+6. **Done (§18):** menus are now 2, 4, 4, 4, 6, 6 dishes. **Menus jump in size.** Shift 1 has one dish, shift 2 has two, shift 3 has five new ones at
+   once, and shifts 5 and 6 draw from every dish in the restaurant. *Fix:* three or four dishes
+   in shift 3; in shifts 5 and 6, six dishes that rotate, not all of them.
+7. **Shift 2 teaches four things at once**: seasoning before or after the flame, the perfect
+   sizzle, combos and fires. *Fix:* move fires to shift 3 and combos to shift 4, one new idea a
+   shift.
+8. **Kids and critics arrive by dice roll** (20% of orders are kids). Some shifts get none, some
+   get four. *Fix:* a set number per shift, at random times.
+
+### Step 3: use the best idea more
+
+9. **Power cuts and storms happen in one shift out of ten** (shift 6 only, `rules.ts:546`). They
+   are the moments when who leads changes, which is the game's hook. *Fix:* a short one in shifts
+   4 and 5 and in each Burmese shift from 8 on, and a third event kind (below).
+10. **The Burmese restaurant never loses its lights or hearing.** Its four shifts add dishes and
+    booster seats, but no event. *Fix:* give it its own event, such as a generator that must be
+    restarted by one chef while another calls the orders.
+11. **Only two events exist.** *Add:* "smoke" (the kitchen fills, only chefs near the floor of the
+    pass can read tickets), or "loud table" (a party drowns out phone orders for 20 seconds).
+12. **Ten shifts is about forty minutes of new things.** After that there's the daily special and
+    overtime. *Add:* a third restaurant (already under Next ideas), and an endless shift with a
+    best-score board per restaurant.
+
+### Step 4: safety net (done: `pnpm test:rules`)
+
+13. **The rules have one test**, the autoplay run (`shared/test/autoplay.ts`). Scoring, expiry,
+    combos, seasoning and star goals are untested, and Steps 1–2 change all of them. *Fix:* small
+    rule tests first (still open from §13, item 29), then change the numbers.
+
+## 18. Audit: recipes (done, Nov 2026)
+
+Every dish was checked three ways: would a real kitchen make it like this, can it be made in the
+kitchen that orders it, and does it pay for the work in it. `npm run test:recipes` now checks the
+last two on every run and prints work against pay for each dish.
+
+**What was wrong, and what changed**
+
+- **Two dishes were the same plate.** Grilled fish and soy-glazed fish were both "one cooked
+  fish", on the same menu. With both ordered, your fish went to whichever ticket was older, and
+  the other customer complained about the seasoning. *Now:* soy fish comes with fried mushrooms
+  ("Soy fish & mushrooms"), and a dish that fits two tickets goes to the one it was seasoned for
+  (`state.ts`, `serve`). That also sends a plain plate to the kid who ordered it.
+- **The first dish was the worst deal.** Salad needed three finishing touches (oil, lemon, salt)
+  for 20 points: three trips to the rack in the tutorial. *Now:* oil and lemon. No dish asks
+  for more than two finishing touches, but for mohinga and tea leaf salad, which are known for
+  their toppings.
+- **A toastie with cold cheese.** *Now:* "Cheese & tomato sandwich": buttered toast, sliced
+  cheese, tomato.
+- **A steak salad that was steak on lettuce.** *Now:* steak, lettuce and tomato.
+- **Tomato soup was three tomatoes.** *Now:* two tomatoes and an onion, salt and herbs.
+- **Stir-fry was seasoned on the plate.** *Now:* soy goes on the mushrooms before the pan,
+  pepper on top.
+- **Shan noodles had no sauce.** *Now:* rice noodles, turmeric chicken and tomato, with peanuts
+  and coriander.
+- **Pay didn't follow the work.** Soy fish paid 11.4 points per 10 seconds of work, salad 6.5.
+  *Now:* every dish is between 7 and 11, starters lowest, and customers wait about twice as long
+  as a dish takes one chef.
+- **Menus jumped in size** (§17 item 6). *Now:* shifts have 2, 4, 4, 4, 6, 6 dishes. Shifts 5
+  and 6 draw from six set dishes, not all fourteen, and each brings back dishes from earlier.
+
+**The menu now**
+
+| Dish | On the plate | Seasoned | Pays |
+|---|---|---|---|
+| Salad | chopped tomato, chopped lettuce | finish: olive oil, lemon | 20 |
+| Fried mushrooms | fried mushrooms | finish: salt, herbs | 20 |
+| Grilled fish | fish | salt before; finish: lemon, herbs | 25 |
+| Cheese & tomato sandwich | toast, sliced cheese, chopped tomato | butter on the bread before | 35 |
+| Steak & fries | steak, fries | salt and pepper before; salt on fries after | 35 |
+| Steak & onions | steak, fried onions | salt and pepper before; finish: butter | 35 |
+| Steak salad | steak, lettuce, tomato | salt and pepper before; finish: olive oil | 40 |
+| Fish & chips | fish, fries | salt before; salt on fries after; finish: vinegar | 35 |
+| Full breakfast | fried egg, toast, mushrooms | butter before; salt and pepper on the egg after | 50 |
+| Soy fish & mushrooms | fish, fried mushrooms | soy before; finish: lemon | 35 |
+| Mushroom stir-fry | mushrooms, onions | soy before; finish: pepper | 35 |
+| Tomato soup | tomato, tomato, onion | finish: salt, herbs | 40 |
+| Vegetable soup | carrot, onion, potato | finish: salt, pepper | 40 |
+| Mushroom soup | mushroom, mushroom, onion | finish: butter, herbs | 40 |
+| Mohinga | fish, onion, rice noodles (pot) | finish: fish sauce, lime, coriander | 45 |
+| Tea leaf salad | tea leaves, cabbage, tomato | finish: peanuts, garlic oil, lime | 35 |
+| Shan noodles | noodles, chicken, tomato | turmeric before; finish: peanuts, coriander | 45 |
+| Chicken curry & rice | chicken, rice, fried onions | turmeric and chili before; finish: coriander | 50 |
+| Burmese fried rice | rice, fried egg, fried onions | salt on the egg after; finish: fish sauce | 40 |
+
+**Still not like a real kitchen** (each needs a new model or station, so they're left for later)
+
+1. **Everything cooks in a frying pan.** Rice is "steamed" and noodles "boiled" in it. *Add:* a
+   second pot on the stove that boils (rice, noodles, eggs), so pan and pot are two skills.
+2. **Cheese never melts, tomatoes never grill.** *Add:* a cooked state for cheese and tomato
+   (two models), then the sandwich becomes a real toastie and breakfast gets its grilled tomato.
+3. **Carrots only go in soup.** One more use (a raw side, or fried rice) would make the crate
+   worth walking to.
+4. **Star goals were set for the old menus.** Average pay per dish moved by a few points on
+   shifts 2, 4, 5 and 6. Check with the `shift_end` numbers before changing them.
+
+## 19. More Burmese dishes (done)
+
+Five dishes added to the Burmese restaurant, each a real one, cooked the way it is as far as the
+kitchen's rules allow. The restaurant now has ten.
+
+| Dish | Burmese name | In the game | Pays |
+|---|---|---|---|
+| Tomato salad | khayan chin thi thoke | chopped tomato and raw onion; peanuts, coriander | 25 |
+| Shan tofu fritters | tohu kyaw | Shan tofu sliced and fried; chili, coriander | 25 |
+| Coconut chicken noodles | ohn no khao swè | pot: chopped chicken, coconut milk, noodles; lime, chili | 35 |
+| Egg curry & rice | kyet u hin | egg with turmeric, fried; chopped tomato; rice; chili | 35 |
+| Nan gyi thoke | nan gyi thoke | boiled noodles, turmeric chicken, raw onion; garlic oil, lime | 45 |
+
+- **New ingredients:** Shan tofu (greens fridge; raw, sliced, fried, burnt) and coconut milk
+  (noodle shelf; goes in the pot as it is). Chicken can now go in the pot once chopped.
+- **Menus:** shift 7 tomato salad, tofu fritters, tea leaf salad, shan noodles; shift 8 mohinga,
+  coconut chicken noodles, tofu fritters, tea leaf salad; shift 9 chicken curry, egg curry, fried
+  rice, nan gyi thoke, tomato salad; shift 10 eight dishes (all but tomato salad and fried rice).
+- **Art:** models, icons and dish pictures are built by scripts kept inside
+  `assets/kitchen_assets.blend` (texts `burmese_models.py`, `icon_shots.py`, `burmese_dishes.py`).
+  `icon_shots.py` also recreates the outline ink material, which the file had lost.
+- **Recipe book:** a soup page now says "Take the noodles as it is" for things that aren't
+  chopped, and its tip names what to chop.
+
+Where it bends the real dish (kept honest here, not hidden):
+- Ohn no khao swè is made with wheat or egg noodles; the kitchen only stocks rice noodles.
+- Egg curry uses boiled eggs fried golden, in a cooked tomato and onion gravy. Here the egg is
+  fried from raw and the tomato is only chopped (tomato can't be cooked in this kitchen yet).
+- Nan gyi thoke also has boiled egg, fish cake and toasted chickpea flour.
+- The star goals for shifts 7 to 10 were not retuned for the new menus.
+
+## 20. Audit: buttons, icons and alignment (Nov 2026)
+
+Every dialog was measured in the page (buttons with no icon, rows whose items differ in height or
+centre, targets under 36 px), then the pause menu was checked by eye.
+
+**Fixed**
+
+| Where | Was | Now |
+|---|---|---|
+| Pause: Restart shift / Leave kitchen | text only, 34 px and unequal | restart and door icons, "Restart" / "Leave", both 44 px |
+| Pause: Read aloud / view / microphone | a bare checkbox next to a pill, 5 px off centre, 23 and 27 px tall | three equal 40 px chips, each with its icon; the view chip reads "From above" / "Chef's eyes" |
+| Pause: Asset gallery link | pushed Restart and Leave off centre | on its own line under them |
+| Back buttons (shop, stickers, play menu) | text, or a "‹" character | a back-arrow icon |
+| Done / Got it! (settings, shift setup, How to play) | text only | a tick icon |
+| Let's cook! and Next level | text only | a play icon |
+| Play again (end screen) | a play icon, same as Next level | a restart icon |
+| Reset progress | text only, 34 px | bin icon, 40 px |
+| End screen buttons | 36 and 44 px in one row | all 44 px |
+| Shop and stickers Back | 35–36 px tall | 44 px |
+
+New glyphs in `client/src/ui/icons.ts`: `back`, `restart`, `exit`.
+
+**Left as they are, on purpose**
+
+- Title menu (Let's Play, How to Play, Settings): three large words picked with the keyboard; icons add nothing.
+- Join (room code) and the restaurant cards: the field and the star count already say what they are.
+- Leave and Restart keep a word beside the icon: both throw a shift away, and an icon alone is a guess.
+
+**Still open**
+
+1. **Done:** asking first no longer moves anything. Tapping Leave or Restart turns the pair into Yes (tick) and No (cross) in place, each button keeping its width, with the question in the card's bottom padding. No sits where Leave was, Yes ignores taps for 0.4 s, and it reverts after 5 s (`main.ts`).
+2. The in-game HUD chips (ping, bell, chat) are icon-only with a key letter; a first-time tooltip would help.
+3. Settings rows mix two- and three-choice pills of different widths; a fixed pill width would line them up.
+4. Not rechecked at phone size or in Burmese after these changes beyond the pause menu.
+
+## 21. Audit: type and spacing structure (Nov 2026)
+
+Counted from `client/src/style.css` (10,478 lines, 1,918 rules, 105 media queries).
+
+| Part | Has a structure? | What's there |
+|---|---|---|
+| Colours | Yes | paper, ink and pastel tokens in `:root` |
+| Corner radius | Mostly | `--r-sm/md/lg`, `--pill`; 123 of 197 uses go through a token |
+| Fonts | Yes | Fredoka for display (`--font-display`), Nunito for text |
+| Font sizes | **No** | 50 different sizes in 256 places, none from a token. Seven sizes sit between 0.8 and 0.9rem alone |
+| Font weights | Loosely | 600, 700 and 800 carry almost everything |
+| Line heights | **No** | 15 different values |
+| Spacing | **No** | 40 different pixel values across gap, padding and margin; `--gap` exists but is used 4 times. 129 different padding declarations |
+| Layering | Weak | later blocks override earlier ones by selector weight (the 38px icon bug in §20 came from this); 29 `!important` |
+
+**Proposed scale** (taken from the values already used most, so the look barely changes):
+
+- Type: `--t-micro 0.62rem`, `--t-caption 0.72rem`, `--t-small 0.8rem`, `--t-body 0.88rem`,
+  `--t-label 1rem`, `--t-title 1.1rem`, `--t-head 1.3rem`, `--t-big 1.6rem`, plus the title's clamp.
+- Line height: `--lh-tight 1.1`, `--lh-label 1.25`, `--lh-text 1.4`.
+- Spacing: `--s-1 2px`, `--s-2 4px`, `--s-3 6px`, `--s-4 8px`, `--s-5 10px`, `--s-6 12px`,
+  `--s-7 16px`, `--s-8 20px`, `--s-9 24px`, `--s-10 32px`.
+
+**Built (steps 1–3)**
+
+- Tokens are in `:root`: nine type steps (`--t-micro` 0.62, `--t-caption` 0.7, `--t-small` 0.8,
+  `--t-body` 0.86, `--t-label` 0.95, `--t-title` 1.05, `--t-head` 1.25, `--t-big` 1.4,
+  `--t-huge` 1.6rem), three line heights, and eleven spacing steps (`--s-1`…`--s-11`: 2, 4, 6, 8,
+  10, 12, 14, 16, 20, 24, 32px). The steps differ a little from the proposal above: they follow
+  the values used most, so less moved.
+- Every font size from 0.5 to 1.65rem (242 of 256 declarations) now uses a type token. Left alone: the
+  title's clamps, the 1.7–2.6rem display sizes and `em` sizes.
+- Every gap, padding and margin from 2 to 32px (865 values) uses a spacing token; 3, 5, 7, 9, 11,
+  18, 22, 26, 28 and 30px went to their neighbour (ties to the smaller). 1px hairlines, negative
+  offsets and sizes over 32px are left as written.
+- Checked by measuring all ten dialogs before and after at 1280×800, 667×375 and 360×640, in
+  English and Burmese: every dialog is the same height or a few pixels shorter, and none gained a
+  scrollbar. Settings, the play menu and the HUD were looked at by eye at desktop size only.
+- **Line heights (done):** every line height from 1.05 to 1.5 (37 declarations) is `--lh-tight`
+  (1.1), `--lh-label` (1.25) or `--lh-text` (1.4). `1` and below, and `normal`, are left.
+- **Folding the override blocks (step 4, done as far as it is provably safe):**
+  `client/scripts/fold-css.mjs` removed 68 declarations that a later block of the same selector
+  always overrode, and merged 91 earlier blocks into the later block of the same selector. It only
+  moves a block when no rule in between has the same selector weight and touches the same kind of
+  property, so the result cannot change. Checked: 69 computed properties on all 1,310 elements of
+  the ten dialogs and the title screen were identical before and after, at 1280×800, 667×375 and
+  360×640 in English and 360×640 in Burmese. The stylesheet went from 10,586 to 10,262
+  lines. 109 pairs of duplicate blocks remain, because something between them could change the
+  result; untangling those needs a person reading each one.
+- **Not done:** font weights (600, 700 and 800 are used loosely).
+- New CSS should use the tokens; a raw `rem` font size or odd pixel gap is now the exception.
+
+**How to get there**
+
+1. Add the tokens to `:root` (no visual change).
+2. Snap font sizes to the nearest step, one screen at a time, checking each at desktop and phone size, English and Burmese.
+3. Snap spacing the same way; odd values (5, 7, 9, 11 px) go to their neighbour.
+4. Fold the stacked override blocks for each dialog into one block per component, so a rule is written once.
+
+Also done here: the "Feel what each chef can and can't do" line under Try a chef is removed.
+
+## 22. Layout rhythm inside cards (Nov 2026)
+
+The scale in §21 says which sizes exist; this says which one goes where. Tokens in `:root`:
+
+| Token | Value | Use |
+|---|---|---|
+| `--stack` | 16px (`--s-8`) | between the groups of a card: title, a button group, the footer |
+| `--group` | 8px (`--s-4`) | between the controls of one group: tiles, chips, a button pair |
+| `--group-lg` | 12px (`--s-6`) | the same, in a grid of large buttons (the play menu) |
+| `--inline` | 8px (`--s-4`) | between an icon and its label |
+| `--control` | 44px | a button's height |
+| `--control-sm` | 40px | a chip's height |
+
+Card padding is already one value everywhere (32 / 32 / 24px; 24 / 24 / 20px for the wide cards).
+
+**Applied** (the "layout rhythm" block at the end of `style.css`, laptop and tablet sizes):
+
+- Pause menu: every group is `--stack` from the next (was 12–16px), every group's own gap is
+  `--group` (tiles 8, chef picker 6, chips 10 and Restart/Leave 14 are all 8 now), the legend sits
+  `--group` above the chef picker, and the chips and Restart/Leave share one text style
+  (Nunito 800, `--t-body`; they were three different fonts and weights).
+- Footers: Done, Got it!, Back and Let's cook! sit `--stack` under the content in Settings,
+  How to play, Stickers and the briefing (were 13, 19, 15 and 19px). How to play's tabs too.
+- End screen and How to play button rows use `--group`.
+
+- End screen: title, stars and verdict sit `--group` apart; the score table starts a new group at
+  `--stack`; losses, tip and awards follow at `--group`; the buttons at `--stack` (were 16, 12, 12,
+  20, 12, 12, 14px).
+- Shop: blurb, coins and each section heading at `--stack`; a heading to its list, and the hat
+  colours, at `--group` (were 16, 16, 10, 20, 8, 14, 20, 8px).
+- Play menu: the button grid uses `--group-lg` (12px; was 14 × 16px), the tile row `--group`
+  (was 10px), and the divider sits 12px from both.
+
+**Not applied**
+
+- Phone layouts (under 700px wide or 560px tall) keep their tighter, hand-fitted values; they
+  were measured unchanged.
+- Shift setup (Restaurant & Shift) and the recipe book are not restacked yet.
+
+## 23. Small UI fixes (Nov 2026)
+
+- Settings: notes sit under their label, every choice pill is 32px tall (Burmese too), group
+  headings are small left-aligned labels, Reset progress is a flat text button.
+- Scrollbars inside cards are our own slim pill; the recipe book scrolls with no bar, which gives
+  long dish names their full width.
+- Picker: the chosen item is a filled chip (no border), the others fade a little.
+- Recipe book menu: a dish name is always one line, so rows never change height between pages.
+- About page: a Burmese version, a language switch and a Back to the game button.
+- Title screen pills (language, About the game) are one height with centred text.
+
+## 24. Audit: Burmese letters being cut (Nov 2026)
+
+Burmese stacks marks above and below the line, so a line of it is about 1.4 times the font size
+tall. Text set with a Latin-sized line height gets its top or bottom cut wherever it is also
+clipped to one line (`overflow: hidden` with "…").
+
+**How it was checked:** in Burmese, every piece of text on the HUD and in all ten dialogs was
+measured (the letters' own box against the nearest box that clips it), at 1280×800, 667×375 and
+360×640.
+
+**Found:** the dish name on an order ticket lost 3px at the top and 2px at the bottom (line height
+1.1). The same pattern, one-line clipping with a tight line, exists in ten places in the CSS.
+
+**Fixed** (the "Burmese: room for taller letters" block in `style.css`):
+
+- In Burmese the three line-height steps are taller: tight 1.1 → 1.4, label 1.25 → 1.5,
+  text 1.4 → 1.6. Because line heights are tokens (§21), this reaches every place at once.
+- Every element that cuts text to one line or clamps lines gets a 1.5 line in Burmese: ticket
+  names, the book's menu, toasts, the shift report, lobby chef cards, the coach line on phones,
+  the picker's labels and the phone Use button.
+- After the fix the measurement finds no cut text at any of the three sizes.
+
+**Cost:** Burmese dialogs are 5–10px taller. None gained a scrollbar.
+
+**Still open**
+
+- The pause menu in Burmese at 360×640 scrolls (it did before: 104px, now 122px). It needs its own
+  compact layout.
+- Only one system font was measured (this Mac's). Android's Noto Sans Myanmar is a little taller;
+  a real phone check is still owed.
+- States not on screen during the check: an online lobby with chef cards, the shift report with
+  losses, toasts.
+
 ## Next ideas
 
 - A third restaurant (a new 3D room in Blender).

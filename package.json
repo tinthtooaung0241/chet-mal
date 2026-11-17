@@ -1,19 +1,25 @@
 {
   "name": "kitchen-coop",
   "private": true,
-  "workspaces": [
-    "shared",
-    "client",
-    "server"
-  ],
   "scripts": {
-    "dev:client": "npm --workspace client run dev",
-    "dev:server": "npm --workspace server run dev",
-    "build": "npm --workspace client run build && npm --workspace server run build",
-    "start": "npm --workspace server run start",
-    "typecheck": "npm --workspace client run typecheck && npm --workspace server run typecheck",
-    "start:prod": "npm --workspace server run start:prod",
+    "dev:client": "pnpm --filter ./client run dev",
+    "dev:server": "pnpm --filter ./server run dev",
+    "build": "pnpm --filter ./client run build && pnpm --filter ./server run build",
+    "start": "pnpm --filter ./server run start",
+    "typecheck": "pnpm --filter ./client run typecheck && pnpm --filter ./server run typecheck",
+    "start:prod": "pnpm --filter ./server run start:prod",
     "test:coach": "tsx shared/test/autoplay.ts",
-    "test:burmese": "tsx client/test/burmese.ts"
+    "test:recipes": "tsx shared/test/recipes.ts",
+    "test:burmese": "tsx client/test/burmese.ts",
+    "test:rules": "tsx shared/test/rules.ts"
+  },
+  "packageManager": "pnpm@10.14.0",
+  "devDependencies": {
+    "tsx": "4.23.15"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

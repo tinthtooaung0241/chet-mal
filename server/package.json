@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@kitchen/shared": "*",
+    "@kitchen/shared": "workspace:*",
     "@sentry/node": "^11.11.0",
     "ws": "8.22.0"
   },

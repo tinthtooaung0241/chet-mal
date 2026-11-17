@@ -89,13 +89,13 @@ export const KITCHEN = [
 
 /**
  * The Burmese kitchen in Yangon: the same footprint (so the room, terrace and customers' paths
- * fit), stocked for Burmese cooking. Storage holds noodles, rice, tea leaves and cabbage; the
+ * fit), stocked for Burmese cooking. Storage holds noodles, rice, coconut milk, tea leaves, cabbage and Shan tofu; the
  * fridges hold chicken, fish and eggs; the rack holds the toppings.
  */
 const BURMESE_LEGEND: Record<string, LegendEntry> = {
   F: { kind: "fridge", stock: ["Chicken", "Fish", "Egg"], label: "meat and fish fridge" },
-  G: { kind: "fridge", stock: ["Cabbage", "TeaLeaf"], label: "greens and tea leaf fridge" },
-  A: { kind: "pantry", stock: ["Noodles", "Rice"], label: "noodle and rice shelf" },
+  G: { kind: "fridge", stock: ["Cabbage", "TeaLeaf", "Tofu"], label: "greens and tea leaf fridge" },
+  A: { kind: "pantry", stock: ["Noodles", "Rice", "Coconut"], label: "noodle and rice shelf" },
   H: { kind: "pantry", stock: ["Tomato", "Onion"], label: "tomato and onion shelf" },
   S: { kind: "spice", stock: [...BURMESE_SPICES], label: "topping rack" },
 };

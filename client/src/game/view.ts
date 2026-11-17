@@ -53,6 +53,8 @@ const SOUP_COLORS: Record<string, string> = {
   Mushroom: "#8a6a4a",
   Fish: "#d9902f",
   Noodles: "#e8c27a",
+  Chicken: "#e9cfa4",
+  Coconut: "#f7e7a8",
 };
 
 function soupColor(kinds: string[]): Color3 {
@@ -279,6 +281,8 @@ export class GameView {
     private readonly scene: Scene,
     private readonly lib: AssetLibrary,
     private readonly shadows: ShadowGenerator,
+    /** for the stations, which never move: their shadows are drawn once per kitchen */
+    private readonly roomShadows: ShadowGenerator,
     game: Game,
   ) {
     for (const station of game.stations) this.buildStation(station);
@@ -352,14 +356,25 @@ export class GameView {
 
   // --- stations ---------------------------------------------------------------
 
-  private spawnInto(parent: TransformNode, name: string, y = 0, scale = 1): TransformNode {
+  /** A part of a station that may be moved, turned or swapped later (a knife, a pan, a stack of plates). */
+  private spawnMoving(parent: TransformNode, name: string, y = 0, scale = 1): TransformNode {
     const node = this.lib.spawn(name);
     node.parent = parent;
     node.position.y = y;
     node.scaling.setAll(scale);
     for (const mesh of meshesOf(node)) {
-      this.shadows.addShadowCaster(mesh);
+      this.roomShadows.addShadowCaster(mesh);
       mesh.receiveShadows = true;
+    }
+    return node;
+  }
+
+  /** A part of a station that stays put (a counter, a stove): where it is gets worked out once, not every frame. */
+  private spawnInto(parent: TransformNode, name: string, y = 0, scale = 1): TransformNode {
+    const node = this.spawnMoving(parent, name, y, scale);
+    for (const mesh of meshesOf(node)) {
+      mesh.freezeWorldMatrix();
+      mesh.doNotSyncBoundingInfo = true;
     }
     return node;
   }
@@ -379,7 +394,7 @@ export class GameView {
         this.spawnInto(root, "Counter");
         this.spawnInto(root, "CuttingBoard", COUNTER_TOP, ITEM_SCALE);
         // a knife resting by the board (the chopping chef holds their own)
-        const knife = this.spawnInto(root, "Knife", COUNTER_TOP + 0.002, 1.6);
+        const knife = this.spawnMoving(root, "Knife", COUNTER_TOP + 0.002, 1.6);
         knife.position.set(0.3, COUNTER_TOP + 0.002, -0.22);
         knife.rotation.y = 1.4;
         surface = COUNTER_TOP + 0.021 * ITEM_SCALE;
@@ -389,7 +404,7 @@ export class GameView {
       case "pot": {
         this.spawnInto(root, "Stove");
         this.spawnInto(root, "Pot", STOVE_TOP, POT_SCALE);
-        const ladle = this.spawnInto(root, "Ladle", STOVE_TOP + 0.12, 1.5);
+        const ladle = this.spawnMoving(root, "Ladle", STOVE_TOP + 0.12, 1.5);
         ladle.position.set(0.05, STOVE_TOP + 0.13, 0.04);
         ladle.rotation.set(0, 0.6, 0.9); // bowl down in the pot, handle up over the rim
         // the soup surface rises as vegetables go in, and takes their colour
@@ -409,7 +424,7 @@ export class GameView {
         break;
       case "stove": {
         this.spawnInto(root, "Stove");
-        const pan = this.spawnInto(root, "FryingPan", 0.926, 1.6); // resting on the grates
+        const pan = this.spawnMoving(root, "FryingPan", 0.926, 1.6); // resting on the grates
         pan.rotation.y = Math.PI / 2; // handle points sideways, not at the chef
         surface = 0.926 + 0.008 * 1.6;
         this.bars.set(s.id, new ProgressBar(this.scene, s.x, 1.22, s.z));
@@ -435,7 +450,7 @@ export class GameView {
           [0.02, -0.14, 1.2, 0.84],
         ];
         for (const [ox, oz, yaw, y] of spots) {
-          const sample = this.spawnInto(root, s.crate!, y, ITEM_SCALE * 1.1);
+          const sample = this.spawnMoving(root, s.crate!, y, ITEM_SCALE * 1.1);
           sample.position.x = ox;
           sample.position.z = oz;
           sample.rotation.set(-0.45, yaw, 0);
@@ -457,7 +472,7 @@ export class GameView {
         this.spawnInto(root, "Sink");
         // dirty dishes pile up on the edge of the sink until someone washes them
         const stack = [0, 1, 2, 3].map((i) => {
-          const plate = this.spawnInto(root, "Plate", COUNTER_TOP + 0.01 + i * 0.03, PLATE_SCALE);
+          const plate = this.spawnMoving(root, "Plate", COUNTER_TOP + 0.01 + i * 0.03, PLATE_SCALE);
           plate.position.x = 0.28;
           plate.position.z = 0.12;
           plate.rotation.y = i * 0.7;
@@ -472,7 +487,7 @@ export class GameView {
         // the dirty dish counter: a pile of grimy plates grows as customers leave them
         this.spawnInto(root, "Counter");
         const pile = [0, 1, 2, 3, 4, 5].map((i) => {
-          const plate = this.grime(this.spawnInto(root, "Plate", COUNTER_TOP + 0.01 + i * 0.03, PLATE_SCALE), true);
+          const plate = this.grime(this.spawnMoving(root, "Plate", COUNTER_TOP + 0.01 + i * 0.03, PLATE_SCALE), true);
           plate.position.x = (i % 2) * 0.04 - 0.02;
           plate.rotation.y = i * 0.9;
           plate.setEnabled(false);
@@ -486,7 +501,7 @@ export class GameView {
         // the till sits on the pass counter, its screen and card reader facing both sides
         this.spawnInto(root, "Counter");
         if (this.lib.has("CashRegister")) {
-          const till = this.spawnInto(root, "CashRegister", COUNTER_TOP, 1.4);
+          const till = this.spawnMoving(root, "CashRegister", COUNTER_TOP, 1.4);
           till.position.z = 0.05;
         }
         this.label(s, "Till", 1.45);
@@ -499,7 +514,7 @@ export class GameView {
         const model = s.stock?.includes("Lime") && this.lib.has("BurmeseSpiceRack") ? "BurmeseSpiceRack" : "SpiceRack";
         if (this.lib.has(model)) {
           // big enough to fill the whole counter, so every bottle reads from across the kitchen
-          const rack = this.spawnInto(root, model, COUNTER_TOP, 2.4);
+          const rack = this.spawnMoving(root, model, COUNTER_TOP, 2.4);
           rack.position.z = 0.02;
           // each seasoning is its own part, so the chosen one can light up
           const parts = new Map<string, { node: TransformNode; restY: number }>();
@@ -529,7 +544,7 @@ export class GameView {
       : [[0, 0, 3]];
     for (const [x, z, n] of stacks) {
       for (let i = 0; i < n; i++) {
-        const d = this.spawnInto(root, dish, top + i * step, scale);
+        const d = this.spawnMoving(root, dish, top + i * step, scale);
         d.position.x = x;
         d.position.z = z;
       }
@@ -537,7 +552,7 @@ export class GameView {
     if (cart) {
       for (const x of [-0.18, 0.18]) {
         for (let i = 0; i < 3; i++) {
-          const d = this.spawnInto(root, dish, 0.345 + i * step, scale);
+          const d = this.spawnMoving(root, dish, 0.345 + i * step, scale);
           d.position.x = x;
         }
       }
@@ -567,7 +582,7 @@ export class GameView {
     stock.forEach((kind, i) => {
       const spots = wide ? [baskets[i * 2], baskets[i * 2 + 1]] : [baskets[i] ?? baskets.at(-1)!];
       for (const [bx, by] of spots) for (const [ox, oz, yaw] of BASKET_SPOTS) {
-        const sample = this.spawnInto(root, kind, by + 0.03, ITEM_SCALE * 0.75);
+        const sample = this.spawnMoving(root, kind, by + 0.03, ITEM_SCALE * 0.75);
         // local +x is the chef's right-hand side looking at the shelf, so mirror to read left to right
         sample.position.x = -(bx + ox);
         sample.position.z = oz;
@@ -583,7 +598,7 @@ export class GameView {
       this.spawnInto(root, "ProduceRack");
       return;
     }
-    const fridge = this.spawnInto(root, "ReachInFridge");
+    const fridge = this.spawnMoving(root, "ReachInFridge");
     // clear glass: keep the sky's reflection faint so the food inside reads from across the room
     for (const mesh of meshesOf(fridge)) {
       const mat = mesh.material as { name?: string; alpha?: number; environmentIntensity?: number } | null;
@@ -600,7 +615,7 @@ export class GameView {
       const y = shelves[wide ? i : Math.floor(i / 2)] ?? shelves.at(-1)!;
       const sides = wide ? [-0.19, 0.19] : [i % 2 === 0 ? -0.19 : 0.19];
       for (const side of sides) for (const [ox, oz, yaw] of FRIDGE_SPOTS) {
-        const sample = this.spawnInto(root, kind, y, ITEM_SCALE * 0.8);
+        const sample = this.spawnMoving(root, kind, y, ITEM_SCALE * 0.8);
         sample.position.x = -(side + ox); // mirrored: local +x is the chef's right
         sample.position.z = oz;
         sample.rotation.y = yaw + i;
@@ -1048,7 +1063,7 @@ export class GameView {
           sitting,
           seatLift: d.booster === "chair" ? BOOSTER_HEIGHT : 0,
           eating: d.state === "eating" && d.mood !== "sick",
-          utensil: d.dish?.type === "bowl" || /noodle|mohinga/i.test(orders.get(d.orderId)?.recipe.id ?? d.dish?.type ?? "") ? "spoon" : "fork",
+          utensil: d.dish?.type === "bowl" || /noodle|mohinga|ohn-no|nan-gyi/i.test(orders.get(d.orderId)?.recipe.id ?? d.dish?.type ?? "") ? "spoon" : "fork",
         },
         dt,
         this.time,

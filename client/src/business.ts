@@ -62,7 +62,7 @@ export function spendCoins(cost: number): boolean {
 export function buyUpgrade(id: string): boolean {
   const b = loadBusiness();
   const up = UPGRADES.find((u) => u.id === id);
-  if (!up || b.upgrades.includes(id) || b.coins < up.cost) return false;
+  if (!up || b.upgrades.includes(id) || (up.needs && !b.upgrades.includes(up.needs)) || b.coins < up.cost) return false;
   b.coins -= up.cost;
   b.upgrades.push(id);
   save(b);

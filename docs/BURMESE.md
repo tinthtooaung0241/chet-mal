@@ -18,7 +18,7 @@ in their language as it appears. So one online kitchen can have a Burmese and an
 Players choose in **Settings → Language**, or with the language switch on the title screen. A
 browser set to Burmese starts in Burmese, and `?lang=my` in a link does too (and remembers it).
 
-**Check it:** `npm run test:burmese` plays every shift with every crew and translates all it hears
+**Check it:** `pnpm test:burmese` plays every shift with every crew and translates all it hears
 (about 4,300 different texts). It fails and lists the English if a new message has no Burmese.
 
 ## Style

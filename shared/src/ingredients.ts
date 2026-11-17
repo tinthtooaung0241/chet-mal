@@ -32,6 +32,8 @@ export const INGREDIENTS: Record<string, Ingredient> = {
   Bread: { chop: true, cookFrom: "chopped", cookTime: 4, burnTime: 5, names: { chopped: "sliced bread", cooked: "toast" } },
   /** dried rice noodles: boiled in the pan for shan noodles, or straight into the mohinga pot */
   Noodles: { cookFrom: "raw", cookTime: 4, burnTime: 6, potFrom: "raw", names: { raw: "rice noodles", cooked: "boiled noodles" } },
+  /** the broth of ohn no khao swè: goes in the pot as it is */
+  Coconut: { potFrom: "raw", names: { raw: "coconut milk" } },
   Rice: { cookFrom: "raw", cookTime: 6, burnTime: 7, names: { raw: "rice", cooked: "steamed rice" } },
   /** lahpet: fermented tea leaves, eaten as they are */
   // kept chilled in the Burmese kitchen's greens fridge
@@ -44,7 +46,10 @@ export const INGREDIENTS: Record<string, Ingredient> = {
   Steak: { cookFrom: "raw", cookTime: 8, burnTime: 7, cold: true },
   Fish: { chop: true, cookFrom: "raw", cookTime: 7, burnTime: 6, cold: true, potFrom: "chopped" },
   Egg: { cookFrom: "raw", cookTime: 4, burnTime: 5, cold: true, names: { cooked: "fried egg" } },
-  Chicken: { chop: true, cookFrom: "chopped", cookTime: 7, burnTime: 6, cold: true, names: { chopped: "diced chicken", cooked: "cooked chicken" } },
+  /** diced for a curry in the pan, or simmered in coconut milk for ohn no khao swè */
+  Chicken: { chop: true, cookFrom: "chopped", cookTime: 7, burnTime: 6, cold: true, potFrom: "chopped", names: { chopped: "diced chicken", cooked: "cooked chicken" } },
+  /** tohu: Shan tofu, set from chickpea flour (no soy). Sliced and fried, it's the tea shop's fritters */
+  Tofu: { chop: true, cookFrom: "chopped", cookTime: 6, burnTime: 6, cold: true, names: { raw: "Shan tofu", chopped: "sliced Shan tofu", cooked: "tofu fritters", burnt: "burnt tofu fritters" } },
 };
 
 /** Behaviour of every ingredient, keyed by kind. */

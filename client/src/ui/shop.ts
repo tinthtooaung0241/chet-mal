@@ -1,6 +1,6 @@
 // The shop, at the till or from the play menu: equipment upgrades, hats for your chef and decor
 // for the terrace, each with what it does and a button with its price.
-import { HATS, LOOK_COLORS, UPGRADES } from "@kitchen/shared";
+import { HATS, LOOK_COLORS, upgradesOnSale } from "@kitchen/shared";
 import { buyUpgrade, loadBusiness } from "../business";
 import { DECOR, buyDecor, ownedDecor } from "../decor";
 import { buyHat, hasHat, myLook, wear } from "../looks";
@@ -29,7 +29,7 @@ export class Shop {
     const { coins, upgrades } = loadBusiness();
     const decor = ownedDecor();
     return (
-      UPGRADES.some((up) => !upgrades.includes(up.id) && up.cost <= coins) ||
+      upgradesOnSale(upgrades).some((up) => !upgrades.includes(up.id) && up.cost <= coins) ||
       HATS.some((hat) => !hat.stickers && !hasHat(hat) && hat.cost <= coins) ||
       DECOR.some((d) => !decor.includes(d.id) && d.cost <= coins)
     );
@@ -54,7 +54,7 @@ export class Shop {
       act: coins >= cost ? () => (act() ? (this.onBought(name, kind), true) : false) : undefined,
     });
 
-    this.list("shop-list", UPGRADES.map((up) => {
+    this.list("shop-list", upgradesOnSale(business.upgrades).map((up) => {
       const owned = business.upgrades.includes(up.id);
       return { name: up.name, blurb: up.blurb, owned, button: owned ? { text: "Owned", primary: false } : buy(up.cost, up.name, "upgrade", () => buyUpgrade(up.id)) };
     }));

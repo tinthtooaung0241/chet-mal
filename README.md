@@ -8,35 +8,35 @@ A web co-op cooking game for three friends, won by talking: a **head chef** who 
 
 Cooking works like a real kitchen, sped up: one storage corner holds two reach-in fridges (meat and fish; dairy and greens, which go off if left out too long) and two pantry shelves (root vegetables; bread and tomatoes). Every dish is seasoned the way it really is (grilled fish with salt, lemon and herbs; fish & chips with salt and malt vinegar...) from a spice rack by the stoves (take a bottle and carry it to the food, wherever it is) holding salt, pepper, olive oil, butter, lemon, fresh herbs, soy sauce and malt vinegar. Customers walk in, sit at a table on the terrace, come to the pass for their dish, eat, then pay at the till on the pass, by cash or card as they ask (1 or 2 at the till), or storm off if their order runs out. What they pay is your restaurant's money, kept between shifts. Spend it on equipment upgrades (sharp knives, better fridge seals, copper pans, a tip jar, a neon sign) at the till or from the title screen.
 
-**Restaurants.** The business grows from a **street food stand** to a **Burmese restaurant** in a Yangon tea-shop kitchen (mohinga, tea leaf salad, shan noodles, chicken curry, fried rice, with a topping rack of lime, peanuts, coriander, chili, garlic oil, fish sauce and turmeric). Each restaurant has its own room, stocked storage and shifts. A restaurant opens once your **total sales** (every coin ever taken at the till; spending on upgrades never lowers it) reach its goal and you've cleared the previous restaurant's last shift (its big night). In development (`npm run dev:client`) every restaurant is open so new kitchens can be tried straight away.
+**Restaurants.** The business grows from a **street food stand** to a **Burmese restaurant** in a Yangon tea-shop kitchen (mohinga, tea leaf salad, shan noodles, chicken curry, fried rice, with a topping rack of lime, peanuts, coriander, chili, garlic oil, fish sauce and turmeric). Each restaurant has its own room, stocked storage and shifts. A restaurant opens once your **total sales** (every coin ever taken at the till; spending on upgrades never lowers it) reach its goal and you've cleared the previous restaurant's last shift (its big night). In development (`pnpm dev:client`) every restaurant is open so new kitchens can be tried straight away.
 
 New players can open **How to play** or the guided **Tutorial kitchen** from the title screen: a coach shows each step of a salad with an arrow over the next station. Each level adds one new idea, introduced on a briefing card the first time you play it (reopen it with Level tips in the pause menu). Whenever you hold an ingredient or a dish, a checklist shows what that order still needs (Q reads the next step aloud).
 
 ## Run it
 
 ```bash
-npm install
-npm run dev:server   # game server on http://localhost:8787
-npm run dev:client   # game on http://localhost:5180
+pnpm install
+pnpm dev:server   # game server on http://localhost:8787
+pnpm dev:client   # game on http://localhost:5180
 ```
 
 Open http://localhost:5180, then either **Practice solo** or **Create a kitchen**, and send the invite link to two friends.
 
-Production (one process serves the game and the server). `npm run build` builds the client
+Production (one process serves the game and the server). `pnpm build` builds the client
 with Vite and bundles the server with esbuild into `server/dist/index.js`, so the host only needs
 Node, not tsx:
 
 ```bash
-npm run build
-npm run start:prod   # http://localhost:8787 (PORT sets another port)
+pnpm build
+pnpm start:prod   # http://localhost:8787 (PORT sets another port)
 ```
 
-`npm start` still runs the server from source with tsx.
+`pnpm start` still runs the server from source with tsx.
 
-`npm run test:coach` plays every level with a simulated player that follows the coach (solo, two
+`pnpm test:coach` plays every level with a simulated player that follows the coach (solo, two
 cooks, and a head chef with two cooks, at both paces) and fails on any refused action or loop.
 
-The game is in English and Burmese (Settings → Language). `npm run test:burmese` plays every shift
+The game is in English and Burmese (Settings → Language). `pnpm test:burmese` plays every shift
 and fails if anything the game says has no Burmese yet; the words and style are in
 [docs/BURMESE.md](docs/BURMESE.md).
 

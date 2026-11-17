@@ -29,7 +29,8 @@ function spiceIcons(spices: readonly Spice[]): HTMLElement {
 /** One sentence per recipe, for speech and screen readers. */
 export function recipeSentence(recipe: Recipe): string {
   if (recipe.vessel === "bowl") {
-    const veg = recipe.items.map((i) => lower(i.kind));
+    // noodles and coconut milk aren't chopped: they go in as they are
+    const veg = recipe.items.filter((i) => i.state === "chopped").map((i) => lower(i.kind));
     const spice = recipe.finish?.length ? ` Finish it with ${spiceList(recipe.finish)}.` : "";
     return `${recipe.name}: chop ${veg.join(", ")}, put all ${SOUP_SIZE} in the soup pot, let it boil, then ladle it into a bowl.${spice}`;
   }
@@ -128,7 +129,9 @@ function instructions(recipe: Recipe): Instruction[] {
     for (const i of recipe.items) counts.set(i.kind, (counts.get(i.kind) ?? 0) + 1);
     for (const [kind, n] of counts) {
       const name = n > 1 ? `${n} ${lower(kind)}${kind.endsWith("o") ? "es" : "s"}` : `the ${lower(kind)}`;
-      out.push({ icon: img(foodIcon(kind, "chopped")), verb: "Chop", rest: name, where: "board" });
+      // noodles and coconut milk go in as they are
+      if (FOOD_RULES[kind]?.potFrom === "raw") out.push({ icon: img(foodIcon(kind, "raw")), verb: "Take", rest: `the ${lower(kind)} as it is`, where: "shelf" });
+      else out.push({ icon: img(foodIcon(kind, "chopped")), verb: "Chop", rest: name, where: "board" });
     }
     out.push({ icon: img("Pot"), verb: "Boil", rest: `all ${SOUP_SIZE} together`, where: "pot" });
     out.push({ icon: img("Bowl"), verb: "Ladle", rest: "it into a bowl", where: "pot" });
@@ -202,7 +205,11 @@ function method(recipe: Recipe): HTMLElement {
 
 /** One practical hint per dish: the thing that most often goes wrong. */
 function chefTip(recipe: Recipe): string {
-  if (recipe.vessel === "bowl") return `The pot needs exactly ${SOUP_SIZE} chopped vegetables. Bring a bowl as soon as it's boiled, before it burns.`;
+  if (recipe.vessel === "bowl") {
+    const chopped = [...new Set(recipe.items.filter((i) => i.state === "chopped").map((i) => lower(i.kind)))];
+    const first = chopped.length < new Set(recipe.items.map((i) => i.kind)).size ? `Only chop the ${chopped.join(" and ")}: the rest goes in the pot as it is.` : `The pot needs exactly ${SOUP_SIZE} chopped vegetables.`;
+    return `${first} Bring a bowl as soon as it's boiled, before it burns.`;
+  }
   const cooked = recipe.items.find((i) => i.state === "cooked");
   const before = recipe.items.find((i) => i.season?.length && i.seasonAt === "before");
   if (before) return `Season the ${lower(before.kind)} before it goes in the pan, not after. Ask a friend to grab the ${spiceList(before.season!)} while you cook.`;

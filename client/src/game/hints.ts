@@ -42,6 +42,7 @@ export function foodIcon(kind: string, state: FoodState): string {
 }
 
 export function soupIcon(kinds: string[]): string {
+  if (kinds.includes("Coconut")) return "Soup_OhnNo";
   if (kinds.includes("Noodles")) return "Soup_Mohinga";
   if (kinds.every((k) => k === "Tomato")) return "Soup_Tomato";
   if (kinds.filter((k) => k === "Mushroom").length >= 2) return "Soup_Mushroom";

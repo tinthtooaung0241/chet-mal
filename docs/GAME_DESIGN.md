@@ -101,21 +101,21 @@ only the chef who did something.
 **A served dish** is worth `max(5, price + speed + perfect + seasoning)`:
 
 - **price:** 20 to 45 points, set by the recipe;
-- **speed:** up to 10, for the share of the customer's patience left;
+- **speed:** up to 15, for the share of the customer's patience left;
 - **perfect:** +10 for each item taken off at the sizzle's peak;
 - **seasoning:** +5 if everything is right; −5 for each missing or extra spice, −3 for each spice
   added at the wrong step.
 
 That total is then multiplied by 1.5 in rush hour, and by the daily twist's pay.
 
-**Combo:** each dish served within 30 s of the last adds +5 per dish in the chain, up to +20.
+**Combo:** each dish served within 30 s of the last adds +5 for the second dish and +10 for each one after.
 Combo party doubles this.
 
 **Losing points** (the score never goes below 0):
 
 | What happened | Cost |
 |---|---|
-| A customer gives up | −10 (a critic: −20) |
+| A customer gives up | half the dish's price, at least −10 (a critic: at least −20) |
 | A customer gets sick from spoiled food | −15 |
 | A dish nobody ordered | wasted, and the combo ends |
 
@@ -160,7 +160,7 @@ perceive, so a deaf cook still needs to be told about phone orders.
   - They wait three-quarters as long as other customers.
   - A dish seasoned just right and served before their ticket turns red earns a rave review:
     +25 points, and they pay their bill twice over.
-  - If they walk out, it costs 20 points.
+  - If they walk out, it costs half the dish, and at least 20 points.
 - **Spoiled produce** (levels 5, 6 and 10): 10 to 25% of crate produce is mouldy.
 - **Power cuts and storms** (levels 6 and 10): power cuts make everyone talk; storms make everyone
   watch the deaf chef.

@@ -19,7 +19,12 @@ import {
 } from "@babylonjs/core";
 
 export interface Look {
+  /** shadows of what moves (chefs, customers, food and dishes): redrawn every frame */
   shadows: ShadowGenerator;
+  /** shadows of the room and the stations: drawn once per kitchen (see redrawRoomShadows) */
+  roomShadows: ShadowGenerator;
+  /** The kitchen was rebuilt (or its models just arrived): draw the room's shadows again, once. */
+  redrawRoomShadows(): void;
   /**
    * @param dark 0 = normal, 1 = power cut (only the window glow and emissive lamps remain)
    * @param flash extra exposure for a lightning flash
@@ -49,17 +54,40 @@ export function setupLook(scene: Scene, cameras: Camera[]): Look {
   hemi.groundColor = Color3.FromHexString("#6f7d94");
   hemi.specular = Color3.Black();
 
-  const sun = new DirectionalLight("sun", new Vector3(-0.45, -1, 0.6), scene);
-  sun.position = new Vector3(6, 12, -8);
-  sun.intensity = 2.0;
-  sun.diffuse = Color3.FromHexString("#fff0dc");
+  // The sun is two lights in the same place, each carrying a share of its brightness: one casts
+  // the room's shadows (hundreds of meshes that never move, drawn into its shadow map once per
+  // kitchen), the other the shadows of the few things that move (redrawn every frame). One light
+  // with one shadow map drew the whole kitchen a second time, every frame.
+  const SUN = 2.0;
+  const ROOM_SHARE = 0.55;
+  const sunLight = (name: string) => {
+    const light = new DirectionalLight(name, new Vector3(-0.45, -1, 0.6), scene);
+    light.position = new Vector3(6, 12, -8);
+    light.diffuse = Color3.FromHexString("#fff0dc");
+    return light;
+  };
+  const sun = sunLight("sun");
+  const moverSun = sunLight("sunMovers");
+  // the movers' map covers the same patch of floor every frame, so its shadows don't crawl as chefs walk
+  moverSun.shadowFrustumSize = 20;
+  moverSun.shadowMinZ = 1;
+  moverSun.shadowMaxZ = 40;
 
-  const shadows = new ShadowGenerator(2048, sun);
-  shadows.usePercentageCloserFiltering = true;
-  shadows.filteringQuality = ShadowGenerator.QUALITY_HIGH;
-  shadows.bias = 0.0008;
-  shadows.normalBias = 0.01;
-  shadows.darkness = 0.3;
+  const shadowsFor = (light: DirectionalLight, size: number, quality: number) => {
+    const generator = new ShadowGenerator(size, light);
+    generator.usePercentageCloserFiltering = true;
+    generator.filteringQuality = quality;
+    generator.bias = 0.0008;
+    generator.normalBias = 0.01;
+    // each light is only part of the sun, so its shadow takes all of its own light away
+    generator.darkness = 0;
+    return generator;
+  };
+  const roomShadows = shadowsFor(sun, 2048, ShadowGenerator.QUALITY_HIGH);
+  const roomMap = roomShadows.getShadowMap()!;
+  roomMap.refreshRate = 0; // RenderTargetTexture.REFRESHRATE_RENDER_ONCE
+  const redrawRoomShadows = () => roomMap.resetRefreshCounter();
+  const shadows = shadowsFor(moverSun, 1024, ShadowGenerator.QUALITY_MEDIUM);
 
   // warm pool of light under the pass heat lamps
   const passGlow = new PointLight("passGlow", new Vector3(0, 1.55, -2.45), scene);
@@ -88,24 +116,38 @@ export function setupLook(scene: Scene, cameras: Camera[]): Look {
 
   const ssao = new SSAO2RenderingPipeline("ssao", scene, { ssaoRatio: 0.5, blurRatio: 0.5 }, cameras);
   ssao.radius = 0.5;
-  ssao.totalStrength = 1.1;
+  ssao.totalStrength = 0.9;
+  // the kitchen is seen from the chef's eyes, close to the walls: fewer samples or the cheap blur
+  // leave dark smudges on flat surfaces
   ssao.samples = 16;
   ssao.maxZ = 40;
   ssao.expensiveBlur = true;
 
-  const base = { hemi: hemi.intensity, sun: sun.intensity, glow: passGlow.intensity, exposure: ip.exposure };
+  const base = { hemi: hemi.intensity, glow: passGlow.intensity, exposure: ip.exposure };
+  let fastNow = false;
+  let darkNow = 0;
+  /** The sun's brightness, shared between its two lights (Fast has no shadows, so one light carries it all). */
+  function setSun() {
+    const lit = SUN * (1 - 0.97 * darkNow);
+    moverSun.setEnabled(!fastNow);
+    sun.intensity = fastNow ? lit : lit * ROOM_SHARE;
+    moverSun.intensity = lit * (1 - ROOM_SHARE);
+  }
+  setSun();
   function setAtmosphere(dark: number, flash: number) {
     hemi.intensity = base.hemi * (1 - 0.94 * dark);
-    sun.intensity = base.sun * (1 - 0.97 * dark);
+    darkNow = dark;
+    setSun();
     passGlow.intensity = base.glow * (1 - dark);
     ip.exposure = base.exposure * (1 - 0.8 * dark) + flash;
   }
 
   // ambient occlusion starts on; only a real change attaches or detaches it (attaching twice breaks it)
-  let fastNow = false;
   function setFast(fast: boolean) {
     if (fast === fastNow) return;
     fastNow = fast;
+    setSun();
+    if (!fast) redrawRoomShadows();
     pipeline.samples = fast ? 1 : 4;
     pipeline.bloomEnabled = !fast;
     const manager = scene.postProcessRenderPipelineManager;
@@ -113,5 +155,5 @@ export function setupLook(scene: Scene, cameras: Camera[]): Look {
     else manager.attachCamerasToRenderPipeline("ssao", cameras);
   }
 
-  return { shadows, setAtmosphere, setFast };
+  return { shadows, roomShadows, redrawRoomShadows, setAtmosphere, setFast };
 }

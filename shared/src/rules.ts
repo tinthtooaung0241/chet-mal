@@ -11,6 +11,7 @@ export const CHOP_TIME = 1.8; // seconds of chopping per ingredient
 export const ROUND_TIME = 180;
 export const MAX_ORDERS = 4;
 export const ORDER_INTERVAL = 20;
+/** a customer who gives up costs half their dish's price, and never less than this */
 export const EXPIRED_PENALTY = 10;
 export const MAX_PLATE_ITEMS = 3;
 /** The perfect window opens this long after food is cooked... */
@@ -22,7 +23,9 @@ export const PERFECT_BONUS = 10;
 export const COMBO_WINDOW = 30;
 /** a combo's bonus: this many points for each dish after the first, up to COMBO_MAX a dish */
 export const COMBO_STEP = 5;
-export const COMBO_MAX = 20;
+export const COMBO_MAX = 10;
+/** serving with time to spare: up to this many points, for a dish served the moment it's ordered */
+export const SPEED_MAX = 15;
 /** rush hour, halfway through a shift: it lasts this long, orders come RUSH_PACE times as often and pay RUSH_PAY times as much */
 export const RUSH_TIME = 35;
 export const RUSH_PACE = 2;
@@ -32,7 +35,7 @@ export const CRITIC_PATIENCE = 0.75;
 /** ...raves about a dish seasoned just right and served before their ticket turns red: bonus points, and a bill paid twice over... */
 export const CRITIC_RAVE = 25;
 export const CRITIC_TIP = 2;
-/** ...and walking out costs this many points instead of EXPIRED_PENALTY */
+/** ...and walking out costs at least this many points */
 export const CRITIC_PENALTY = 20;
 /** washing up (from level 5): the racks start with this many clean plates and bowls, and every dish comes back dirty once it's eaten */
 export const CLEAN_PLATES = 4;
@@ -191,6 +194,8 @@ export interface Upgrade {
   /** what it does, in a few words */
   blurb: string;
   cost: number;
+  /** a second-tier upgrade: on sale once this one is owned, and it takes its place */
+  needs?: string;
 }
 
 /** Equipment bought with the restaurant's takings; it's in place from the next shift. */
@@ -200,7 +205,16 @@ export const UPGRADES: Upgrade[] = [
   { id: "pans", name: "Heavy copper pans", blurb: "Cooked food takes half as long again to burn.", cost: 90 },
   { id: "tipjar", name: "Tip jar", blurb: "Customers leave a fifth more at the till.", cost: 80 },
   { id: "sign", name: "Neon sign", blurb: "Customers wait a quarter longer for their food.", cost: 120 },
+  { id: "knives2", name: "Chef's knife set", blurb: "Chopping is two thirds faster.", cost: 180, needs: "knives" },
+  { id: "fridge2", name: "Walk-in chiller", blurb: "Cold food stays good three times as long out of the fridge.", cost: 200, needs: "fridge" },
+  { id: "pans2", name: "Cast-iron range", blurb: "Cooked food takes twice as long to burn.", cost: 240, needs: "pans" },
+  { id: "tipjar2", name: "Card reader", blurb: "Customers leave two fifths more at the till.", cost: 220, needs: "tipjar" },
+  { id: "sign2", name: "Rooftop billboard", blurb: "Customers wait half as long again for their food.", cost: 300, needs: "sign" },
 ];
+
+/** The upgrades on sale: the first of each kind, and its second tier once the first is owned. */
+export const upgradesOnSale = (owned: readonly string[]) =>
+  UPGRADES.filter((u) => (u.needs ? owned.includes(u.needs) : !owned.includes(`${u.id}2`)));
 
 export interface RecipeItem {
   kind: string;
@@ -237,29 +251,37 @@ const pre = (kind: string, ...season: Spice[]) => item(kind, "cooked", season, "
 const post = (kind: string, ...season: Spice[]) => item(kind, "cooked", season, "after");
 const soup = (...kinds: string[]): RecipeItem[] => kinds.map((k) => item(k, "chopped"));
 
-// Seasoned the way each dish really is, at the step it really happens.
+// Seasoned the way each dish really is, at the step it really happens. Every dish is a plate
+// you could order: no two are the same food with a different sauce, a dish asks for two
+// finishing touches at most, and what it pays follows the work in it (npm run test:recipes).
 export const RECIPES: Recipe[] = [
-  { id: "salad", name: "Salad", vessel: "plate", items: [item("Tomato", "chopped"), item("Lettuce", "chopped")], reward: 20, time: 60, finish: ["OliveOil", "Lemon", "Salt"] },
+  // tomato and lettuce, dressed with oil and lemon
+  { id: "salad", name: "Salad", vessel: "plate", items: [item("Tomato", "chopped"), item("Lettuce", "chopped")], reward: 20, time: 60, finish: ["OliveOil", "Lemon"] },
   { id: "fried-mushrooms", name: "Fried mushrooms", vessel: "plate", items: [item("Mushroom", "cooked")], reward: 20, time: 60, finish: ["Salt", "Herbs"] },
-  { id: "grilled-fish", name: "Grilled fish", vessel: "plate", items: [pre("Fish", "Salt")], reward: 20, time: 60, finish: ["Lemon", "Herbs"] },
-  { id: "cheese-toastie", name: "Cheese toastie", vessel: "plate", items: [pre("Bread", "Butter"), item("Cheese", "chopped")], reward: 25, time: 70 },
+  { id: "grilled-fish", name: "Grilled fish", vessel: "plate", items: [pre("Fish", "Salt")], reward: 25, time: 60, finish: ["Lemon", "Herbs"] },
+  // buttered toast with sliced cheese and tomato
+  { id: "cheese-toastie", name: "Cheese & tomato sandwich", vessel: "plate", items: [pre("Bread", "Butter"), item("Cheese", "chopped"), item("Tomato", "chopped")], reward: 35, time: 80 },
   { id: "steak-fries", name: "Steak & fries", vessel: "plate", items: [pre("Steak", "Salt", "Pepper"), post("Potato", "Salt")], reward: 35, time: 85 },
   { id: "steak-onions", name: "Steak & onions", vessel: "plate", items: [pre("Steak", "Salt", "Pepper"), item("Onion", "cooked")], reward: 35, time: 85, finish: ["Butter"] },
-  { id: "steak-salad", name: "Steak salad", vessel: "plate", items: [pre("Steak", "Salt", "Pepper"), item("Lettuce", "chopped")], reward: 30, time: 80, finish: ["OliveOil"] },
+  // sliced steak over a real salad
+  { id: "steak-salad", name: "Steak salad", vessel: "plate", items: [pre("Steak", "Salt", "Pepper"), item("Lettuce", "chopped"), item("Tomato", "chopped")], reward: 40, time: 90, finish: ["OliveOil"] },
   { id: "fish-chips", name: "Fish & chips", vessel: "plate", items: [pre("Fish", "Salt"), post("Potato", "Salt")], reward: 35, time: 85, finish: ["Vinegar"] },
   {
     id: "breakfast",
     name: "Full breakfast",
     vessel: "plate",
     items: [post("Egg", "Salt", "Pepper"), pre("Bread", "Butter"), pre("Mushroom", "Butter")],
-    reward: 45,
-    time: 100,
+    reward: 50,
+    time: 105,
   },
-  { id: "soy-fish", name: "Soy-glazed fish", vessel: "plate", items: [pre("Fish", "Soy")], reward: 25, time: 65, finish: ["Lemon"] },
-  { id: "stir-fry", name: "Mushroom stir-fry", vessel: "plate", items: [item("Mushroom", "cooked"), item("Onion", "cooked")], reward: 35, time: 85, finish: ["Soy", "Pepper"] },
-  { id: "tomato-soup", name: "Tomato soup", vessel: "bowl", items: soup("Tomato", "Tomato", "Tomato"), reward: 35, time: 90, finish: ["Salt", "Pepper", "Herbs"] },
-  { id: "veg-soup", name: "Vegetable soup", vessel: "bowl", items: soup("Carrot", "Onion", "Potato"), reward: 40, time: 95, finish: ["Salt", "Pepper", "Herbs"] },
-  { id: "mushroom-soup", name: "Mushroom soup", vessel: "bowl", items: soup("Mushroom", "Mushroom", "Onion"), reward: 40, time: 95, finish: ["Salt", "Butter", "Herbs"] },
+  // fish marinated in soy, with fried mushrooms beside it (plain grilled fish is its own dish)
+  { id: "soy-fish", name: "Soy fish & mushrooms", vessel: "plate", items: [pre("Fish", "Soy"), item("Mushroom", "cooked")], reward: 35, time: 85, finish: ["Lemon"] },
+  // the soy goes in the pan with the mushrooms, pepper on top
+  { id: "stir-fry", name: "Mushroom stir-fry", vessel: "plate", items: [pre("Mushroom", "Soy"), item("Onion", "cooked")], reward: 35, time: 85, finish: ["Pepper"] },
+  // tomato and onion, the way the soup starts in any kitchen
+  { id: "tomato-soup", name: "Tomato soup", vessel: "bowl", items: soup("Tomato", "Tomato", "Onion"), reward: 40, time: 90, finish: ["Salt", "Herbs"] },
+  { id: "veg-soup", name: "Vegetable soup", vessel: "bowl", items: soup("Carrot", "Onion", "Potato"), reward: 40, time: 90, finish: ["Salt", "Pepper"] },
+  { id: "mushroom-soup", name: "Mushroom soup", vessel: "bowl", items: soup("Mushroom", "Mushroom", "Onion"), reward: 40, time: 90, finish: ["Butter", "Herbs"] },
 
   // --- the Burmese restaurant ---
   // mohinga: fish and onion simmered with rice noodles, finished with lime, chili and coriander
@@ -282,11 +304,45 @@ export const RECIPES: Recipe[] = [
     time: 80,
     finish: ["Peanuts", "GarlicOil", "Lime"],
   },
-  // shan noodles: noodles from the pan with chicken, peanuts on top
-  { id: "shan-noodles", name: "Shan noodles", vessel: "plate", items: [item("Noodles", "cooked"), pre("Chicken", "Turmeric")], reward: 40, time: 90, finish: ["Peanuts", "Coriander"] },
+  // shan noodles: rice noodles under chicken in tomato, peanuts and coriander on top
+  {
+    id: "shan-noodles",
+    name: "Shan noodles",
+    vessel: "plate",
+    items: [item("Noodles", "cooked"), pre("Chicken", "Turmeric"), item("Tomato", "chopped")],
+    reward: 45,
+    time: 100,
+    finish: ["Peanuts", "Coriander"],
+  },
   // a homely chicken curry with rice: turmeric on the chicken before it cooks
-  { id: "chicken-curry", name: "Chicken curry & rice", vessel: "plate", items: [pre("Chicken", "Turmeric", "Chili"), item("Rice", "cooked"), item("Onion", "cooked")], reward: 45, time: 100, finish: ["Coriander"] },
+  { id: "chicken-curry", name: "Chicken curry & rice", vessel: "plate", items: [pre("Chicken", "Turmeric", "Chili"), item("Rice", "cooked"), item("Onion", "cooked")], reward: 50, time: 105, finish: ["Coriander"] },
   // htamin kyaw: fried rice with egg, a tea-shop favourite
+  // khayan chin thi thoke: tomato and raw onion, crushed peanuts and coriander on top
+  { id: "tomato-salad", name: "Tomato salad", vessel: "plate", items: [item("Tomato", "chopped"), item("Onion", "chopped")], reward: 25, time: 60, finish: ["Peanuts", "Coriander"] },
+  // tohu kyaw: Shan tofu sliced and fried crisp, the tea shop's snack
+  { id: "tofu-fritters", name: "Shan tofu fritters", vessel: "plate", items: [item("Tofu", "cooked")], reward: 25, time: 60, finish: ["Chili", "Coriander"] },
+  // ohn no khao swè: chicken and noodles simmered in coconut milk, lime and chili at the table
+  {
+    id: "ohn-no",
+    name: "Coconut chicken noodles",
+    vessel: "bowl",
+    items: [item("Chicken", "chopped"), item("Coconut", "raw"), item("Noodles", "raw")],
+    reward: 35,
+    time: 90,
+    finish: ["Lime", "Chili"],
+  },
+  // kyet u hin: eggs fried golden with turmeric, in tomato, over rice
+  { id: "egg-curry", name: "Egg curry & rice", vessel: "plate", items: [pre("Egg", "Turmeric"), item("Tomato", "chopped"), item("Rice", "cooked")], reward: 35, time: 85, finish: ["Chili"] },
+  // nan gyi thoke: thick rice noodles tossed with chicken curry and raw onion, garlic oil and lime
+  {
+    id: "nan-gyi",
+    name: "Nan gyi thoke",
+    vessel: "plate",
+    items: [item("Noodles", "cooked"), pre("Chicken", "Turmeric"), item("Onion", "chopped")],
+    reward: 45,
+    time: 100,
+    finish: ["GarlicOil", "Lime"],
+  },
   { id: "fried-rice", name: "Burmese fried rice", vessel: "plate", items: [item("Rice", "cooked"), post("Egg", "Salt"), item("Onion", "cooked")], reward: 40, time: 90, finish: ["FishSauce"] },
 ];
 
@@ -321,12 +377,12 @@ export interface Venue {
 
 /** The restaurants, in the order they open as the business grows. */
 export const VENUES: Venue[] = [
-  { id: "street", name: "Street food stand", short: "Street stand", blurb: "Where it all starts: toasties, grills, soups and fries.", unlockSales: 0, room: "Kitchen_Room" },
+  { id: "street", name: "Street food stand", short: "Street stand", blurb: "Where it all starts: sandwiches, grills, soups and fries.", unlockSales: 0, room: "Kitchen_Room" },
   {
     id: "burmese",
     name: "Burmese restaurant",
     short: "Burmese",
-    blurb: "A tea-shop kitchen in Yangon: mohinga, tea leaf salad, shan noodles and curry.",
+    blurb: "A tea-shop kitchen in Yangon: mohinga, tea leaf salad, noodles, fritters and curry.",
     unlockSales: 500,
     room: "Kitchen_Myanmar",
   },
@@ -381,8 +437,8 @@ export interface Level {
   boosters?: boolean;
 }
 
-const BURMESE = ["mohinga", "lahpet", "shan-noodles", "chicken-curry", "fried-rice"];
-const ALL_RECIPES = RECIPES.map((r) => r.id).filter((id) => !BURMESE.includes(id));
+// the big night: the eight dishes the restaurant is known for
+const BURMESE = ["mohinga", "ohn-no", "lahpet", "shan-noodles", "nan-gyi", "chicken-curry", "egg-curry", "tofu-fritters"];
 
 // The tutorial kitchen: entered from the title screen, not part of the level list.
 export const TUTORIAL: Level = {
@@ -450,7 +506,7 @@ export const LEVELS: Level[] = [
         { icon: "flame", text: "Burnt food left on a stove catches fire: hold F at it" },
       ],
     },
-    recipes: ["grilled-fish", "steak-fries", "steak-onions", "steak-salad", "soy-fish"],
+    recipes: ["grilled-fish", "steak-fries", "steak-salad", "fried-mushrooms"],
     channels: ["ticket"],
     time: 180,
     spoilChance: 0,
@@ -478,7 +534,7 @@ export const LEVELS: Level[] = [
     spoilChance: 0,
     coldFood: false,
     events: [],
-    stars: [60, 120, 175],
+    stars: [65, 130, 190],
   },
   {
     n: 4,
@@ -494,7 +550,7 @@ export const LEVELS: Level[] = [
         { icon: "critic", text: "A food critic visits: be quick, season it right" },
       ],
     },
-    recipes: ["breakfast", "mushroom-soup", "fish-chips", "stir-fry", "steak-onions"],
+    recipes: ["breakfast", "mushroom-soup", "fish-chips", "steak-onions"],
     channels: ["ticket", "phone"],
     time: 190,
     spoilChance: 0,
@@ -516,7 +572,7 @@ export const LEVELS: Level[] = [
         { icon: "sink", text: "Plates come back dirty: hold F at the sink" },
       ],
     },
-    recipes: ALL_RECIPES,
+    recipes: ["soy-fish", "stir-fry", "veg-soup", "steak-fries", "cheese-toastie", "salad"],
     channels: ["ticket", "phone"],
     time: 190,
     spoilChance: 0.25,
@@ -538,7 +594,7 @@ export const LEVELS: Level[] = [
         { icon: "warning", text: "Spilled oil slows you down: hold F on it to mop" },
       ],
     },
-    recipes: ALL_RECIPES,
+    recipes: ["grilled-fish", "steak-salad", "mushroom-soup", "breakfast", "stir-fry", "fish-chips"],
     channels: ["ticket", "phone"],
     time: 210,
     spoilChance: 0.15,
@@ -547,7 +603,7 @@ export const LEVELS: Level[] = [
       { at: 55, kind: "blackout", duration: 22 },
       { at: 135, kind: "storm", duration: 22 },
     ],
-    stars: [55, 115, 170],
+    stars: [60, 125, 190],
   },
 
   // --- the Burmese restaurant (opens once the street stand has sold enough) ---
@@ -556,7 +612,7 @@ export const LEVELS: Level[] = [
     washing: false,
     venue: "burmese",
     name: "Tea shop morning",
-    blurb: "Yangon wakes up hungry. Tea leaf salad and shan noodles, crunchy toppings last.",
+    blurb: "Yangon wakes up hungry. Salads, tofu fritters and shan noodles, crunchy toppings last.",
     teach: {
       title: "A Burmese kitchen",
       lines: [
@@ -565,7 +621,7 @@ export const LEVELS: Level[] = [
         { icon: "book", text: "Press R for new recipes" },
       ],
     },
-    recipes: ["lahpet", "shan-noodles"],
+    recipes: ["tomato-salad", "tofu-fritters", "lahpet", "shan-noodles"],
     channels: ["ticket"],
     time: 180,
     spoilChance: 0,
@@ -573,36 +629,36 @@ export const LEVELS: Level[] = [
     maxOrders: 3,
     patience: 1.4,
     events: [],
-    stars: [45, 95, 145],
+    stars: [40, 85, 125],
   },
   {
     n: 8,
     layout: "island",
     venue: "burmese",
     name: "Mohinga Monday",
-    blurb: "The breakfast soup. Fish, onion and rice noodles go in the pot; the phone rings too.",
+    blurb: "Noodle soups for breakfast: mohinga, and chicken in coconut milk. The phone rings too.",
     teach: {
       title: "Mohinga",
       lines: [
         { icon: "knife", text: "Pot: chopped fish, onion and noodles" },
-        { icon: "fishsauce", text: "Finish: fish sauce, lime, coriander" },
+        { icon: "crate", text: "Noodles and coconut milk go in as they are" },
         { icon: "booster", text: "Kids need a booster seat: the head chef puts one on the pass" },
       ],
     },
-    recipes: ["mohinga", "lahpet", "shan-noodles"],
+    recipes: ["mohinga", "ohn-no", "tofu-fritters", "lahpet"],
     channels: ["ticket", "phone"],
     time: 190,
     spoilChance: 0,
     coldFood: false,
     events: [],
-    stars: [55, 115, 170],
+    stars: [50, 100, 150],
   },
   {
     n: 9,
     layout: "split",
     venue: "burmese",
     name: "Curry house",
-    blurb: "Chicken curry and fried rice for the lunch crowd. Keep the chicken cold!",
+    blurb: "Chicken curry, egg curry and fried rice for the lunch crowd. Keep the chicken cold!",
     teach: {
       title: "Rice and curry",
       lines: [
@@ -610,13 +666,13 @@ export const LEVELS: Level[] = [
         { icon: "snow", text: "Use chicken soon" },
       ],
     },
-    recipes: ["chicken-curry", "fried-rice", "mohinga", "shan-noodles"],
+    recipes: ["chicken-curry", "egg-curry", "fried-rice", "nan-gyi", "tomato-salad"],
     channels: ["ticket", "phone"],
     time: 200,
     spoilChance: 0,
     coldFood: true,
     events: [],
-    stars: [60, 125, 185],
+    stars: [55, 115, 170],
   },
   {
     n: 10,
@@ -627,7 +683,7 @@ export const LEVELS: Level[] = [
     teach: {
       title: "The big night",
       lines: [
-        { icon: "star", text: "The whole menu, all at once" },
+        { icon: "star", text: "Eight dishes, all at once" },
         { icon: "moon", text: "Dark? Talk it through" },
         { icon: "storm", text: "Loud? Watch the deaf chef" },
       ],
@@ -641,7 +697,7 @@ export const LEVELS: Level[] = [
       { at: 60, kind: "blackout", duration: 20 },
       { at: 145, kind: "storm", duration: 20 },
     ],
-    stars: [60, 125, 190],
+    stars: [60, 120, 180],
   },
 ];
 
@@ -663,9 +719,10 @@ export const hasWashing = (level: Level) => level.washing ?? (!level.tutorial &&
 
 export const criticsAt = (level: Level) => level.critics ?? (!level.tutorial && level.n >= 4 ? 1 : 0);
 
-// Three chefs can serve more than one or two, so their kitchen gets busier and its stars cost more.
-const CREW_PACE = [1, 1, 1, 0.85];
-const CREW_GOALS = [1, 1, 1, 1.25];
+// A level's pace and stars are set for two chefs. One chef alone gets orders a little less often
+// and cheaper stars; three can serve more, so their kitchen gets busier and its stars cost more.
+const CREW_PACE = [1, 1.15, 1, 0.85];
+const CREW_GOALS = [1, 0.85, 1, 1.25];
 
 /** How much more often orders come for a crew this size (1 = the level's own pace). */
 export const crewPace = (crew: number) => CREW_PACE[Math.min(crew, 3)] ?? 1;
@@ -675,6 +732,16 @@ export function starGoals(level: Level, crew = 1): [number, number, number] {
   const k = CREW_GOALS[Math.min(crew, 3)] ?? 1;
   return level.stars.map((s) => Math.round((s * k) / 5) * 5) as [number, number, number];
 }
+
+/** What a customer who gives up costs: half the dish's price (a critic's walk-out never under CRITIC_PENALTY). */
+export const expiredPenalty = (recipe: Recipe, critic = false) =>
+  Math.max(critic ? CRITIC_PENALTY : EXPIRED_PENALTY, Math.round(recipe.reward / 2));
+
+/** Points for serving with this much of the customer's patience left. */
+export const speedBonus = (timeLeft: number, time: number) => Math.ceil(Math.min(1, Math.max(0, timeLeft / time)) * SPEED_MAX);
+
+/** The bonus for the nth dish in a row (the first earns none). */
+export const comboBonus = (combo: number) => Math.min(COMBO_MAX, Math.max(0, combo - 1) * COMBO_STEP);
 
 export function starsFor(level: Level, score: number, crew = 1): number {
   return starGoals(level, crew).filter((s) => score >= s).length;

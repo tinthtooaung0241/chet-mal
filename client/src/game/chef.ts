@@ -8,6 +8,7 @@
 import {
   Axis,
   Color3,
+  DynamicTexture,
   MeshBuilder,
   Quaternion,
   Scalar,
@@ -111,6 +112,8 @@ const SIT_DROP = 0.38;
 
 export class ChefModel {
   readonly root: TransformNode;
+  /** a soft dark disc on the floor, shown when shadows are off */
+  private readonly blob: Mesh;
   private readonly bob: TransformNode;
   private readonly joints: Partial<Record<JointName, Joint>> = {};
   private knife: TransformNode | null = null;
@@ -140,6 +143,8 @@ export class ChefModel {
     this.root = new TransformNode("chef", scene);
     this.bob = new TransformNode("chefBob", scene);
     this.bob.parent = this.root;
+    this.blob = groundBlob(scene);
+    this.blob.parent = this.root;
     const model = modelName ?? CHEF_MODELS[role];
     if (!lib.has(model)) {
       this.placeholder(scene, shadows, apronColor);
@@ -327,6 +332,8 @@ export class ChefModel {
   update(s: ChefState, dt: number, time: number, smooth: boolean) {
     if (dt <= 0) return;
     const root = this.root;
+    // without real shadows (Fast graphics) a soft disc keeps the feet on the floor
+    this.blob.setEnabled(!root.getScene().shadowsEnabled);
     const px = root.position.x;
     const pz = root.position.z;
     const follow = smooth ? Math.min(1, dt * 12) : 1;
@@ -676,4 +683,36 @@ function buildHat(scene: Scene, look: ChefLook, size: number): TransformNode {
     }
   }
   return root;
+}
+
+/** One soft, dark, see-through material for every character's ground disc. */
+const blobMaterials = new WeakMap<Scene, StandardMaterial>();
+function groundBlob(scene: Scene): Mesh {
+  let mat = blobMaterials.get(scene);
+  if (!mat) {
+    const size = 64;
+    const fade = new DynamicTexture("groundBlob", { width: size, height: size }, scene, false);
+    const ctx = fade.getContext();
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    g.addColorStop(0, "rgba(0,0,0,0.42)");
+    g.addColorStop(0.6, "rgba(0,0,0,0.22)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+    fade.update();
+    fade.hasAlpha = true;
+    mat = new StandardMaterial("groundBlobMat", scene);
+    mat.diffuseColor = Color3.Black();
+    mat.specularColor = Color3.Black();
+    mat.opacityTexture = fade;
+    mat.disableLighting = true;
+    blobMaterials.set(scene, mat);
+  }
+  const disc = MeshBuilder.CreateDisc("groundBlob", { radius: 0.36, tessellation: 20 }, scene);
+  disc.rotation.x = Math.PI / 2;
+  disc.position.y = 0.015;
+  disc.material = mat;
+  disc.isPickable = false;
+  disc.setEnabled(false);
+  return disc;
 }
